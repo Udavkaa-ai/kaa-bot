@@ -9,6 +9,9 @@ module.exports = {
   GEMINI_KEY: process.env.GEMINI_KEY,
   GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
 
+  // AI — Groq (основной, бесплатный, 14400 req/день)
+  GROQ_KEY: process.env.GROQ_KEY || null,
+
   // AI — OpenRouter (fallback, опциональный)
   OPENROUTER_KEY: process.env.OPENROUTER_KEY || null,
 
