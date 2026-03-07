@@ -1,48 +1,57 @@
 const config = require('./config');
 
-// Gemini модели (перебираются первыми, бесплатно)
-const GEMINI_MODELS = [
-  config.GEMINI_MODEL || 'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
+// Groq модели (основной провайдер, бесплатный, 14400 req/день)
+const GROQ_MODELS = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'gemma2-9b-it',
 ];
 
-// OpenRouter модели (fallback когда Gemini исчерпан, бесплатные)
+// OpenRouter модели (fallback когда Groq исчерпан)
 const OPENROUTER_MODELS = [
   'meta-llama/llama-3.3-70b-instruct:free',
-  'deepseek/deepseek-chat-v3-0324:free',
   'mistralai/mistral-small-3.1-24b-instruct:free',
+  'google/gemma-3-12b-it:free',
+  'qwen/qwen3-8b:free',
 ];
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Вызов Gemini API
-async function callGeminiModel(model, systemPrompt, messages) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.GEMINI_KEY}`;
+// Вызов Groq API (OpenAI-совместимый формат)
+async function callGroqModel(model, systemPrompt, messages) {
+  if (!config.GROQ_KEY) throw new Error('GROQ_KEY не задан');
 
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.text }],
-  }));
+  const groqMessages = [
+    { role: 'system', content: systemPrompt },
+    ...messages.map(m => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.text,
+    })),
+  ];
 
-  const res = await fetch(url, {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${config.GROQ_KEY}`,
+    },
     body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents,
-      generationConfig: { temperature: 0.8, maxOutputTokens: 500 },
+      model,
+      messages: groqMessages,
+      temperature: 0.8,
+      max_tokens: 500,
     }),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Gemini ${res.status}: ${err}`);
+    throw new Error(`Groq ${res.status}: ${err}`);
   }
 
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  return data.choices?.[0]?.message?.content || null;
 }
 
 // Вызов OpenRouter API (OpenAI-совместимый формат)
@@ -92,12 +101,12 @@ async function tryModels(models, callFn, systemPrompt, messages) {
       return result;
     } catch (err) {
       lastError = err;
-      const isQuota = err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED');
+      const isQuota = err.message.includes('429') || err.message.includes('rate_limit') || err.message.includes('RESOURCE_EXHAUSTED');
       const is404 = err.message.includes('404');
 
       if (isQuota || is404) {
         console.warn(`[AI] ${model}: ${isQuota ? 'квота' : 'не найдена'}, следующая...`);
-        await sleep(500);
+        await sleep(1000);
         continue;
       }
 
@@ -108,17 +117,21 @@ async function tryModels(models, callFn, systemPrompt, messages) {
   throw lastError;
 }
 
-// Главная функция: сначала Gemini, потом OpenRouter
+// Главная функция: сначала Groq, потом OpenRouter
 async function callAI(systemPrompt, messages) {
-  try {
-    return await tryModels(GEMINI_MODELS, callGeminiModel, systemPrompt, messages);
-  } catch (err) {
-    const isQuota = err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED');
-    const is404 = err.message.includes('404');
-    if (!isQuota && !is404) throw err;
-    console.warn('[AI] Все Gemini квоты исчерпаны, переключаюсь на OpenRouter...');
+  // Пробуем Groq
+  if (config.GROQ_KEY) {
+    try {
+      return await tryModels(GROQ_MODELS, callGroqModel, systemPrompt, messages);
+    } catch (err) {
+      const isQuota = err.message.includes('429') || err.message.includes('rate_limit');
+      const is404 = err.message.includes('404');
+      if (!isQuota && !is404) throw err;
+      console.warn('[AI] Все Groq квоты исчерпаны, переключаюсь на OpenRouter...');
+    }
   }
 
+  // Fallback на OpenRouter
   return await tryModels(OPENROUTER_MODELS, callOpenRouterModel, systemPrompt, messages);
 }
 
@@ -168,3 +181,4 @@ async function getProfileUpdate(userName, userText) {
 }
 
 module.exports = { getAIResponse, getProfileUpdate };
+EOF
