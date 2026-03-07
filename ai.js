@@ -4,7 +4,6 @@ const config = require('./config');
 const GEMINI_MODELS = [
   config.GEMINI_MODEL || 'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
-  'gemini-1.5-flash',
 ];
 
 // OpenRouter модели (fallback когда Gemini исчерпан, бесплатные)
@@ -115,7 +114,8 @@ async function callAI(systemPrompt, messages) {
     return await tryModels(GEMINI_MODELS, callGeminiModel, systemPrompt, messages);
   } catch (err) {
     const isQuota = err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED');
-    if (!isQuota) throw err;
+    const is404 = err.message.includes('404');
+    if (!isQuota && !is404) throw err;
     console.warn('[AI] Все Gemini квоты исчерпаны, переключаюсь на OpenRouter...');
   }
 
