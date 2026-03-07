@@ -47,44 +47,28 @@ async function callModel(model, systemPrompt, messages) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
 }
 
-// Вызов с fallback по моделям и retry при 429
+// Вызов с перебором моделей при 429
 async function callGemini(systemPrompt, messages) {
+  let lastError = null;
+
   for (const model of MODELS) {
     try {
-      // Пробуем модель с одним retry при 429
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const result = await callModel(model, systemPrompt, messages);
-          return result;
-        } catch (err) {
-          const is429 = err.message.includes('429');
-          const isLast = attempt === 1;
-
-          if (is429 && !isLast) {
-            // Извлекаем retryDelay из сообщения если есть, иначе 30 сек
-            const match = err.message.match(/retry in (\d+)/i);
-            const delay = match ? parseInt(match[1]) * 1000 : 30000;
-            const waitSec = Math.min(delay, 60000); // не больше 60 сек
-            console.warn(`[AI] 429 на ${model}, жду ${waitSec / 1000}с...`);
-            await sleep(waitSec);
-            continue;
-          }
-
-          throw err; // не 429 или второй attempt — пробрасываем
-        }
-      }
+      return await callModel(model, systemPrompt, messages);
     } catch (err) {
-      const is429 = err.message.includes('429');
-      const isLastModel = model === MODELS[MODELS.length - 1];
+      lastError = err;
 
-      if (is429 && !isLastModel) {
-        console.warn(`[AI] Квота исчерпана для ${model}, пробуем следующую модель...`);
-        continue; // переходим к следующей модели
+      if (!err.message.includes('429')) {
+        // Не квота — пробрасываем сразу
+        throw err;
       }
 
-      throw err; // последняя модель или другая ошибка
+      console.warn(`[AI] Квота исчерпана для ${model}, переключаюсь на следующую...`);
+      await sleep(1000);
     }
   }
+
+  // Все модели исчерпаны
+  throw lastError;
 }
 
 async function getAIResponse({ text, userName, userProfile, chatHistory, chatId }) {
