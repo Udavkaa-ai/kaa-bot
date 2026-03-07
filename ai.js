@@ -181,4 +181,3 @@ async function getProfileUpdate(userName, userText) {
 }
 
 module.exports = { getAIResponse, getProfileUpdate };
-EOF
