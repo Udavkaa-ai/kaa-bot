@@ -63,7 +63,7 @@ async function callOpenRouterModel(model, systemPrompt, messages) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${config.OPENROUTER_KEY}`,
       'HTTP-Referer': 'https://github.com/Udavkaa-ai/kaa-bot',
-      'X-Title': config.BOT_NAME || 'kaa-bot',
+      'X-Title': 'kaa-bot',
     },
     body: JSON.stringify({
       model,
