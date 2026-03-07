@@ -147,7 +147,7 @@ async function getAIResponse({ text, userName, userProfile, chatHistory }) {
   const systemPrompt = `${config.BOT_PERSONA}${userContext}
 
 Ты общаешься в Telegram чате. Отвечай только на последнее сообщение пользователя.
-Не повторяй имя собеседника в каждом ответе. Будь краток — максимум 3-4 предложения.`;
+Не повторяй имя собеседника в каждом ответе.`;
 
   const history = chatHistory.slice(-config.HISTORY_LIMIT);
 
