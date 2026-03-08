@@ -18,16 +18,16 @@ const RANDOM_REACTION_POOL = [
   '😎', '🗿', '🆒', '❤️', '🎉',
 ];
 
-// Кэш стикеров: setName -> fileId[]
+// Кэш стикеров: setName -> { fileId, emoji }[]
 const stickerCache = new Map();
 
 /**
  * Парсит теги действий из ответа AI.
  * [REACT:emoji] — поставить реакцию
- * [STICKER] — отправить стикер
+ * [STICKER:emoji] или [STICKER] — отправить стикер (с подбором по эмодзи)
  */
 function parseActions(text) {
-  const actions = { reaction: null, sticker: false };
+  const actions = { reaction: null, sticker: null };
 
   const reactMatch = text.match(/\[REACT:([^\]]+)\]/);
   if (reactMatch) {
@@ -37,8 +37,10 @@ function parseActions(text) {
     }
   }
 
-  if (/\[STICKER\]/.test(text)) {
-    actions.sticker = true;
+  // [STICKER:emoji] или просто [STICKER]
+  const stickerMatch = text.match(/\[STICKER(?::([^\]]+))?\]/);
+  if (stickerMatch) {
+    actions.sticker = stickerMatch[1]?.trim() || true;
   }
 
   return actions;
@@ -50,7 +52,7 @@ function parseActions(text) {
 function cleanText(text) {
   return text
     .replace(/\[REACT:[^\]]+\]/g, '')
-    .replace(/\[STICKER\]/g, '')
+    .replace(/\[STICKER(?::[^\]]+)?\]/g, '')
     .trim();
 }
 
@@ -80,14 +82,17 @@ async function setReaction(bot, chatId, messageId, emoji) {
 }
 
 /**
- * Загружает и кэширует стикерпак.
+ * Загружает и кэширует стикерпак (с эмодзи для каждого стикера).
  */
 async function loadStickerSet(bot, setName) {
   if (stickerCache.has(setName)) return stickerCache.get(setName);
 
   try {
     const set = await bot.getStickerSet(setName);
-    const stickers = set.stickers.map(s => s.file_id);
+    const stickers = set.stickers.map(s => ({
+      fileId: s.file_id,
+      emoji: s.emoji || '',
+    }));
     stickerCache.set(setName, stickers);
     console.log(`[STICKER] Загружен набор "${setName}" (${stickers.length} шт.)`);
     return stickers;
@@ -98,22 +103,37 @@ async function loadStickerSet(bot, setName) {
 }
 
 /**
- * Отправляет случайный стикер из настроенных наборов.
+ * Отправляет стикер, подбирая по эмодзи если указан.
  */
-async function sendRandomSticker(bot, chatId, replyTo) {
+async function sendSticker(bot, chatId, replyTo, emoji) {
   const setNames = config.STICKER_SETS;
   if (!setNames.length) return;
 
-  // Выбираем случайный набор
-  const setName = setNames[Math.floor(Math.random() * setNames.length)];
-  const stickers = await loadStickerSet(bot, setName);
+  // Собираем стикеры из всех наборов
+  let allStickers = [];
+  for (const setName of setNames) {
+    const stickers = await loadStickerSet(bot, setName);
+    allStickers.push(...stickers);
+  }
 
-  if (stickers.length === 0) return;
+  if (allStickers.length === 0) return;
 
-  const stickerId = stickers[Math.floor(Math.random() * stickers.length)];
+  // Подбираем по эмодзи
+  let candidates = allStickers;
+  if (emoji && typeof emoji === 'string') {
+    const matched = allStickers.filter(s => s.emoji === emoji);
+    if (matched.length > 0) {
+      candidates = matched;
+      console.log(`[STICKER] Найдено ${matched.length} стикеров для ${emoji}`);
+    } else {
+      console.log(`[STICKER] Нет совпадений для ${emoji}, отправляю случайный`);
+    }
+  }
+
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
 
   try {
-    await bot.sendSticker(chatId, stickerId, { reply_to_message_id: replyTo });
+    await bot.sendSticker(chatId, pick.fileId, { reply_to_message_id: replyTo });
   } catch (err) {
     console.warn(`[STICKER] ${err.message}`);
   }
@@ -141,7 +161,7 @@ async function executeActions(bot, chatId, messageId, actions) {
   }
 
   if (actions.sticker) {
-    promises.push(sendRandomSticker(bot, chatId, messageId));
+    promises.push(sendSticker(bot, chatId, messageId, actions.sticker));
   }
 
   await Promise.allSettled(promises);
