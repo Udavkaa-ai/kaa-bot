@@ -41,4 +41,10 @@ module.exports = {
   // Настройки
   HISTORY_LIMIT: parseInt(process.env.HISTORY_LIMIT) || 30,
   AUTO_REVIVE_HOURS: parseInt(process.env.AUTO_REVIVE_HOURS) || 3,
+
+  // Реакции и стикеры
+  REACTIONS_ENABLED: process.env.REACTIONS === 'true',
+  STICKER_SETS: (process.env.STICKER_SETS || '')
+    .split(',').map(s => s.trim()).filter(Boolean),
+  REACTION_CHANCE: parseFloat(process.env.REACTION_CHANCE) || 0.15,
 };
