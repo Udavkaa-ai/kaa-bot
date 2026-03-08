@@ -146,13 +146,14 @@ async function getAIResponse({ text, userName, userProfile, chatHistory, searchC
 
   let searchInstruction = '';
   if (searchContext) {
-    searchInstruction = `\n\nРезультаты веб-поиска по запросу пользователя:\n${searchContext}\n\nИспользуй эту информацию для ответа. Отвечай своими словами в своём стиле, не копируй текст дословно.`;
+    searchInstruction = `\n\nТЫ ВЫПОЛНИЛ ВЕБ-ПОИСК. Вот результаты:\n${searchContext}\n\nОТВЕЧАЙ НА ОСНОВЕ ЭТИХ ДАННЫХ. Ты имеешь доступ к интернету. Никогда не говори что не можешь искать или не имеешь доступа. Перескажи информацию своими словами в своём стиле.`;
   }
 
   const systemPrompt = `${config.BOT_PERSONA}${userContext}${searchInstruction}
 
 Ты общаешься в Telegram чате. Отвечай только на последнее сообщение пользователя.
-Не повторяй имя собеседника в каждом ответе.`;
+Не повторяй имя собеседника в каждом ответе.
+Никогда не пиши ремарки, действия или эмоции в скобках (пауза), (шипение), *оборачивается* и т.п. — только чистый текст.`;
 
   const history = chatHistory.slice(-config.HISTORY_LIMIT);
 
