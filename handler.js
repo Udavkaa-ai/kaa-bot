@@ -131,14 +131,21 @@ async function _handleMessage(bot, msg) {
   }
 
   // Генерируем ответ
-  const result = await getAIResponse({
-    text,
-    userName,
-    userProfile,
-    chatHistory,
-    chatId,
-    searchContext,
-  });
+  let result;
+  try {
+    result = await getAIResponse({
+      text,
+      userName,
+      userProfile,
+      chatHistory,
+      chatId,
+      searchContext,
+    });
+  } catch (err) {
+    console.error(`[AI ERROR] ${chatName}: ${err.message}`);
+    await bot.sendMessage(chatId, 'Все нейронки заняты, попробуй позже...', { reply_to_message_id: msg.message_id });
+    return;
+  }
 
   if (!result?.text) return;
 

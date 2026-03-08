@@ -124,7 +124,7 @@ async function callAI(systemPrompt, messages) {
     try {
       return await tryModels(GROQ_MODELS, callGroqModel, systemPrompt, messages);
     } catch (err) {
-      const isQuota = err.message.includes('429') || err.message.includes('rate_limit');
+      const isQuota = err.message.includes('429') || err.message.includes('rate_limit') || err.message.includes('RESOURCE_EXHAUSTED');
       const is404 = err.message.includes('404');
       if (!isQuota && !is404) throw err;
       console.warn('[AI] Все Groq квоты исчерпаны, переключаюсь на OpenRouter...');
