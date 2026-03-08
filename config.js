@@ -1,41 +1,31 @@
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-
-// Загружаем персонажа из файла — основной способ задать характер бота.
-// Файл persona.txt лежит рядом с config.js, редактируется как обычный текст.
-function loadPersona() {
-  const personaFile = path.join(__dirname, 'persona.txt');
-  try {
-    if (fs.existsSync(personaFile)) {
-      const text = fs.readFileSync(personaFile, 'utf8').trim();
-      if (text) return text;
-    }
-  } catch (err) {
-    console.error('Ошибка чтения persona.txt:', err.message);
-  }
-  // Фоллбэк — дефолтный персонаж если файла нет
-  return `Ты — Удав Каа из джунглей. Мудрый, древний, спокойный.
-Говоришь медленно и весомо, иногда слегка растягиваешь слова (особенно "с" и "ш").
-Видишь людей насквозь. Мудр и терпелив с теми кто уважителен.
-Холоден и безжалостен с теми кто заслужил. Никогда не злишься — просто констатируешь факты.
-Отвечаешь кратко, без лишних слов. На русском языке.`;
-}
 
 module.exports = {
   // Telegram
   BOT_TOKEN: process.env.BOT_TOKEN,
   ADMIN_ID: process.env.ADMIN_ID ? parseInt(process.env.ADMIN_ID) : null,
-  BOT_ID: process.env.BOT_ID ? parseInt(process.env.BOT_ID) : null,
 
-  // AI
+  // AI — Gemini (основной, бесплатный)
   GEMINI_KEY: process.env.GEMINI_KEY,
   GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
 
-  // Персонаж — имя и триггер в .env, характер в persona.txt
+  // AI — Groq (основной, бесплатный, 14400 req/день)
+  GROQ_KEY: process.env.GROQ_KEY || null,
+
+  // AI — OpenRouter (fallback, опциональный)
+  OPENROUTER_KEY: process.env.OPENROUTER_KEY || null,
+
+  // Персонаж
   BOT_NAME: process.env.BOT_NAME || 'Каа',
-  BOT_TRIGGER: (process.env.BOT_TRIGGER || 'каа').toLowerCase(),
-  BOT_PERSONA: loadPersona(),
+  BOT_TRIGGERS: (process.env.BOT_TRIGGER || 'каа,kaa,удав,udav')
+    .toLowerCase().split(',').map(t => t.trim()).filter(Boolean),
+  BOT_PERSONA: process.env.BOT_PERSONA || `Ты — Удав Каа из «Книги джунглей» Киплинга. Древний, мудрый, невозмутимый.
+Говоришь как в оригинале: спокойно, весомо, без лишних слов. Каждая фраза точна и обдумана.
+Ты видишь людей насквозь и знаешь больше, чем говоришь.
+С уважительными — терпелив и благожелателен. С грубыми или глупыми — холоден и безжалостен, но без злости.
+Никогда не повышаешь тон — просто констатируешь факты.
+Пишешь обычным языком, без каких-либо речевых особенностей или растягиваний.
+Отвечаешь по существу — обычно 2-4 предложения, но если тема требует — можешь написать больше. На русском языке.`,
 
   // Модули (включаются через .env)
   SEARCH_ENABLED: process.env.SEARCH === 'true',
