@@ -3,11 +3,6 @@ const { getAIResponse } = require('./ai');
 const storage = require('./storage');
 const { trySearch } = require('./search');
 
-<<<<<<< Updated upstream
-// Паттерн триггера — список слов через запятую в BOT_TRIGGER
-function isMentioned(text) {
-  if (!text) return false;
-=======
 // Кэш ID бота (заполняется при первом вызове)
 let botId = null;
 
@@ -20,7 +15,6 @@ function isMentioned(text, botUsername) {
     return true;
   }
 
->>>>>>> Stashed changes
   const triggers = config.BOT_TRIGGERS;
   return triggers.some(trigger => {
     const escaped = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -43,15 +37,12 @@ async function processMessage(bot, msg) {
   const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
   const isPrivate = msg.chat.type === 'private';
 
-<<<<<<< Updated upstream
-=======
   const chatName = msg.chat.title || 'ЛС';
   const userName = msg.from.first_name || 'Пользователь';
   const userTag = msg.from.username ? `@${msg.from.username}` : `id:${userId}`;
 
   console.log(`[IN] ${chatName} | ${userName} (${userTag}): "${text.slice(0, 80)}"`);
 
->>>>>>> Stashed changes
   // Пропускаем ботов
   if (msg.from.is_bot) return;
 
@@ -66,13 +57,8 @@ async function processMessage(bot, msg) {
 
   // В группе отвечаем только если упомянули или ответили на сообщение бота
   if (isGroup) {
-<<<<<<< Updated upstream
-    const isReply = msg.reply_to_message?.from?.is_bot;
-    if (!isMentioned(text) && !isReply) return;
-=======
     const isReplyToMe = msg.reply_to_message?.from?.id === botId;
     if (!isMentioned(text, bot._botUsername) && !isReplyToMe) return;
->>>>>>> Stashed changes
   }
 
   // Команды
@@ -102,31 +88,6 @@ async function processMessage(bot, msg) {
   const userProfile = storage.getProfile(chatId, userId);
   const chatHistory = storage.getHistory(chatId);
 
-<<<<<<< Updated upstream
-  // Генерируем ответ
-  const response = await getAIResponse({
-    text,
-    userName: msg.from.first_name || 'Пользователь',
-    userProfile,
-    chatHistory,
-    chatId,
-  });
-
-  if (!response) return;
-
-  // Отправляем ответ
-  await bot.sendMessage(chatId, response, { reply_to_message_id: msg.message_id });
-
-  // Сохраняем ответ в историю
-  storage.addMessage(chatId, {
-    role: 'assistant',
-    text: response,
-    ts: Date.now(),
-  });
-
-  // Обновляем профиль пользователя асинхронно
-  updateProfileAsync(chatId, userId, msg.from.first_name, text, response);
-=======
   // Веб-поиск (если включён и сообщение содержит триггер)
   let searchContext = null;
   if (config.SEARCH_ENABLED) {
@@ -162,7 +123,6 @@ async function processMessage(bot, msg) {
 
   // Обновляем профиль пользователя асинхронно
   updateProfileAsync(chatId, userId, userName, text, result.text);
->>>>>>> Stashed changes
 }
 
 // Обновляем профиль пользователя в фоне
