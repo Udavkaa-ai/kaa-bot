@@ -15,6 +15,12 @@ module.exports = {
   // AI — OpenRouter (fallback, опциональный)
   OPENROUTER_KEY: process.env.OPENROUTER_KEY || null,
 
+<<<<<<< Updated upstream
+=======
+  // Поиск — Tavily
+  TAVILY_KEY: process.env.TAVILY_KEY || null,
+
+>>>>>>> Stashed changes
   // Персонаж
   BOT_NAME: process.env.BOT_NAME || 'Каа',
   BOT_TRIGGERS: (process.env.BOT_TRIGGER || 'каа,kaa,удав,udav')
