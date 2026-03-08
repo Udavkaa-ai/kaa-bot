@@ -149,6 +149,14 @@ async function _handleMessage(bot, msg) {
   if (config.REACTIONS_ENABLED) {
     actions = parseActions(responseText);
     responseText = cleanText(responseText);
+
+    // Fallback: если пользователь просил стикер, а AI не добавил тег
+    if (!actions.sticker && config.STICKER_SETS.length > 0) {
+      const lowerText = text.toLowerCase();
+      if (/стикер|наклейк|sticker/i.test(lowerText)) {
+        actions.sticker = true;
+      }
+    }
   }
 
   if (!responseText) return;
