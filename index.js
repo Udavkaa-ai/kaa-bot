@@ -7,6 +7,7 @@ const storage = require('./storage');
 const bot = new TelegramBot(config.BOT_TOKEN, { polling: true });
 
 console.log(`🐍 ${config.BOT_NAME} запущен...`);
+console.log(`[CONFIG] REACTIONS=${config.REACTIONS_ENABLED}, STICKER_SETS=[${config.STICKER_SETS}], CHANCE=${config.REACTION_CHANCE}`);
 
 bot.on('message', async (msg) => {
   try {
