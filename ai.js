@@ -98,7 +98,11 @@ async function tryModels(models, callFn, systemPrompt, messages) {
   for (const model of models) {
     try {
       const result = await callFn(model, systemPrompt, messages);
+<<<<<<< Updated upstream
       return result;
+=======
+      return { text: result, model };
+>>>>>>> Stashed changes
     } catch (err) {
       lastError = err;
       const isQuota = err.message.includes('429') || err.message.includes('rate_limit') || err.message.includes('RESOURCE_EXHAUSTED');
@@ -135,7 +139,11 @@ async function callAI(systemPrompt, messages) {
   return await tryModels(OPENROUTER_MODELS, callOpenRouterModel, systemPrompt, messages);
 }
 
+<<<<<<< Updated upstream
 async function getAIResponse({ text, userName, userProfile, chatHistory }) {
+=======
+async function getAIResponse({ text, userName, userProfile, chatHistory, searchContext }) {
+>>>>>>> Stashed changes
   let userContext = '';
   if (userProfile && userProfile.facts?.length) {
     userContext = `\n\nЧто ты знаешь об этом существе (${userName}): ${userProfile.facts.join(', ')}.`;
@@ -144,7 +152,16 @@ async function getAIResponse({ text, userName, userProfile, chatHistory }) {
     }
   }
 
+<<<<<<< Updated upstream
   const systemPrompt = `${config.BOT_PERSONA}${userContext}
+=======
+  let searchInstruction = '';
+  if (searchContext) {
+    searchInstruction = `\n\nРезультаты веб-поиска по запросу пользователя:\n${searchContext}\n\nИспользуй эту информацию для ответа. Отвечай своими словами в своём стиле, не копируй текст дословно.`;
+  }
+
+  const systemPrompt = `${config.BOT_PERSONA}${userContext}${searchInstruction}
+>>>>>>> Stashed changes
 
 Ты общаешься в Telegram чате. Отвечай только на последнее сообщение пользователя.
 Не повторяй имя собеседника в каждом ответе.`;
@@ -158,7 +175,12 @@ async function getAIResponse({ text, userName, userProfile, chatHistory }) {
       }))
     : [{ role: 'user', text: `${userName}: ${text}` }];
 
+<<<<<<< Updated upstream
   return await callAI(systemPrompt, messages);
+=======
+  const result = await callAI(systemPrompt, messages);
+  return { text: result.text, model: result.model };
+>>>>>>> Stashed changes
 }
 
 // Лёгкий запрос для обновления профиля
@@ -172,8 +194,13 @@ async function getProfileUpdate(userName, userText) {
 
   try {
     const result = await callAI(systemPrompt, messages);
+<<<<<<< Updated upstream
     if (!result) return null;
     const clean = result.replace(/```json|```/g, '').trim();
+=======
+    if (!result?.text) return null;
+    const clean = result.text.replace(/```json|```/g, '').trim();
+>>>>>>> Stashed changes
     return JSON.parse(clean);
   } catch {
     return null;
