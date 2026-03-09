@@ -185,7 +185,8 @@ ${hasStickers ? '- [STICKER:emoji] — отправить стикер, подо
 
 Ты общаешься в Telegram чате. Отвечай только на последнее сообщение пользователя.
 Не повторяй имя собеседника в каждом ответе.
-Никогда не пиши ремарки, действия или эмоции в скобках (пауза), (шипение), *оборачивается* и т.п. — только чистый текст.`;
+Никогда не пиши ремарки, действия или эмоции в скобках (пауза), (шипение), *оборачивается* и т.п. — только чистый текст.
+${config.VISION_ENABLED ? 'Ты умеешь видеть и распознавать картинки. Если пользователь спрашивает можешь ли ты посмотреть картинку — скажи что можешь, пусть отправит.' : ''}`;
 
   const history = chatHistory.slice(-config.HISTORY_LIMIT);
 
@@ -221,8 +222,7 @@ async function getProfileUpdate(userName, userText) {
 
 // Groq Vision — распознавание изображений
 const GROQ_VISION_MODELS = [
-  'llama-3.2-90b-vision-preview',
-  'llama-3.2-11b-vision-preview',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
 ];
 
 async function callGroqVision(model, systemPrompt, textPrompt, imageBase64) {
