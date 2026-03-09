@@ -219,4 +219,76 @@ async function getProfileUpdate(userName, userText) {
   }
 }
 
-module.exports = { getAIResponse, getProfileUpdate };
+// Groq Vision — распознавание изображений
+const GROQ_VISION_MODELS = [
+  'llama-3.2-90b-vision-preview',
+  'llama-3.2-11b-vision-preview',
+];
+
+async function callGroqVision(model, systemPrompt, textPrompt, imageBase64) {
+  if (!config.GROQ_KEY) throw new Error('GROQ_KEY не задан');
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: textPrompt },
+        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+      ],
+    },
+  ];
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${config.GROQ_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 500,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Groq Vision ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || null;
+}
+
+async function describeImage(imageBase64, userText, userName) {
+  const systemPrompt = `${config.BOT_PERSONA}
+
+Тебе прислали изображение. Опиши что видишь и ответь на вопрос пользователя, если он есть. Отвечай в своём стиле.`;
+
+  const textPrompt = userText
+    ? `${userName}: ${userText}`
+    : `${userName} прислал картинку без подписи. Опиши что на ней.`;
+
+  let lastError = null;
+  for (const model of GROQ_VISION_MODELS) {
+    try {
+      const result = await callGroqVision(model, systemPrompt, textPrompt, imageBase64);
+      return { text: result, model };
+    } catch (err) {
+      lastError = err;
+      const isQuota = err.message.includes('429') || err.message.includes('rate_limit');
+      const is404 = err.message.includes('404');
+      if (isQuota || is404) {
+        console.warn(`[VISION] ${model}: ${isQuota ? 'квота' : 'не найдена'}, следующая...`);
+        await sleep(1000);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
+}
+
+module.exports = { getAIResponse, getProfileUpdate, describeImage };

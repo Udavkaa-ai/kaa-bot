@@ -1,5 +1,5 @@
 const config = require('./config');
-const { getAIResponse } = require('./ai');
+const { getAIResponse, describeImage } = require('./ai');
 const storage = require('./storage');
 const { trySearch } = require('./search');
 const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
@@ -51,7 +51,8 @@ async function processMessage(bot, msg) {
 
 async function _handleMessage(bot, msg) {
   const chatId = msg.chat.id;
-  const text = msg.text || '';
+  const text = msg.text || msg.caption || '';
+  const hasPhoto = msg.photo && msg.photo.length > 0;
   const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
   const isPrivate = msg.chat.type === 'private';
 
@@ -83,7 +84,8 @@ async function _handleMessage(bot, msg) {
   // В группе отвечаем только если упомянули или ответили на сообщение бота
   if (isGroup) {
     const isReplyToMe = msg.reply_to_message?.from?.id === botId;
-    if (!isMentioned(text, bot._botUsername) && !isReplyToMe) {
+    const photoReplyToMe = hasPhoto && isReplyToMe;
+    if (!isMentioned(text, bot._botUsername) && !isReplyToMe && !photoReplyToMe) {
       // Случайная реакция на сообщения, где бот не отвечает (не на посты канала)
       if (config.REACTIONS_ENABLED && !isChannel) {
         randomReaction(bot, chatId, msg.message_id);
@@ -100,6 +102,7 @@ async function _handleMessage(bot, msg) {
 
   if (text.startsWith('/help')) {
     const modules = [];
+    if (config.VISION_ENABLED) modules.push('👁 Распознавание картинок');
     if (config.SEARCH_ENABLED) modules.push('🔍 Веб-поиск');
     if (config.IMAGES_ENABLED) modules.push('🎨 Генерация изображений');
     if (config.QUIZ_ENABLED) modules.push('🎯 Викторины');
@@ -128,6 +131,55 @@ async function _handleMessage(bot, msg) {
     } else {
       console.log(`[SEARCH] ${chatName} | Нет результатов или нет триггера для "${text.slice(0, 50)}"`);
     }
+  }
+
+  // Распознавание изображений (Vision)
+  if (hasPhoto && config.VISION_ENABLED) {
+    const isReplyToMe = msg.reply_to_message?.from?.id === botId;
+    const mentioned = isMentioned(text, bot._botUsername);
+    const shouldDescribe = isPrivate || isReplyToMe || mentioned || text.length > 0;
+
+    if (shouldDescribe) {
+      try {
+        const fileId = msg.photo[msg.photo.length - 1].file_id;
+        const fileLink = await bot.getFileLink(fileId);
+        const imgRes = await fetch(fileLink);
+        const buffer = Buffer.from(await imgRes.arrayBuffer());
+        const base64 = buffer.toString('base64');
+
+        console.log(`[VISION] ${chatName} | ${userName}: картинка ${Math.round(buffer.length / 1024)}KB`);
+
+        const result = await describeImage(base64, text, userName);
+        if (!result?.text) return;
+
+        let responseText = result.text;
+        let actions = { reaction: null, sticker: false };
+
+        if (config.REACTIONS_ENABLED) {
+          actions = parseActions(responseText);
+          responseText = cleanText(responseText);
+        }
+
+        if (!responseText) return;
+
+        console.log(`[OUT] ${chatName} | ${result.model} +vision | "${responseText.slice(0, 80)}"`);
+
+        const sendPromises = [
+          bot.sendMessage(chatId, responseText, { reply_to_message_id: msg.message_id }),
+        ];
+        if (config.REACTIONS_ENABLED && (actions.reaction || actions.sticker)) {
+          sendPromises.push(executeActions(bot, chatId, msg.message_id, actions));
+        }
+        await Promise.allSettled(sendPromises);
+
+        storage.addMessage(chatId, { role: 'assistant', text: responseText, ts: Date.now() });
+      } catch (err) {
+        console.error(`[VISION ERROR] ${chatName}: ${err.message}`);
+        // Не отвечаем ошибкой на каждую картинку, только логируем
+      }
+      return;
+    }
+    return;
   }
 
   // Генерируем ответ
