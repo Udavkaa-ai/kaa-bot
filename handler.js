@@ -84,8 +84,8 @@ async function _handleMessage(bot, msg) {
   if (isGroup) {
     const isReplyToMe = msg.reply_to_message?.from?.id === botId;
     if (!isMentioned(text, bot._botUsername) && !isReplyToMe) {
-      // Случайная реакция на сообщения, где бот не отвечает
-      if (config.REACTIONS_ENABLED) {
+      // Случайная реакция на сообщения, где бот не отвечает (не на посты канала)
+      if (config.REACTIONS_ENABLED && !isChannel) {
         randomReaction(bot, chatId, msg.message_id);
       }
       return;
