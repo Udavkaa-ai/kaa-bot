@@ -1,8 +1,9 @@
 const config = require('./config');
-const { getAIResponse, describeImage } = require('./ai');
+const { getAIResponse, describeImage, translateImagePrompt } = require('./ai');
 const storage = require('./storage');
 const { trySearch } = require('./search');
 const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
+const { generateImage } = require('./imagegen');
 
 // Кэш ID бота (заполняется при первом вызове)
 let botId = null;
@@ -218,9 +219,20 @@ async function _handleMessage(bot, msg) {
     }
   }
 
+  // Парсим тег генерации картинки [IMAGE:prompt]
+  let imagePrompt = null;
+  if (config.IMAGES_ENABLED) {
+    const imageMatch = responseText.match(/\[IMAGE:(.+?)\]/i);
+    if (imageMatch) {
+      imagePrompt = imageMatch[1].trim();
+      responseText = responseText.replace(/\[IMAGE:.+?\]/gi, '').trim();
+    }
+  }
+
   if (!responseText) return;
 
-  console.log(`[OUT] ${chatName} | ${result.model}${searchContext ? ' +search' : ''}${actions.reaction ? ` +react:${actions.reaction}` : ''}${actions.sticker ? ' +sticker' : ''} | "${responseText.slice(0, 80)}"`);
+  const hasImage = !!imagePrompt;
+  console.log(`[OUT] ${chatName} | ${result.model}${searchContext ? ' +search' : ''}${hasImage ? ' +image' : ''}${actions.reaction ? ` +react:${actions.reaction}` : ''}${actions.sticker ? ' +sticker' : ''} | "${responseText.slice(0, 80)}"`);
 
   // Отправляем ответ и выполняем действия параллельно
   const sendPromises = [
@@ -232,6 +244,20 @@ async function _handleMessage(bot, msg) {
   }
 
   await Promise.allSettled(sendPromises);
+
+  // Генерация картинки (после текстового ответа, чтобы не задерживать)
+  if (imagePrompt) {
+    try {
+      const translatedPrompt = await translateImagePrompt(imagePrompt);
+      console.log(`[IMAGEGEN] ${chatName} | prompt: "${translatedPrompt.slice(0, 80)}"`);
+      const imageBuffer = await generateImage(translatedPrompt);
+      await bot.sendPhoto(chatId, imageBuffer, { reply_to_message_id: msg.message_id });
+      console.log(`[IMAGEGEN] ${chatName} | OK, ${Math.round(imageBuffer.length / 1024)}KB`);
+    } catch (err) {
+      console.error(`[IMAGEGEN ERROR] ${chatName}: ${err.message}`);
+      await bot.sendMessage(chatId, 'Не удалось нарисовать... Джунгли иногда капризны.', { reply_to_message_id: msg.message_id });
+    }
+  }
 
   // Сохраняем ответ в историю (без тегов действий)
   storage.addMessage(chatId, {

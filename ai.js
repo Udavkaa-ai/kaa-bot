@@ -181,7 +181,21 @@ ${hasStickers ? '- [STICKER:emoji] — отправить стикер, подо
 Если просят стикер — ОБЯЗАТЕЛЬНО добавь [STICKER:emoji] с подходящим эмодзи. Не описывай отправку стикера словами, просто ставь тег.`;
   }
 
-  const systemPrompt = `${config.BOT_PERSONA}${userContext}${searchInstruction}${reactionsInstruction}
+  let imageInstruction = '';
+  if (config.IMAGES_ENABLED) {
+    imageInstruction = `
+Ты умеешь генерировать картинки. Если пользователь просит нарисовать, сгенерировать, создать картинку — добавь тег [IMAGE:prompt] в конец ответа.
+Prompt должен быть НА АНГЛИЙСКОМ языке, детальный, описывающий сцену. Например:
+Пользователь: "Нарисуй кота в космосе"
+Ответ: Сейчас изображу... [IMAGE:a fluffy cat floating in outer space surrounded by stars and nebulae, digital art, vibrant colors]
+
+Пользователь: "Нарисуй себя"
+Ответ: Взгляни на меня, маугли. [IMAGE:a massive ancient python snake coiled on a tree branch in a dense jungle, moonlight filtering through leaves, realistic, cinematic lighting]
+
+ВАЖНО: Всегда пиши prompt на английском. Будь креативен и детален в описании. Не описывай процесс генерации словами — просто ставь тег.`;
+  }
+
+  const systemPrompt = `${config.BOT_PERSONA}${userContext}${searchInstruction}${reactionsInstruction}${imageInstruction}
 
 Ты общаешься в Telegram чате. Отвечай только на последнее сообщение пользователя.
 Не повторяй имя собеседника в каждом ответе.
@@ -291,4 +305,20 @@ async function describeImage(imageBase64, userText, userName) {
   throw lastError;
 }
 
-module.exports = { getAIResponse, getProfileUpdate, describeImage };
+// Перевод промпта для генерации картинок на английский (если AI написал на русском)
+async function translateImagePrompt(prompt) {
+  // Если промпт уже на английском (нет кириллицы) — возвращаем как есть
+  if (!/[а-яёА-ЯЁ]/.test(prompt)) return prompt;
+
+  const systemPrompt = `Translate the following image generation prompt to English. Output ONLY the translated prompt, nothing else. Keep all style keywords (digital art, cinematic, etc). Make it detailed and descriptive.`;
+  const messages = [{ role: 'user', text: prompt }];
+
+  try {
+    const result = await callAI(systemPrompt, messages);
+    return result?.text?.trim() || prompt;
+  } catch {
+    return prompt;
+  }
+}
+
+module.exports = { getAIResponse, getProfileUpdate, describeImage, translateImagePrompt };
