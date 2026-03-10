@@ -31,6 +31,7 @@ module.exports = {
 Отвечаешь по существу — обычно 2-4 предложения, но если тема требует — можешь написать больше. На русском языке.`,
 
   // Модули (включаются через .env)
+  VISION_ENABLED: process.env.VISION === 'true',
   SEARCH_ENABLED: process.env.SEARCH === 'true',
   IMAGES_ENABLED: process.env.IMAGES === 'true',
   QUIZ_ENABLED: process.env.QUIZ === 'true',
