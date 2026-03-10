@@ -154,11 +154,9 @@ async function getAIResponse({ text, userName, userProfile, chatHistory, searchC
     const hasStickers = config.STICKER_SETS.length > 0;
     reactionsInstruction = `
 
-У тебя есть специальные команды. Добавляй теги В КОНЕЦ ответа:
-- [REACT:emoji] — поставить реакцию на сообщение пользователя. Доступные: 👍 👎 ❤️ 🔥 👏 😁 🤔 🤯 😱 😢 🎉 🤩 💩 🙏 👌 🤡 💯 🤣 ⚡ 🏆 💔 🤨 😈 😭 🤓 👀 🙈 😇 🤗 🤪 🗿 🆒 😎 😡
+ВАЖНО — У тебя есть специальные команды. Добавляй теги В КОНЕЦ ответа:
+- [REACT:emoji] — поставить реакцию. Доступные: 👍 👎 ❤️ 🔥 👏 😁 🤔 🤯 😱 😢 🎉 🤩 💩 🙏 👌 🤡 💯 🤣 ⚡ 🏆 💔 🤨 😈 😭 🤓 👀 🙈 😇 🤗 🤪 🗿 🆒 😎 😡
 ${hasStickers ? '- [STICKER:emoji] — отправить стикер, подобранный по эмодзи. Например [STICKER:😂] или [STICKER:😎] или [STICKER:❤️].\n' : ''}
-ПРАВИЛО: Реакцию [REACT] ставь РЕДКО — только когда сообщение действительно вызывает эмоцию (смешное, трогательное, дерзкое). В большинстве обычных сообщений НЕ ставь реакцию. Примерно 1 из 4-5 сообщений.
-
 Примеры ответов:
 Пользователь: "Ты лучший удав!"
 Ответ: Лесть приятна, но не спасёт тебя от голода. [REACT:😎]
@@ -169,38 +167,17 @@ ${hasStickers ? '- [STICKER:emoji] — отправить стикер, подо
 Пользователь: "Расскажи анекдот"
 Ответ: Маугли спрашивает Балу: зачем тебе такие большие когти? Балу: а ты попробуй почесать спину без них. [REACT:🤣]
 
-Пользователь: "Как дела?"
-Ответ: Спокойно в джунглях. Как и должно быть.
-
-Пользователь: "Что думаешь о погоде?"
-Ответ: Дождь или солнце — удаву всё едино.
-
 Пользователь: "Мне грустно"
 Ответ: Грусть пройдёт. Всё проходит в джунглях — и дождь, и засуха. [STICKER:😢] [REACT:❤️]
 
-Если просят стикер — ОБЯЗАТЕЛЬНО добавь [STICKER:emoji] с подходящим эмодзи. Не описывай отправку стикера словами, просто ставь тег.`;
+Если просят стикер — ОБЯЗАТЕЛЬНО добавь [STICKER:emoji] с подходящим эмодзи. Если хочешь отреагировать — добавь [REACT:emoji]. Не описывай отправку стикера словами, просто ставь тег.`;
   }
 
-  let imageInstruction = '';
-  if (config.IMAGES_ENABLED) {
-    imageInstruction = `
-Ты умеешь генерировать картинки. Если пользователь просит нарисовать, сгенерировать, создать картинку — добавь тег [IMAGE:prompt] в конец ответа.
-Prompt должен быть НА АНГЛИЙСКОМ языке, детальный, описывающий сцену. Например:
-Пользователь: "Нарисуй кота в космосе"
-Ответ: Сейчас изображу... [IMAGE:a fluffy cat floating in outer space surrounded by stars and nebulae, digital art, vibrant colors]
-
-Пользователь: "Нарисуй себя"
-Ответ: Взгляни на меня, маугли. [IMAGE:a massive ancient python snake coiled on a tree branch in a dense jungle, moonlight filtering through leaves, realistic, cinematic lighting]
-
-ВАЖНО: Всегда пиши prompt на английском. Будь креативен и детален в описании. Не описывай процесс генерации словами — просто ставь тег.`;
-  }
-
-  const systemPrompt = `${config.BOT_PERSONA}${userContext}${searchInstruction}${reactionsInstruction}${imageInstruction}
+  const systemPrompt = `${config.BOT_PERSONA}${userContext}${searchInstruction}${reactionsInstruction}
 
 Ты общаешься в Telegram чате. Отвечай только на последнее сообщение пользователя.
 Не повторяй имя собеседника в каждом ответе.
-Никогда не пиши ремарки, действия или эмоции в скобках (пауза), (шипение), *оборачивается* и т.п. — только чистый текст.
-${config.VISION_ENABLED ? 'Ты умеешь видеть и распознавать картинки. Если пользователь спрашивает можешь ли ты посмотреть картинку — скажи что можешь, пусть отправит.' : ''}`;
+Никогда не пиши ремарки, действия или эмоции в скобках (пауза), (шипение), *оборачивается* и т.п. — только чистый текст.`;
 
   const history = chatHistory.slice(-config.HISTORY_LIMIT);
 
@@ -234,91 +211,4 @@ async function getProfileUpdate(userName, userText) {
   }
 }
 
-// Groq Vision — распознавание изображений
-const GROQ_VISION_MODELS = [
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-];
-
-async function callGroqVision(model, systemPrompt, textPrompt, imageBase64) {
-  if (!config.GROQ_KEY) throw new Error('GROQ_KEY не задан');
-
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    {
-      role: 'user',
-      content: [
-        { type: 'text', text: textPrompt },
-        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
-      ],
-    },
-  ];
-
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.GROQ_KEY}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 500,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Groq Vision ${res.status}: ${err}`);
-  }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || null;
-}
-
-async function describeImage(imageBase64, userText, userName) {
-  const systemPrompt = `${config.BOT_PERSONA}
-
-Тебе прислали изображение. Опиши что видишь и ответь на вопрос пользователя, если он есть. Отвечай в своём стиле.`;
-
-  const textPrompt = userText
-    ? `${userName}: ${userText}`
-    : `${userName} прислал картинку без подписи. Опиши что на ней.`;
-
-  let lastError = null;
-  for (const model of GROQ_VISION_MODELS) {
-    try {
-      const result = await callGroqVision(model, systemPrompt, textPrompt, imageBase64);
-      return { text: result, model };
-    } catch (err) {
-      lastError = err;
-      const isQuota = err.message.includes('429') || err.message.includes('rate_limit');
-      const is404 = err.message.includes('404');
-      if (isQuota || is404) {
-        console.warn(`[VISION] ${model}: ${isQuota ? 'квота' : 'не найдена'}, следующая...`);
-        await sleep(1000);
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw lastError;
-}
-
-// Перевод промпта для генерации картинок на английский (если AI написал на русском)
-async function translateImagePrompt(prompt) {
-  // Если промпт уже на английском (нет кириллицы) — возвращаем как есть
-  if (!/[а-яёА-ЯЁ]/.test(prompt)) return prompt;
-
-  const systemPrompt = `Translate the following image generation prompt to English. Output ONLY the translated prompt, nothing else. Keep all style keywords (digital art, cinematic, etc). Make it detailed and descriptive.`;
-  const messages = [{ role: 'user', text: prompt }];
-
-  try {
-    const result = await callAI(systemPrompt, messages);
-    return result?.text?.trim() || prompt;
-  } catch {
-    return prompt;
-  }
-}
-
-module.exports = { getAIResponse, getProfileUpdate, describeImage, translateImagePrompt };
+module.exports = { getAIResponse, getProfileUpdate };
