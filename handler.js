@@ -3,6 +3,7 @@ const { getAIResponse } = require('./ai');
 const storage = require('./storage');
 const { trySearch } = require('./search');
 const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
+const { handleGameMessage } = require('./games');
 
 // Кэш ID бота (заполняется при первом вызове)
 let botId = null;
@@ -71,6 +72,12 @@ async function _handleMessage(bot, msg) {
   // Пропускаем ботов (но не каналы)
   if (msg.from?.is_bot) return;
 
+  // Игры — обрабатываем ДО сохранения в историю (буквы и PM не должны попадать в историю)
+  if (config.GAMES_ENABLED) {
+    const handled = await handleGameMessage(bot, msg);
+    if (handled) return;
+  }
+
   // Сохраняем сообщение в историю
   storage.addMessage(chatId, {
     role: 'user',
@@ -105,6 +112,7 @@ async function _handleMessage(bot, msg) {
     if (config.QUIZ_ENABLED) modules.push('🎯 Викторины');
     if (config.RPG_ENABLED) modules.push('⚔️ RPG');
     if (config.STATS_ENABLED) modules.push('📊 Статистика');
+    if (config.GAMES_ENABLED) modules.push('🎮 Игры (/виселица, /гамруль)');
     if (config.AUTO_REVIVE_ENABLED) modules.push('💬 Авто-оживление');
 
     const moduleText = modules.length > 0

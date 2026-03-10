@@ -21,6 +21,20 @@ bot.on('polling_error', (err) => {
   console.error('Polling error:', err.message);
 });
 
+// === GAMES (inline keyboard callbacks) ===
+if (config.GAMES_ENABLED) {
+  const { handleGameCallback } = require('./games');
+  bot.on('callback_query', async (query) => {
+    try {
+      await handleGameCallback(bot, query);
+    } catch (err) {
+      console.error('Ошибка callback_query:', err.message);
+      try { await bot.answerCallbackQuery(query.id); } catch (_) {}
+    }
+  });
+  console.log('[CONFIG] GAMES=true');
+}
+
 // === AUTO-REVIVE ===
 if (config.AUTO_REVIVE_ENABLED) {
   const INACTIVITY_MS = config.AUTO_REVIVE_HOURS * 60 * 60 * 1000;

@@ -36,6 +36,7 @@ module.exports = {
   QUIZ_ENABLED: process.env.QUIZ === 'true',
   RPG_ENABLED: process.env.RPG === 'true',
   STATS_ENABLED: process.env.STATS === 'true',
+  GAMES_ENABLED: process.env.GAMES === 'true',
   AUTO_REVIVE_ENABLED: process.env.AUTO_REVIVE === 'true',
 
   // Настройки
