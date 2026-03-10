@@ -1,20 +1,22 @@
-const words = require('./words');
+const { getRandomWord } = require('./words');
 
 // Активные игры: chatId -> Game
 const activeGames = new Map();
 
-// ASCII-арт виселицы по стадиям (0-6 ошибок)
+// ASCII-арт виселицы по стадиям (0-8 ошибок)
 const STAGES = [
-  '  ┌──┐\n  │\n  │\n  │\n ═╧═══',
-  '  ┌──┐\n  │  😐\n  │\n  │\n ═╧═══',
-  '  ┌──┐\n  │  😐\n  │  │\n  │\n ═╧═══',
-  '  ┌──┐\n  │  😐\n  │ /│\n  │\n ═╧═══',
-  '  ┌──┐\n  │  😬\n  │ /│\\\n  │\n ═╧═══',
-  '  ┌──┐\n  │  😟\n  │ /│\\\n  │ /\n ═╧═══',
-  '  ┌──┐\n  │  💀\n  │ /│\\\n  │ / \\\n ═╧═══',
+  '  ┌──┐\n  │\n  │\n  │\n ═╧═══',         // 0 — пусто
+  '  ┌──┐\n  │  😐\n  │\n  │\n ═╧═══',      // 1 — голова
+  '  ┌──┐\n  │  😐\n  │  │\n  │\n ═╧═══',   // 2 — тело
+  '  ┌──┐\n  │  😐\n  │ /│\n  │\n ═╧═══',   // 3 — левая рука
+  '  ┌──┐\n  │  😐\n  │ /│\\\n  │\n ═╧═══', // 4 — правая рука
+  '  ┌──┐\n  │  😬\n  │ /│\\\n  │ /\n ═╧═══', // 5 — левая нога
+  '  ┌──┐\n  │  😟\n  │ /│\\\n  │ / \\\n ═╧═══', // 6 — правая нога
+  '  ┌──┐\n  │  😰\n  │_/│\\\n  │ / \\\n ═╧═══', // 7 — левая ладонь
+  '  ┌──┐\n  │  💀\n  │_/│\\_ \n  │ / \\\n ═╧═══', // 8 — смерть
 ];
 
-const MAX_WRONG = 6;
+const MAX_WRONG = 8;
 
 // Фразы Каа
 const PHRASES = {
@@ -65,7 +67,9 @@ function renderState(game) {
     ? `Ошибки (${game.wrong.length}/${MAX_WRONG}): ${game.wrong.join(' ')}`
     : `Ошибки: 0/${MAX_WRONG}`;
 
-  return `<pre>${stage}</pre>\n\n<b>Слово:</b> <code>${wordDisplay}</code>\n${wrongDisplay}`;
+  const hintDisplay = `Подсказка: ${game.hint}`;
+
+  return `<pre>${stage}</pre>\n\n${hintDisplay}\n<b>Слово:</b> <code>${wordDisplay}</code>\n${wrongDisplay}`;
 }
 
 function checkWin(game) {
@@ -83,9 +87,10 @@ async function startGame(bot, msg) {
     return;
   }
 
-  const word = pick(words).toUpperCase();
+  const { word, hint } = getRandomWord();
   const game = {
-    word,
+    word: word.toUpperCase(),
+    hint,
     guessed: new Set(),
     wrong: [],
     startedBy: msg.from?.id,
