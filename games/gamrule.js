@@ -665,10 +665,30 @@ function cleanupGame(chatId) {
   activeGames.delete(chatId);
 }
 
+/**
+ * Повторно отправляет задание со стихом игроку в ЛС.
+ * Используется, когда игрок впервые пишет боту /start во время сбора концовок.
+ */
+async function resendPrompt(bot, userId) {
+  const chatId = playerGameMap.get(userId);
+  if (!chatId) return;
+  const game = activeGames.get(chatId);
+  if (!game || !game.currentPoem) return;
+
+  await bot.sendMessage(userId,
+    `📜 <b>Гамруль</b> — раунд ${game.round} в чате «${game.chatTitle}»\n\n` +
+    `Автор: <b>${game.currentPoem.author}</b>\n\n` +
+    `<i>${game.currentPoem.opening}</i>\n\n` +
+    `✍️ Напиши свой вариант продолжения (одним сообщением):`,
+    { parse_mode: 'HTML' }
+  );
+}
+
 module.exports = {
   startLobby,
   stopGame,
   handleCallback,
   isAwaitingSubmission,
   handleSubmission,
+  resendPrompt,
 };

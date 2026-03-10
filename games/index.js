@@ -56,6 +56,11 @@ async function handleGameMessage(bot, msg) {
 
   // --- PM-ответ для гамруля (отправка концовки) ---
   if (isPrivate && userId && getGamrule().isAwaitingSubmission(userId)) {
+    // /start в ЛС — не концовка, а первый контакт с ботом; пересылаем задание
+    if (lowerText.startsWith('/start')) {
+      await getGamrule().resendPrompt(bot, userId);
+      return true;
+    }
     await getGamrule().handleSubmission(bot, msg);
     return true;
   }
