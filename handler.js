@@ -2,14 +2,22 @@ const config = require('./config');
 const { getAIResponse } = require('./ai');
 const storage = require('./storage');
 const { trySearch } = require('./search');
+const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
+const { handleGameMessage } = require('./games');
 
-<<<<<<< Updated upstream
-// Паттерн триггера — список слов через запятую в BOT_TRIGGER
-function isMentioned(text) {
-  if (!text) return false;
-=======
 // Кэш ID бота (заполняется при первом вызове)
 let botId = null;
+
+// Очередь сообщений по чатам — предотвращает race condition
+const chatQueues = new Map();
+
+function enqueue(chatId, fn) {
+  const prev = chatQueues.get(chatId) || Promise.resolve();
+  const next = prev.then(fn).catch(err => {
+    console.error(`[ERROR] chat=${chatId}: ${err.message}`);
+  });
+  chatQueues.set(chatId, next);
+}
 
 // Паттерн триггера — список слов через запятую в BOT_TRIGGER
 function isMentioned(text, botUsername) {
@@ -20,7 +28,6 @@ function isMentioned(text, botUsername) {
     return true;
   }
 
->>>>>>> Stashed changes
   const triggers = config.BOT_TRIGGERS;
   return triggers.some(trigger => {
     const escaped = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -38,27 +45,43 @@ async function processMessage(bot, msg) {
   }
 
   const chatId = msg.chat.id;
-  const userId = msg.from.id;
+
+  // Ставим обработку в очередь по chatId
+  enqueue(chatId, () => _handleMessage(bot, msg));
+}
+
+async function _handleMessage(bot, msg) {
+  const chatId = msg.chat.id;
   const text = msg.text || '';
   const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
   const isPrivate = msg.chat.type === 'private';
 
-<<<<<<< Updated upstream
-=======
+  // Сообщения от канала в чате: msg.from отсутствует, есть msg.sender_chat
+  const isChannel = !msg.from && !!msg.sender_chat;
+  const userId = msg.from?.id || msg.sender_chat?.id || 0;
   const chatName = msg.chat.title || 'ЛС';
-  const userName = msg.from.first_name || 'Пользователь';
-  const userTag = msg.from.username ? `@${msg.from.username}` : `id:${userId}`;
+  const userName = msg.from?.first_name || msg.sender_chat?.title || 'Пользователь';
+  const userTag = msg.from?.username
+    ? `@${msg.from.username}`
+    : msg.sender_chat?.username
+      ? `@${msg.sender_chat.username}`
+      : `id:${userId}`;
 
   console.log(`[IN] ${chatName} | ${userName} (${userTag}): "${text.slice(0, 80)}"`);
 
->>>>>>> Stashed changes
-  // Пропускаем ботов
-  if (msg.from.is_bot) return;
+  // Пропускаем ботов (но не каналы)
+  if (msg.from?.is_bot) return;
+
+  // Игры — обрабатываем ДО сохранения в историю (буквы и PM не должны попадать в историю)
+  if (config.GAMES_ENABLED) {
+    const handled = await handleGameMessage(bot, msg);
+    if (handled) return;
+  }
 
   // Сохраняем сообщение в историю
   storage.addMessage(chatId, {
     role: 'user',
-    name: msg.from.first_name || 'Пользователь',
+    name: userName,
     userId,
     text,
     ts: Date.now(),
@@ -66,13 +89,14 @@ async function processMessage(bot, msg) {
 
   // В группе отвечаем только если упомянули или ответили на сообщение бота
   if (isGroup) {
-<<<<<<< Updated upstream
-    const isReply = msg.reply_to_message?.from?.is_bot;
-    if (!isMentioned(text) && !isReply) return;
-=======
     const isReplyToMe = msg.reply_to_message?.from?.id === botId;
-    if (!isMentioned(text, bot._botUsername) && !isReplyToMe) return;
->>>>>>> Stashed changes
+    if (!isMentioned(text, bot._botUsername) && !isReplyToMe) {
+      // Случайная реакция на сообщения, где бот не отвечает
+      if (config.REACTIONS_ENABLED) {
+        randomReaction(bot, chatId, msg.message_id);
+      }
+      return;
+    }
   }
 
   // Команды
@@ -88,6 +112,7 @@ async function processMessage(bot, msg) {
     if (config.QUIZ_ENABLED) modules.push('🎯 Викторины');
     if (config.RPG_ENABLED) modules.push('⚔️ RPG');
     if (config.STATS_ENABLED) modules.push('📊 Статистика');
+    if (config.GAMES_ENABLED) modules.push('🎮 Игры (/виселица, /гамруль)');
     if (config.AUTO_REVIVE_ENABLED) modules.push('💬 Авто-оживление');
 
     const moduleText = modules.length > 0
@@ -102,67 +127,77 @@ async function processMessage(bot, msg) {
   const userProfile = storage.getProfile(chatId, userId);
   const chatHistory = storage.getHistory(chatId);
 
-<<<<<<< Updated upstream
-  // Генерируем ответ
-  const response = await getAIResponse({
-    text,
-    userName: msg.from.first_name || 'Пользователь',
-    userProfile,
-    chatHistory,
-    chatId,
-  });
-
-  if (!response) return;
-
-  // Отправляем ответ
-  await bot.sendMessage(chatId, response, { reply_to_message_id: msg.message_id });
-
-  // Сохраняем ответ в историю
-  storage.addMessage(chatId, {
-    role: 'assistant',
-    text: response,
-    ts: Date.now(),
-  });
-
-  // Обновляем профиль пользователя асинхронно
-  updateProfileAsync(chatId, userId, msg.from.first_name, text, response);
-=======
   // Веб-поиск (если включён и сообщение содержит триггер)
   let searchContext = null;
   if (config.SEARCH_ENABLED) {
     searchContext = await trySearch(text);
-    if (searchContext) console.log(`[SEARCH] ${chatName} | Найдены результаты`);
-  } else {
-    console.log(`[SEARCH] Модуль отключён (SEARCH=${process.env.SEARCH}, TAVILY_KEY=${config.TAVILY_KEY ? 'есть' : 'нет'})`);
+    if (searchContext) {
+      console.log(`[SEARCH] ${chatName} | Найдены результаты для "${text.slice(0, 50)}"`);
+    } else {
+      console.log(`[SEARCH] ${chatName} | Нет результатов или нет триггера для "${text.slice(0, 50)}"`);
+    }
   }
 
   // Генерируем ответ
-  const result = await getAIResponse({
-    text,
-    userName,
-    userProfile,
-    chatHistory,
-    chatId,
-    searchContext,
-  });
+  let result;
+  try {
+    result = await getAIResponse({
+      text,
+      userName,
+      userProfile,
+      chatHistory,
+      chatId,
+      searchContext,
+    });
+  } catch (err) {
+    console.error(`[AI ERROR] ${chatName}: ${err.message}`);
+    await bot.sendMessage(chatId, 'Все нейронки заняты, попробуй позже...', { reply_to_message_id: msg.message_id });
+    return;
+  }
 
   if (!result?.text) return;
 
-  console.log(`[OUT] ${chatName} | ${result.model} | "${result.text.slice(0, 80)}"`);
+  // Парсим действия (реакции, стикеры) из ответа AI
+  let responseText = result.text;
+  let actions = { reaction: null, sticker: false };
 
-  // Отправляем ответ
-  await bot.sendMessage(chatId, result.text, { reply_to_message_id: msg.message_id });
+  if (config.REACTIONS_ENABLED) {
+    actions = parseActions(responseText);
+    responseText = cleanText(responseText);
 
-  // Сохраняем ответ в историю
+    // Fallback: если пользователь просил стикер, а AI не добавил тег
+    if (!actions.sticker && config.STICKER_SETS.length > 0) {
+      const lowerText = text.toLowerCase();
+      if (/стикер|наклейк|sticker/i.test(lowerText)) {
+        actions.sticker = true;
+      }
+    }
+  }
+
+  if (!responseText) return;
+
+  console.log(`[OUT] ${chatName} | ${result.model}${searchContext ? ' +search' : ''}${actions.reaction ? ` +react:${actions.reaction}` : ''}${actions.sticker ? ' +sticker' : ''} | "${responseText.slice(0, 80)}"`);
+
+  // Отправляем ответ и выполняем действия параллельно
+  const sendPromises = [
+    bot.sendMessage(chatId, responseText, { reply_to_message_id: msg.message_id }),
+  ];
+
+  if (config.REACTIONS_ENABLED && (actions.reaction || actions.sticker)) {
+    sendPromises.push(executeActions(bot, chatId, msg.message_id, actions));
+  }
+
+  await Promise.allSettled(sendPromises);
+
+  // Сохраняем ответ в историю (без тегов действий)
   storage.addMessage(chatId, {
     role: 'assistant',
-    text: result.text,
+    text: responseText,
     ts: Date.now(),
   });
 
   // Обновляем профиль пользователя асинхронно
   updateProfileAsync(chatId, userId, userName, text, result.text);
->>>>>>> Stashed changes
 }
 
 // Обновляем профиль пользователя в фоне

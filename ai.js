@@ -98,11 +98,7 @@ async function tryModels(models, callFn, systemPrompt, messages) {
   for (const model of models) {
     try {
       const result = await callFn(model, systemPrompt, messages);
-<<<<<<< Updated upstream
-      return result;
-=======
       return { text: result, model };
->>>>>>> Stashed changes
     } catch (err) {
       lastError = err;
       const isQuota = err.message.includes('429') || err.message.includes('rate_limit') || err.message.includes('RESOURCE_EXHAUSTED');
@@ -128,7 +124,7 @@ async function callAI(systemPrompt, messages) {
     try {
       return await tryModels(GROQ_MODELS, callGroqModel, systemPrompt, messages);
     } catch (err) {
-      const isQuota = err.message.includes('429') || err.message.includes('rate_limit');
+      const isQuota = err.message.includes('429') || err.message.includes('rate_limit') || err.message.includes('RESOURCE_EXHAUSTED');
       const is404 = err.message.includes('404');
       if (!isQuota && !is404) throw err;
       console.warn('[AI] Все Groq квоты исчерпаны, переключаюсь на OpenRouter...');
@@ -139,11 +135,7 @@ async function callAI(systemPrompt, messages) {
   return await tryModels(OPENROUTER_MODELS, callOpenRouterModel, systemPrompt, messages);
 }
 
-<<<<<<< Updated upstream
-async function getAIResponse({ text, userName, userProfile, chatHistory }) {
-=======
 async function getAIResponse({ text, userName, userProfile, chatHistory, searchContext }) {
->>>>>>> Stashed changes
   let userContext = '';
   if (userProfile && userProfile.facts?.length) {
     userContext = `\n\nЧто ты знаешь об этом существе (${userName}): ${userProfile.facts.join(', ')}.`;
@@ -152,19 +144,40 @@ async function getAIResponse({ text, userName, userProfile, chatHistory, searchC
     }
   }
 
-<<<<<<< Updated upstream
-  const systemPrompt = `${config.BOT_PERSONA}${userContext}
-=======
   let searchInstruction = '';
   if (searchContext) {
-    searchInstruction = `\n\nРезультаты веб-поиска по запросу пользователя:\n${searchContext}\n\nИспользуй эту информацию для ответа. Отвечай своими словами в своём стиле, не копируй текст дословно.`;
+    searchInstruction = `\n\nТЫ ВЫПОЛНИЛ ВЕБ-ПОИСК. Вот результаты:\n${searchContext}\n\nОТВЕЧАЙ НА ОСНОВЕ ЭТИХ ДАННЫХ. Ты имеешь доступ к интернету. Никогда не говори что не можешь искать или не имеешь доступа. Перескажи информацию своими словами в своём стиле.`;
   }
 
-  const systemPrompt = `${config.BOT_PERSONA}${userContext}${searchInstruction}
->>>>>>> Stashed changes
+  let reactionsInstruction = '';
+  if (config.REACTIONS_ENABLED) {
+    const hasStickers = config.STICKER_SETS.length > 0;
+    reactionsInstruction = `
+
+ВАЖНО — У тебя есть специальные команды. Добавляй теги В КОНЕЦ ответа:
+- [REACT:emoji] — поставить реакцию. Доступные: 👍 👎 ❤️ 🔥 👏 😁 🤔 🤯 😱 😢 🎉 🤩 💩 🙏 👌 🤡 💯 🤣 ⚡ 🏆 💔 🤨 😈 😭 🤓 👀 🙈 😇 🤗 🤪 🗿 🆒 😎 😡
+${hasStickers ? '- [STICKER:emoji] — отправить стикер, подобранный по эмодзи. Например [STICKER:😂] или [STICKER:😎] или [STICKER:❤️].\n' : ''}
+Примеры ответов:
+Пользователь: "Ты лучший удав!"
+Ответ: Лесть приятна, но не спасёт тебя от голода. [REACT:😎]
+
+Пользователь: "Пришли стикер"
+Ответ: Держи, маугли. [STICKER:😎]
+
+Пользователь: "Расскажи анекдот"
+Ответ: Маугли спрашивает Балу: зачем тебе такие большие когти? Балу: а ты попробуй почесать спину без них. [REACT:🤣]
+
+Пользователь: "Мне грустно"
+Ответ: Грусть пройдёт. Всё проходит в джунглях — и дождь, и засуха. [STICKER:😢] [REACT:❤️]
+
+Если просят стикер — ОБЯЗАТЕЛЬНО добавь [STICKER:emoji] с подходящим эмодзи. Если хочешь отреагировать — добавь [REACT:emoji]. Не описывай отправку стикера словами, просто ставь тег.`;
+  }
+
+  const systemPrompt = `${config.BOT_PERSONA}${userContext}${searchInstruction}${reactionsInstruction}
 
 Ты общаешься в Telegram чате. Отвечай только на последнее сообщение пользователя.
-Не повторяй имя собеседника в каждом ответе.`;
+Не повторяй имя собеседника в каждом ответе.
+Никогда не пиши ремарки, действия или эмоции в скобках (пауза), (шипение), *оборачивается* и т.п. — только чистый текст.`;
 
   const history = chatHistory.slice(-config.HISTORY_LIMIT);
 
@@ -175,12 +188,8 @@ async function getAIResponse({ text, userName, userProfile, chatHistory, searchC
       }))
     : [{ role: 'user', text: `${userName}: ${text}` }];
 
-<<<<<<< Updated upstream
-  return await callAI(systemPrompt, messages);
-=======
   const result = await callAI(systemPrompt, messages);
   return { text: result.text, model: result.model };
->>>>>>> Stashed changes
 }
 
 // Лёгкий запрос для обновления профиля
@@ -194,13 +203,8 @@ async function getProfileUpdate(userName, userText) {
 
   try {
     const result = await callAI(systemPrompt, messages);
-<<<<<<< Updated upstream
-    if (!result) return null;
-    const clean = result.replace(/```json|```/g, '').trim();
-=======
     if (!result?.text) return null;
     const clean = result.text.replace(/```json|```/g, '').trim();
->>>>>>> Stashed changes
     return JSON.parse(clean);
   } catch {
     return null;

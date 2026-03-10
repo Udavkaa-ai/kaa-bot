@@ -7,6 +7,7 @@ const storage = require('./storage');
 const bot = new TelegramBot(config.BOT_TOKEN, { polling: true });
 
 console.log(`🐍 ${config.BOT_NAME} запущен...`);
+console.log(`[CONFIG] REACTIONS=${config.REACTIONS_ENABLED}, STICKER_SETS=[${config.STICKER_SETS}], CHANCE=${config.REACTION_CHANCE}`);
 
 bot.on('message', async (msg) => {
   try {
@@ -19,6 +20,20 @@ bot.on('message', async (msg) => {
 bot.on('polling_error', (err) => {
   console.error('Polling error:', err.message);
 });
+
+// === GAMES (inline keyboard callbacks) ===
+if (config.GAMES_ENABLED) {
+  const { handleGameCallback } = require('./games');
+  bot.on('callback_query', async (query) => {
+    try {
+      await handleGameCallback(bot, query);
+    } catch (err) {
+      console.error('Ошибка callback_query:', err.message);
+      try { await bot.answerCallbackQuery(query.id); } catch (_) {}
+    }
+  });
+  console.log('[CONFIG] GAMES=true');
+}
 
 // === AUTO-REVIVE ===
 if (config.AUTO_REVIVE_ENABLED) {
