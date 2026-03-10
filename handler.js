@@ -71,8 +71,8 @@ async function _handleMessage(bot, msg) {
 
   console.log(`[IN] ${chatName} | ${userName} (${userTag}): "${text.slice(0, 80)}"`);
 
-  // Пропускаем ботов (но не каналы)
-  if (msg.from?.is_bot) return;
+  // Пропускаем ботов (но не каналы и не анонимных админов)
+  if (msg.from?.is_bot && !msg.sender_chat) return;
 
   // Игры — обрабатываем ДО сохранения в историю (буквы и PM не должны попадать в историю)
   if (config.GAMES_ENABLED) {
@@ -94,8 +94,8 @@ async function _handleMessage(bot, msg) {
     const isReplyToMe = msg.reply_to_message?.from?.id === botId;
     const photoReplyToMe = hasPhoto && isReplyToMe;
     if (!isMentioned(text, bot._botUsername) && !isReplyToMe && !photoReplyToMe) {
-      // Случайная реакция на сообщения, где бот не отвечает (не на посты канала)
-      if (config.REACTIONS_ENABLED && !isChannel) {
+      // Случайная реакция на сообщения, где бот не отвечает
+      if (config.REACTIONS_ENABLED) {
         randomReaction(bot, chatId, msg.message_id);
       }
       return;
