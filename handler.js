@@ -127,8 +127,9 @@ async function _handleMessage(bot, msg) {
     return;
   }
 
-  // Получаем профиль пользователя и историю чата
+  // Получаем профиль пользователя, глобальную память и историю чата
   const userProfile = storage.getProfile(chatId, userId);
+  const userMemory = storage.getUserMemory(userId);
   const chatHistory = storage.getHistory(chatId);
 
   // Веб-поиск (если включён и сообщение содержит триггер)
@@ -198,6 +199,7 @@ async function _handleMessage(bot, msg) {
       text,
       userName,
       userProfile,
+      userMemory,
       chatHistory,
       chatId,
       searchContext,
@@ -274,17 +276,46 @@ async function _handleMessage(bot, msg) {
     ts: Date.now(),
   });
 
-  // Обновляем профиль пользователя асинхронно
+  // Обновляем профиль пользователя и глобальную память асинхронно
   updateProfileAsync(chatId, userId, userName, text, result.text);
 }
+
+// Счётчик сообщений для периодического обновления памяти
+const memoryUpdateCounters = new Map();
+const MEMORY_UPDATE_EVERY = 5; // обновлять память каждые N сообщений
 
 // Обновляем профиль пользователя в фоне
 async function updateProfileAsync(chatId, userId, userName, userText, botResponse) {
   try {
-    const { getProfileUpdate } = require('./ai');
+    const { getProfileUpdate, updateUserMemory } = require('./ai');
     const update = await getProfileUpdate(userName, userText, botResponse);
     if (update) {
       storage.updateProfile(chatId, userId, update);
+    }
+
+    // Обновляем глобальную память каждые N сообщений (чтобы не тратить лимиты на каждое)
+    const uid = String(userId);
+    const count = (memoryUpdateCounters.get(uid) || 0) + 1;
+    memoryUpdateCounters.set(uid, count);
+
+    if (count >= MEMORY_UPDATE_EVERY) {
+      memoryUpdateCounters.set(uid, 0);
+      const currentMemory = storage.getUserMemory(userId);
+      // Собираем последние сообщения пользователя из текущего чата
+      const history = storage.getHistory(chatId);
+      const recentUserMsgs = history
+        .filter(m => m.role === 'user' && String(m.userId) === uid)
+        .slice(-10)
+        .map(m => `${m.name || userName}: ${m.text}`)
+        .join('\n');
+
+      if (recentUserMsgs) {
+        const newMemory = await updateUserMemory(userName, currentMemory, recentUserMsgs);
+        if (newMemory) {
+          storage.setUserMemory(userId, newMemory);
+          console.log(`[MEMORY] Updated global memory for ${userName} (${uid})`);
+        }
+      }
     }
   } catch (err) {
     // Не критично, просто логируем

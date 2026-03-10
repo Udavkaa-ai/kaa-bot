@@ -5,6 +5,7 @@ const config = require('./config');
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
+const USERMEMORY_FILE = path.join(DATA_DIR, 'usermemory.json');
 
 // Убедимся что папка существует
 if (!fs.existsSync(DATA_DIR)) {
@@ -14,9 +15,11 @@ if (!fs.existsSync(DATA_DIR)) {
 // Загружаем данные
 let db = loadJSON(DB_FILE, { chats: {} });
 let profiles = loadJSON(PROFILES_FILE, {});
+let userMemory = loadJSON(USERMEMORY_FILE, {});
 
 let saveTimer = null;
 let profilesSaveTimer = null;
+let userMemorySaveTimer = null;
 
 // Очередь обновлений профилей — предотвращает race condition при одновременных обновлениях
 let profileUpdateQueue = Promise.resolve();
@@ -42,6 +45,11 @@ function scheduleProfilesSave() {
   profilesSaveTimer = setTimeout(() => _saveProfiles(), 5000);
 }
 
+function scheduleUserMemorySave() {
+  if (userMemorySaveTimer) clearTimeout(userMemorySaveTimer);
+  userMemorySaveTimer = setTimeout(() => _saveUserMemory(), 5000);
+}
+
 function _saveDB() {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
@@ -58,6 +66,14 @@ function _saveProfiles() {
   }
 }
 
+function _saveUserMemory() {
+  try {
+    fs.writeFileSync(USERMEMORY_FILE, JSON.stringify(userMemory, null, 2));
+  } catch (err) {
+    console.error('Ошибка сохранения UserMemory:', err.message);
+  }
+}
+
 // Принудительное сохранение при выходе — сбрасываем отложенные таймеры
 function forceSave() {
   if (saveTimer) {
@@ -69,6 +85,11 @@ function forceSave() {
     clearTimeout(profilesSaveTimer);
     profilesSaveTimer = null;
     _saveProfiles();
+  }
+  if (userMemorySaveTimer) {
+    clearTimeout(userMemorySaveTimer);
+    userMemorySaveTimer = null;
+    _saveUserMemory();
   }
 }
 
@@ -225,6 +246,21 @@ function updateProfile(chatId, userId, update) {
   bulkUpdateProfiles(chatId, { [userId]: update });
 }
 
+// Глобальная память пользователя (одна на все чаты, по userId)
+function getUserMemory(userId) {
+  const uid = String(userId);
+  return userMemory[uid]?.summary || '';
+}
+
+function setUserMemory(userId, summary) {
+  const uid = String(userId);
+  userMemory[uid] = {
+    summary: summary.substring(0, 3000), // ~500 слов ≈ 3000 символов
+    updatedAt: Date.now(),
+  };
+  scheduleUserMemorySave();
+}
+
 module.exports = {
   addMessage,
   getHistory,
@@ -239,6 +275,8 @@ module.exports = {
   hasChat,
   updateChatName,
   forceSave,
+  getUserMemory,
+  setUserMemory,
 };
 
 // Отслеживание юзеров в чате (для "кто из нас" и поиска по нику)

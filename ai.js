@@ -135,10 +135,15 @@ async function callAI(systemPrompt, messages) {
   return await tryModels(OPENROUTER_MODELS, callOpenRouterModel, systemPrompt, messages);
 }
 
-async function getAIResponse({ text, userName, userProfile, chatHistory, searchContext }) {
+async function getAIResponse({ text, userName, userProfile, userMemory, chatHistory, searchContext }) {
   let userContext = '';
+  // Глобальная память о пользователе (общая на все чаты)
+  if (userMemory) {
+    userContext = `\n\nДосье на собеседника (${userName}):\n${userMemory}`;
+  }
+  // Дополнительные факты из текущего чата
   if (userProfile && userProfile.facts?.length) {
-    userContext = `\n\nЧто ты знаешь об этом существе (${userName}): ${userProfile.facts.join(', ')}.`;
+    userContext += `\n\nДополнительно об этом существе (${userName}): ${userProfile.facts.join(', ')}.`;
     if (userProfile.attitude) {
       userContext += ` Твоё отношение к нему: ${userProfile.attitude}.`;
     }
@@ -321,4 +326,38 @@ async function translateImagePrompt(prompt) {
   }
 }
 
-module.exports = { getAIResponse, getProfileUpdate, describeImage, translateImagePrompt };
+// Обновление глобальной памяти о пользователе (краткая сводка до 500 слов)
+async function updateUserMemory(userName, currentMemory, recentMessages) {
+  const hasMemory = currentMemory && currentMemory.trim().length > 0;
+
+  const systemPrompt = `Ты ведёшь краткое досье на пользователя Telegram. Твоя задача — ${hasMemory ? 'ОБНОВИТЬ существующее досье' : 'СОЗДАТЬ новое досье'} на основе недавних сообщений.
+
+Досье должно содержать:
+- Имя/никнейм пользователя
+- Интересы, хобби, увлечения
+- Характер и стиль общения
+- Важные факты (профессия, город, возраст, если упоминались)
+- Отношения с ботом (дружелюбный, нейтральный, враждебный)
+- Любые другие значимые детали
+
+ПРАВИЛА:
+- Пиши от третьего лица ("Он/Она/Пользователь...")
+- Максимум 500 слов
+- Обновляй информацию: если новые данные противоречат старым — используй новые
+- Не добавляй одноразовую информацию (случайные вопросы, запросы поиска)
+- Сохраняй только то, что характеризует человека
+- Верни ТОЛЬКО текст досье, без заголовков и пояснений`;
+
+  const userPrompt = hasMemory
+    ? `ТЕКУЩЕЕ ДОСЬЕ:\n${currentMemory}\n\nНОВЫЕ СООБЩЕНИЯ:\n${recentMessages}\n\nОбнови досье с учётом новых сообщений.`
+    : `СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ:\n${recentMessages}\n\nСоздай досье на этого пользователя.`;
+
+  try {
+    const result = await callAI(systemPrompt, [{ role: 'user', text: userPrompt }]);
+    return result?.text?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { getAIResponse, getProfileUpdate, updateUserMemory, describeImage, translateImagePrompt };
