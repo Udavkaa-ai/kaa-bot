@@ -1,5 +1,5 @@
 const config = require('./config');
-const { getAIResponse, describeImage, translateImagePrompt } = require('./ai');
+const { getAIResponse, describeImage, translateImagePrompt, analyzeChatContext } = require('./ai');
 const storage = require('./storage');
 const { trySearch } = require('./search');
 const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
@@ -36,6 +36,14 @@ function isMentioned(text, botUsername) {
     return pattern.test(text);
   });
 }
+
+// Счётчик сообщений для периодического анализа контекста чата
+const contextUpdateCounters = new Map();
+const CONTEXT_UPDATE_EVERY = 20; // анализировать контекст каждые N сообщений
+
+// Счётчик сообщений для периодического обновления памяти пользователя
+const memoryUpdateCounters = new Map();
+const MEMORY_UPDATE_EVERY = 5; // обновлять память каждые N сообщений
 
 async function processMessage(bot, msg) {
   // Получаем ID бота один раз
@@ -74,6 +82,17 @@ async function _handleMessage(bot, msg) {
   // Пропускаем ботов (но не каналы и не анонимных админов)
   if (msg.from?.is_bot && !msg.sender_chat) return;
 
+  // Трекинг пользователя глобально (имя, юзернейм, чаты)
+  if (userId && userId !== 0) {
+    storage.trackUserGlobal(
+      userId,
+      userName,
+      msg.from?.username ? `@${msg.from.username}` : null,
+      chatId,
+      chatName
+    );
+  }
+
   // Игры — обрабатываем ДО сохранения в историю (буквы и PM не должны попадать в историю)
   if (config.GAMES_ENABLED) {
     const handled = await handleGameMessage(bot, msg);
@@ -81,19 +100,32 @@ async function _handleMessage(bot, msg) {
   }
 
   // Сохраняем сообщение в историю
-  storage.addMessage(chatId, {
+  const messageRecord = {
     role: 'user',
     name: userName,
     userId,
     text,
     ts: Date.now(),
-  });
+  };
+  storage.addMessage(chatId, messageRecord);
 
-  // В группе отвечаем только если упомянули или ответили на сообщение бота
+  // Добавляем в ежедневный буфер (для анализа контекста и архивации)
+  if (text && text.length > 0) {
+    storage.addToDailyBuffer(chatId, messageRecord);
+  }
+
+  // В группе: анализируем ВСЕ сообщения для контекста, но отвечаем только если упомянули
   if (isGroup) {
     const isReplyToMe = msg.reply_to_message?.from?.id === botId;
     const photoReplyToMe = hasPhoto && isReplyToMe;
-    if (!isMentioned(text, bot._botUsername) && !isReplyToMe && !photoReplyToMe) {
+    const mentioned = isMentioned(text, bot._botUsername) || isReplyToMe || photoReplyToMe;
+
+    // Периодический анализ контекста чата (для ВСЕХ сообщений, включая те, что не к боту)
+    if (text && text.length > 3) {
+      updateChatContextAsync(chatId);
+    }
+
+    if (!mentioned) {
       // Случайная реакция на сообщения, где бот не отвечает
       if (config.REACTIONS_ENABLED) {
         randomReaction(bot, chatId, msg.message_id);
@@ -130,7 +162,12 @@ async function _handleMessage(bot, msg) {
   // Получаем профиль пользователя, глобальную память и историю чата
   const userProfile = storage.getProfile(chatId, userId);
   const userMemory = storage.getUserMemory(userId);
+  const userMemoryFull = storage.getUserMemoryFull(userId);
   const chatHistory = storage.getHistory(chatId);
+
+  // Память чата (обсуждаемые темы и архив)
+  const chatTopics = storage.getChatTopics(chatId);
+  const chatArchive = storage.getChatArchive(chatId, 3);
 
   // Веб-поиск (если включён и сообщение содержит триггер)
   let searchContext = null;
@@ -185,7 +222,6 @@ async function _handleMessage(bot, msg) {
         storage.addMessage(chatId, { role: 'assistant', text: responseText, ts: Date.now() });
       } catch (err) {
         console.error(`[VISION ERROR] ${chatName}: ${err.message}`);
-        // Не отвечаем ошибкой на каждую картинку, только логируем
       }
       return;
     }
@@ -200,9 +236,12 @@ async function _handleMessage(bot, msg) {
       userName,
       userProfile,
       userMemory,
+      userMemoryFull,
       chatHistory,
       chatId,
       searchContext,
+      chatTopics,
+      chatArchive,
     });
   } catch (err) {
     console.error(`[AI ERROR] ${chatName}: ${err.message}`);
@@ -280,10 +319,6 @@ async function _handleMessage(bot, msg) {
   updateProfileAsync(chatId, userId, userName, text, result.text);
 }
 
-// Счётчик сообщений для периодического обновления памяти
-const memoryUpdateCounters = new Map();
-const MEMORY_UPDATE_EVERY = 5; // обновлять память каждые N сообщений
-
 // Обновляем профиль пользователя в фоне
 async function updateProfileAsync(chatId, userId, userName, userText, botResponse) {
   try {
@@ -320,6 +355,33 @@ async function updateProfileAsync(chatId, userId, userName, userText, botRespons
   } catch (err) {
     // Не критично, просто логируем
     console.error('Profile update error:', err.message);
+  }
+}
+
+// Периодический анализ контекста чата (вызывается для КАЖДОГО сообщения)
+async function updateChatContextAsync(chatId) {
+  try {
+    const cid = String(chatId);
+    const count = (contextUpdateCounters.get(cid) || 0) + 1;
+    contextUpdateCounters.set(cid, count);
+
+    if (count < CONTEXT_UPDATE_EVERY) return;
+    contextUpdateCounters.set(cid, 0);
+
+    // Берём последние сообщения из дневного буфера
+    const buffer = storage.getDailyBuffer(chatId);
+    const recentMessages = buffer.slice(-30);
+    if (recentMessages.length < 5) return;
+
+    const currentTopics = storage.getChatTopics(chatId);
+    const newTopics = await analyzeChatContext(recentMessages, currentTopics);
+
+    if (newTopics) {
+      storage.updateChatTopics(chatId, newTopics);
+      console.log(`[CONTEXT] Updated chat topics for ${cid}`);
+    }
+  } catch (err) {
+    console.error('[CONTEXT] Error updating chat context:', err.message);
   }
 }
 
