@@ -1,5 +1,5 @@
 const config = require('./config');
-const { getAIResponse, describeImage, translateImagePrompt, analyzeChatContext } = require('./ai');
+const { getAIResponse, describeImage, translateImagePrompt, analyzeChatContext, generateRecap } = require('./ai');
 const storage = require('./storage');
 const { trySearch } = require('./search');
 const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
@@ -79,8 +79,26 @@ async function _handleMessage(bot, msg) {
 
   console.log(`[IN] ${chatName} | ${userName} (${userTag}): "${text.slice(0, 80)}"`);
 
-  // Пропускаем ботов (но не каналы и не анонимных админов)
-  if (msg.from?.is_bot && !msg.sender_chat) return;
+  // Сообщения от других ботов: читаем для контекста, но НЕ отвечаем
+  const isFromBot = msg.from?.is_bot && !msg.sender_chat;
+  if (isFromBot) {
+    // Сохраняем в историю для понимания контекста чата
+    const botMessageRecord = {
+      role: 'user',
+      name: `[бот] ${userName}`,
+      userId,
+      text,
+      ts: Date.now(),
+    };
+    storage.addMessage(chatId, botMessageRecord);
+
+    if (text && text.length > 0) {
+      storage.addToDailyBuffer(chatId, botMessageRecord);
+    }
+
+    console.log(`[BOT-MSG] ${chatName} | ${userName}: сохранено для контекста`);
+    return;
+  }
 
   // Трекинг пользователя глобально (имя, юзернейм, чаты)
   if (userId && userId !== 0) {
@@ -156,6 +174,33 @@ async function _handleMessage(bot, msg) {
       : '';
 
     await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}.\nОбращайся ко мне по имени в чате.${moduleText}`);
+    return;
+  }
+
+  // Пересказ чата — "что в чате", "что пропустил", "что обсуждали" и т.п.
+  const recapPattern = /(?:что\s+(?:в\s+чате|(?:я\s+)?пропустил[аи]?|обсуждал[иь]?|было|нового|происходи(?:т|ло))|(?:пересказ|краткое\s+содержание|рекап|recap|summary)\s*(?:чата)?|введи\s+в\s+курс|(?:catch|fill)\s+me\s+up)/i;
+
+  if (recapPattern.test(text)) {
+    try {
+      // Парсим количество часов из сообщения (по умолчанию 6)
+      const hoursMatch = text.match(/(\d+)\s*(?:час|ч\b|hour|hr)/i);
+      const hours = hoursMatch ? Math.min(parseInt(hoursMatch[1]), 48) : 6;
+
+      const buffer = storage.getDailyBuffer(chatId);
+      const topics = storage.getChatTopics(chatId);
+      const recap = await generateRecap(buffer, hours, topics);
+
+      if (recap) {
+        console.log(`[RECAP] ${chatName} | ${userName} запросил пересказ за ${hours}ч`);
+        await bot.sendMessage(chatId, recap, { reply_to_message_id: msg.message_id });
+        storage.addMessage(chatId, { role: 'assistant', text: recap, ts: Date.now() });
+      } else {
+        await bot.sendMessage(chatId, 'В джунглях было тихо... Нечего пересказывать.', { reply_to_message_id: msg.message_id });
+      }
+    } catch (err) {
+      console.error(`[RECAP ERROR] ${chatName}: ${err.message}`);
+      await bot.sendMessage(chatId, 'Не удалось вспомнить... Попробуй позже.', { reply_to_message_id: msg.message_id });
+    }
     return;
   }
 

@@ -511,6 +511,43 @@ ${lastMessages ? `ПОСЛЕДНИЕ СООБЩЕНИЯ:\n${lastMessages}` : ''}
   }
 }
 
+// Краткий пересказ чата за последние N часов (в стиле персонажа)
+async function generateRecap(dailyBuffer, hours, currentTopics) {
+  if (!dailyBuffer || dailyBuffer.length === 0) return null;
+
+  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  const recent = dailyBuffer.filter(m => m.ts >= cutoff);
+
+  if (recent.length < 2) return null;
+
+  const messagesText = recent
+    .map(m => `${m.name}: ${m.text}`)
+    .join('\n');
+
+  const systemPrompt = `${config.BOT_PERSONA}
+
+ЗАДАЧА: Расскажи что происходило в чате за последнее время. Ты пересказываешь в своём стиле — кратко, ёмко, с характером.
+
+ПРАВИЛА:
+- Расскажи основные темы и события
+- Упомяни кто что говорил (кратко)
+- Если были важные решения или договорённости — отметь
+- Пиши в характере ${config.BOT_NAME}, но без излишней стилизации
+- Максимум 5-8 предложений
+- НЕ пиши "вот что было" или "краткое содержание" — просто расскажи
+- Если ничего особенного не было — так и скажи коротко`;
+
+  const userPrompt = `${currentTopics ? `КОНТЕКСТ ЧАТА:\n${currentTopics}\n\n` : ''}СООБЩЕНИЯ ЗА ПОСЛЕДНИЕ ${hours} ч. (${recent.length} шт.):\n${messagesText}\n\nПерескажи что происходило.`;
+
+  try {
+    const result = await callAI(systemPrompt, [{ role: 'user', text: userPrompt }]);
+    return result?.text?.trim() || null;
+  } catch (err) {
+    console.error('[RECAP] Ошибка генерации пересказа:', err.message);
+    return null;
+  }
+}
+
 module.exports = {
   getAIResponse,
   getProfileUpdate,
@@ -521,4 +558,5 @@ module.exports = {
   createDailySummary,
   condenseUserMemory,
   generateAutoRevive,
+  generateRecap,
 };
