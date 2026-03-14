@@ -1,12 +1,13 @@
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
-const { processMessage } = require('./handler');
-const { generateAutoRevive } = require('./ai');
+const { processMessage, handlePersonaCallback } = require('./handler');
+const { generateAutoRevive, createDailySummary, condenseUserMemory } = require('./ai');
 const storage = require('./storage');
 
 const bot = new TelegramBot(config.BOT_TOKEN, { polling: true });
 
 console.log(`🐍 ${config.BOT_NAME} запущен...`);
+console.log(`[CONFIG] REACTIONS=${config.REACTIONS_ENABLED}, STICKER_SETS=[${config.STICKER_SETS}], CHANCE=${config.REACTION_CHANCE}`);
 
 bot.on('message', async (msg) => {
   try {
@@ -19,6 +20,28 @@ bot.on('message', async (msg) => {
 bot.on('polling_error', (err) => {
   console.error('Polling error:', err.message);
 });
+
+// === CALLBACK QUERIES (персоны + игры) ===
+bot.on('callback_query', async (query) => {
+  try {
+    // Сначала проверяем выбор персоны
+    const handled = await handlePersonaCallback(bot, query);
+    if (handled) return;
+
+    // Затем игры (если включены)
+    if (config.GAMES_ENABLED) {
+      const { handleGameCallback } = require('./games');
+      await handleGameCallback(bot, query);
+    }
+  } catch (err) {
+    console.error('Ошибка callback_query:', err.message);
+    try { await bot.answerCallbackQuery(query.id); } catch (_) {}
+  }
+});
+
+if (config.GAMES_ENABLED) {
+  console.log('[CONFIG] GAMES=true');
+}
 
 // === AUTO-REVIVE ===
 if (config.AUTO_REVIVE_ENABLED) {
@@ -61,6 +84,87 @@ if (config.AUTO_REVIVE_ENABLED) {
     }
   }, CHECK_INTERVAL);
 }
+
+// === ЕЖЕДНЕВНАЯ АРХИВАЦИЯ ПАМЯТИ ===
+// Запускается каждые 30 минут, но архивирует только раз в день (в 2:00 по Москве)
+let lastArchiveDate = null;
+
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const moscowTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+    const moscowHour = moscowTime.getHours();
+    const todayStr = moscowTime.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // Архивируем только в 2:00-2:30 по Москве, и только раз в день
+    if (moscowHour !== 2) return;
+    if (lastArchiveDate === todayStr) return;
+    lastArchiveDate = todayStr;
+
+    // Вчерашняя дата для метки архива
+    const yesterday = new Date(moscowTime);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    console.log(`[ARCHIVE] Начинаю ежедневную архивацию за ${yesterdayStr}...`);
+
+    // 1. Архивация чатов — создаём сводку дня для каждого чата с буфером
+    const chatsWithBuffer = storage.getChatsWithBuffer();
+    for (const chatId of chatsWithBuffer) {
+      try {
+        const buffer = storage.getDailyBuffer(chatId);
+        if (buffer.length < 3) {
+          // Слишком мало сообщений — просто очищаем буфер
+          storage.archiveDay(chatId, 'Мало активности.', yesterdayStr);
+          continue;
+        }
+
+        const currentTopics = storage.getChatTopics(chatId);
+        const summary = await createDailySummary(buffer, currentTopics);
+
+        if (summary) {
+          storage.archiveDay(chatId, summary, yesterdayStr);
+          const chatName = storage.getChatName(chatId) || chatId;
+          console.log(`[ARCHIVE] Чат "${chatName}": сводка создана (${buffer.length} сообщений)`);
+        } else {
+          storage.archiveDay(chatId, 'Не удалось создать сводку.', yesterdayStr);
+        }
+
+        // Пауза между чатами чтобы не исчерпать лимиты API
+        await new Promise(r => setTimeout(r, 3000));
+      } catch (err) {
+        console.error(`[ARCHIVE ERROR] Чат ${chatId}: ${err.message}`);
+      }
+    }
+
+    // 2. Сжатие досье пользователей (если слишком длинные)
+    const allUserIds = storage.getAllUserIds();
+    let condensedCount = 0;
+    for (const uid of allUserIds) {
+      try {
+        const memory = storage.getUserMemory(uid);
+        if (memory && memory.length > 2000) {
+          const condensed = await condenseUserMemory(memory);
+          if (condensed) {
+            storage.setUserMemory(uid, condensed);
+            condensedCount++;
+          }
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      } catch (err) {
+        console.error(`[ARCHIVE ERROR] User ${uid}: ${err.message}`);
+      }
+    }
+
+    if (condensedCount > 0) {
+      console.log(`[ARCHIVE] Сжато ${condensedCount} досье пользователей`);
+    }
+
+    console.log(`[ARCHIVE] Архивация завершена.`);
+  } catch (err) {
+    console.error('[ARCHIVE ERROR]', err.message);
+  }
+}, 30 * 60 * 1000); // Проверяем каждые 30 минут
 
 // Graceful shutdown — принудительно сбрасываем отложенные сохранения
 process.on('SIGINT', () => {

@@ -1,15 +1,25 @@
 const config = require('./config');
-const { getAIResponse } = require('./ai');
+const { getAIResponse, describeImage, translateImagePrompt, analyzeChatContext, generateRecap } = require('./ai');
 const storage = require('./storage');
 const { trySearch } = require('./search');
+const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
+const { handleGameMessage } = require('./games');
+const { generateImage } = require('./imagegen');
+const { getRandomPersona, getPersonaById, findPersonaInText } = require('./personas');
 
-<<<<<<< Updated upstream
-// Паттерн триггера — список слов через запятую в BOT_TRIGGER
-function isMentioned(text) {
-  if (!text) return false;
-=======
 // Кэш ID бота (заполняется при первом вызове)
 let botId = null;
+
+// Очередь сообщений по чатам — предотвращает race condition
+const chatQueues = new Map();
+
+function enqueue(chatId, fn) {
+  const prev = chatQueues.get(chatId) || Promise.resolve();
+  const next = prev.then(fn).catch(err => {
+    console.error(`[ERROR] chat=${chatId}: ${err.message}`);
+  });
+  chatQueues.set(chatId, next);
+}
 
 // Паттерн триггера — список слов через запятую в BOT_TRIGGER
 function isMentioned(text, botUsername) {
@@ -20,7 +30,6 @@ function isMentioned(text, botUsername) {
     return true;
   }
 
->>>>>>> Stashed changes
   const triggers = config.BOT_TRIGGERS;
   return triggers.some(trigger => {
     const escaped = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -28,6 +37,14 @@ function isMentioned(text, botUsername) {
     return pattern.test(text);
   });
 }
+
+// Счётчик сообщений для периодического анализа контекста чата
+const contextUpdateCounters = new Map();
+const CONTEXT_UPDATE_EVERY = 20; // анализировать контекст каждые N сообщений
+
+// Счётчик сообщений для периодического обновления памяти пользователя
+const memoryUpdateCounters = new Map();
+const MEMORY_UPDATE_EVERY = 5; // обновлять память каждые N сообщений
 
 async function processMessage(bot, msg) {
   // Получаем ID бота один раз
@@ -38,140 +55,376 @@ async function processMessage(bot, msg) {
   }
 
   const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const text = msg.text || '';
+
+  // Ставим обработку в очередь по chatId
+  enqueue(chatId, () => _handleMessage(bot, msg));
+}
+
+async function _handleMessage(bot, msg) {
+  const chatId = msg.chat.id;
+  const text = msg.text || msg.caption || '';
+  const hasPhoto = msg.photo && msg.photo.length > 0;
   const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
   const isPrivate = msg.chat.type === 'private';
 
-<<<<<<< Updated upstream
-=======
+  // Сообщения от канала в чате: msg.from отсутствует, есть msg.sender_chat
+  const isChannel = !msg.from && !!msg.sender_chat;
+  const userId = msg.from?.id || msg.sender_chat?.id || 0;
   const chatName = msg.chat.title || 'ЛС';
-  const userName = msg.from.first_name || 'Пользователь';
-  const userTag = msg.from.username ? `@${msg.from.username}` : `id:${userId}`;
+  const userName = msg.from?.first_name || msg.sender_chat?.title || 'Пользователь';
+  const userTag = msg.from?.username
+    ? `@${msg.from.username}`
+    : msg.sender_chat?.username
+      ? `@${msg.sender_chat.username}`
+      : `id:${userId}`;
 
   console.log(`[IN] ${chatName} | ${userName} (${userTag}): "${text.slice(0, 80)}"`);
 
->>>>>>> Stashed changes
-  // Пропускаем ботов
-  if (msg.from.is_bot) return;
+  // Сообщения от других ботов: читаем для контекста, но НЕ отвечаем
+  const isFromBot = msg.from?.is_bot && !msg.sender_chat;
+  if (isFromBot) {
+    // Сохраняем в историю для понимания контекста чата
+    const botMessageRecord = {
+      role: 'user',
+      name: `[бот] ${userName}`,
+      userId,
+      text,
+      ts: Date.now(),
+    };
+    storage.addMessage(chatId, botMessageRecord);
+
+    if (text && text.length > 0) {
+      storage.addToDailyBuffer(chatId, botMessageRecord);
+    }
+
+    console.log(`[BOT-MSG] ${chatName} | ${userName}: сохранено для контекста`);
+    return;
+  }
+
+  // Трекинг пользователя глобально (имя, юзернейм, чаты)
+  if (userId && userId !== 0) {
+    storage.trackUserGlobal(
+      userId,
+      userName,
+      msg.from?.username ? `@${msg.from.username}` : null,
+      chatId,
+      chatName
+    );
+  }
+
+  // Назначаем персону пользователю на день
+  let userPersona = null;
+  if (userId && userId !== 0 && !isChannel) {
+    let personaId = storage.getUserPersona(userId); // null если новый день или первый раз
+
+    // Проверяем: пользователь позвал конкретную личность по имени?
+    const namedPersona = findPersonaInText(text);
+    if (namedPersona) {
+      // Назначаем ту что позвали — перезаписывает текущую на сегодня
+      if (namedPersona.id !== personaId) {
+        console.log(`[PERSONA] Назначена "${namedPersona.name}" по имени для ${userName} (${userId})`);
+      }
+      storage.setUserPersona(userId, namedPersona.id);
+      personaId = namedPersona.id;
+    } else if (!personaId) {
+      // Нет персоны на сегодня — показываем меню выбора
+      await sendPersonaMenu(bot, chatId, msg.message_id);
+      return;
+    }
+
+    userPersona = getPersonaById(personaId);
+  }
+
+  // Игры — обрабатываем ДО сохранения в историю (буквы и PM не должны попадать в историю)
+  if (config.GAMES_ENABLED) {
+    const handled = await handleGameMessage(bot, msg);
+    if (handled) return;
+  }
 
   // Сохраняем сообщение в историю
-  storage.addMessage(chatId, {
+  const messageRecord = {
     role: 'user',
-    name: msg.from.first_name || 'Пользователь',
+    name: userName,
     userId,
     text,
     ts: Date.now(),
-  });
+  };
+  storage.addMessage(chatId, messageRecord);
 
-  // В группе отвечаем только если упомянули или ответили на сообщение бота
+  // Добавляем в ежедневный буфер (для анализа контекста и архивации)
+  if (text && text.length > 0) {
+    storage.addToDailyBuffer(chatId, messageRecord);
+  }
+
+  // В группе: анализируем ВСЕ сообщения для контекста, но отвечаем только если упомянули
   if (isGroup) {
-<<<<<<< Updated upstream
-    const isReply = msg.reply_to_message?.from?.is_bot;
-    if (!isMentioned(text) && !isReply) return;
-=======
     const isReplyToMe = msg.reply_to_message?.from?.id === botId;
-    if (!isMentioned(text, bot._botUsername) && !isReplyToMe) return;
->>>>>>> Stashed changes
+    const photoReplyToMe = hasPhoto && isReplyToMe;
+    const mentioned = isMentioned(text, bot._botUsername) || isReplyToMe || photoReplyToMe;
+
+    // Периодический анализ контекста чата (для ВСЕХ сообщений, включая те, что не к боту)
+    if (text && text.length > 3) {
+      updateChatContextAsync(chatId);
+    }
+
+    if (!mentioned) {
+      // Случайная реакция на сообщения, где бот не отвечает
+      if (config.REACTIONS_ENABLED) {
+        randomReaction(bot, chatId, msg.message_id);
+      }
+      return;
+    }
   }
 
   // Команды
   if (text.startsWith('/start')) {
-    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}. Говори со мной, маугли...`);
+    const greeting = userPersona
+      ? `Привет. Я — ${config.BOT_NAME}. Можешь писать мне.`
+      : `Привет. Я — ${config.BOT_NAME}. Можешь писать мне.`;
+    await bot.sendMessage(chatId, greeting);
     return;
   }
 
   if (text.startsWith('/help')) {
     const modules = [];
+    if (config.VISION_ENABLED) modules.push('👁 Распознавание картинок');
     if (config.SEARCH_ENABLED) modules.push('🔍 Веб-поиск');
     if (config.IMAGES_ENABLED) modules.push('🎨 Генерация изображений');
     if (config.QUIZ_ENABLED) modules.push('🎯 Викторины');
     if (config.RPG_ENABLED) modules.push('⚔️ RPG');
     if (config.STATS_ENABLED) modules.push('📊 Статистика');
+    if (config.GAMES_ENABLED) modules.push('🎮 Игры (/виселица, /гамруль)');
     if (config.AUTO_REVIVE_ENABLED) modules.push('💬 Авто-оживление');
 
     const moduleText = modules.length > 0
       ? `\n\nАктивные модули:\n${modules.join('\n')}`
       : '';
 
-    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}.\nОбращайся ко мне по имени в чате.${moduleText}`);
+    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}.\nПиши мне в личку или упоминай в чате.${moduleText}`);
     return;
   }
 
-  // Получаем профиль пользователя и историю чата
+  // Пересказ чата — "что в чате", "что пропустил", "что обсуждали" и т.п.
+  const recapPattern = /(?:что\s+(?:в\s+чате|(?:я\s+)?пропустил[аи]?|обсуждал[иь]?|было|нового|происходи(?:т|ло))|(?:пересказ|краткое\s+содержание|рекап|recap|summary)\s*(?:чата)?|введи\s+в\s+курс|(?:catch|fill)\s+me\s+up)/i;
+
+  if (recapPattern.test(text)) {
+    try {
+      // Парсим количество часов из сообщения (по умолчанию 6)
+      const hoursMatch = text.match(/(\d+)\s*(?:час|ч\b|hour|hr)/i);
+      const hours = hoursMatch ? Math.min(parseInt(hoursMatch[1]), 48) : 6;
+
+      const buffer = storage.getDailyBuffer(chatId);
+      const topics = storage.getChatTopics(chatId);
+      const recap = await generateRecap(buffer, hours, topics);
+
+      if (recap) {
+        console.log(`[RECAP] ${chatName} | ${userName} запросил пересказ за ${hours}ч`);
+        await bot.sendMessage(chatId, recap, { reply_to_message_id: msg.message_id });
+        storage.addMessage(chatId, { role: 'assistant', text: recap, ts: Date.now() });
+      } else {
+        await bot.sendMessage(chatId, 'В джунглях было тихо... Нечего пересказывать.', { reply_to_message_id: msg.message_id });
+      }
+    } catch (err) {
+      console.error(`[RECAP ERROR] ${chatName}: ${err.message}`);
+      await bot.sendMessage(chatId, 'Не удалось вспомнить... Попробуй позже.', { reply_to_message_id: msg.message_id });
+    }
+    return;
+  }
+
+  // Получаем профиль пользователя, глобальную память и историю чата
   const userProfile = storage.getProfile(chatId, userId);
+  const userMemory = storage.getUserMemory(userId);
+  const userMemoryFull = storage.getUserMemoryFull(userId);
   const chatHistory = storage.getHistory(chatId);
 
-<<<<<<< Updated upstream
-  // Генерируем ответ
-  const response = await getAIResponse({
-    text,
-    userName: msg.from.first_name || 'Пользователь',
-    userProfile,
-    chatHistory,
-    chatId,
-  });
+  // Память чата (обсуждаемые темы и архив)
+  const chatTopics = storage.getChatTopics(chatId);
+  const chatArchive = storage.getChatArchive(chatId, 3);
 
-  if (!response) return;
-
-  // Отправляем ответ
-  await bot.sendMessage(chatId, response, { reply_to_message_id: msg.message_id });
-
-  // Сохраняем ответ в историю
-  storage.addMessage(chatId, {
-    role: 'assistant',
-    text: response,
-    ts: Date.now(),
-  });
-
-  // Обновляем профиль пользователя асинхронно
-  updateProfileAsync(chatId, userId, msg.from.first_name, text, response);
-=======
   // Веб-поиск (если включён и сообщение содержит триггер)
   let searchContext = null;
   if (config.SEARCH_ENABLED) {
     searchContext = await trySearch(text);
-    if (searchContext) console.log(`[SEARCH] ${chatName} | Найдены результаты`);
-  } else {
-    console.log(`[SEARCH] Модуль отключён (SEARCH=${process.env.SEARCH}, TAVILY_KEY=${config.TAVILY_KEY ? 'есть' : 'нет'})`);
+    if (searchContext) {
+      console.log(`[SEARCH] ${chatName} | Найдены результаты для "${text.slice(0, 50)}"`);
+    } else {
+      console.log(`[SEARCH] ${chatName} | Нет результатов или нет триггера для "${text.slice(0, 50)}"`);
+    }
+  }
+
+  // Распознавание изображений (Vision)
+  if (hasPhoto && config.VISION_ENABLED) {
+    const isReplyToMe = msg.reply_to_message?.from?.id === botId;
+    const mentioned = isMentioned(text, bot._botUsername);
+    const shouldDescribe = isPrivate || isReplyToMe || mentioned || text.length > 0;
+
+    if (shouldDescribe) {
+      try {
+        const fileId = msg.photo[msg.photo.length - 1].file_id;
+        const fileLink = await bot.getFileLink(fileId);
+        const imgRes = await fetch(fileLink);
+        const buffer = Buffer.from(await imgRes.arrayBuffer());
+        const base64 = buffer.toString('base64');
+
+        console.log(`[VISION] ${chatName} | ${userName}: картинка ${Math.round(buffer.length / 1024)}KB`);
+
+        const result = await describeImage(base64, text, userName, userPersona);
+        if (!result?.text) return;
+
+        let responseText = result.text;
+        let actions = { reaction: null, sticker: false };
+
+        if (config.REACTIONS_ENABLED) {
+          actions = parseActions(responseText);
+          responseText = cleanText(responseText);
+        }
+
+        if (!responseText) return;
+
+        console.log(`[OUT] ${chatName} | ${result.model} +vision | "${responseText.slice(0, 80)}"`);
+
+        const sendPromises = [
+          bot.sendMessage(chatId, responseText, { reply_to_message_id: msg.message_id }),
+        ];
+        if (config.REACTIONS_ENABLED && (actions.reaction || actions.sticker)) {
+          sendPromises.push(executeActions(bot, chatId, msg.message_id, actions));
+        }
+        await Promise.allSettled(sendPromises);
+
+        storage.addMessage(chatId, { role: 'assistant', text: responseText, ts: Date.now() });
+      } catch (err) {
+        console.error(`[VISION ERROR] ${chatName}: ${err.message}`);
+      }
+      return;
+    }
+    return;
   }
 
   // Генерируем ответ
-  const result = await getAIResponse({
-    text,
-    userName,
-    userProfile,
-    chatHistory,
-    chatId,
-    searchContext,
-  });
+  let result;
+  try {
+    result = await getAIResponse({
+      text,
+      userName,
+      userProfile,
+      userMemory,
+      userMemoryFull,
+      chatHistory,
+      chatId,
+      searchContext,
+      chatTopics,
+      chatArchive,
+      persona: userPersona,
+    });
+  } catch (err) {
+    console.error(`[AI ERROR] ${chatName}: ${err.message}`);
+    await bot.sendMessage(chatId, 'Что-то пошло не так, попробуй позже...', { reply_to_message_id: msg.message_id });
+    return;
+  }
 
   if (!result?.text) return;
 
-  console.log(`[OUT] ${chatName} | ${result.model} | "${result.text.slice(0, 80)}"`);
+  // Парсим действия (реакции, стикеры) из ответа AI
+  let responseText = result.text;
+  let actions = { reaction: null, sticker: false };
 
-  // Отправляем ответ
-  await bot.sendMessage(chatId, result.text, { reply_to_message_id: msg.message_id });
+  if (config.REACTIONS_ENABLED) {
+    actions = parseActions(responseText);
+    responseText = cleanText(responseText);
 
-  // Сохраняем ответ в историю
+    // Fallback: если пользователь просил стикер, а AI не добавил тег
+    if (!actions.sticker && config.STICKER_SETS.length > 0) {
+      const lowerText = text.toLowerCase();
+      if (/стикер|наклейк|sticker/i.test(lowerText)) {
+        actions.sticker = true;
+      }
+    }
+  }
+
+  // Парсим тег генерации картинки [IMAGE:prompt]
+  let imagePrompt = null;
+  if (config.IMAGES_ENABLED) {
+    const imageMatch = responseText.match(/\[IMAGE:(.+?)\]/i);
+    if (imageMatch) {
+      imagePrompt = imageMatch[1].trim();
+      responseText = responseText.replace(/\[IMAGE:.+?\]/gi, '').trim();
+    }
+  }
+
+  if (!responseText) return;
+
+  const hasImage = !!imagePrompt;
+  const personaTag = userPersona ? ` [${userPersona.name}]` : '';
+  console.log(`[OUT] ${chatName} | ${result.model}${personaTag}${searchContext ? ' +search' : ''}${hasImage ? ' +image' : ''}${actions.reaction ? ` +react:${actions.reaction}` : ''}${actions.sticker ? ' +sticker' : ''} | "${responseText.slice(0, 80)}"`);
+
+  // Отправляем ответ и выполняем действия параллельно
+  const sendPromises = [
+    bot.sendMessage(chatId, responseText, { reply_to_message_id: msg.message_id }),
+  ];
+
+  if (config.REACTIONS_ENABLED && (actions.reaction || actions.sticker)) {
+    sendPromises.push(executeActions(bot, chatId, msg.message_id, actions));
+  }
+
+  await Promise.allSettled(sendPromises);
+
+  // Генерация картинки (после текстового ответа, чтобы не задерживать)
+  if (imagePrompt) {
+    try {
+      const translatedPrompt = await translateImagePrompt(imagePrompt);
+      console.log(`[IMAGEGEN] ${chatName} | prompt: "${translatedPrompt.slice(0, 80)}"`);
+      const imageBuffer = await generateImage(translatedPrompt);
+      await bot.sendPhoto(chatId, imageBuffer, { reply_to_message_id: msg.message_id });
+      console.log(`[IMAGEGEN] ${chatName} | OK, ${Math.round(imageBuffer.length / 1024)}KB`);
+    } catch (err) {
+      console.error(`[IMAGEGEN ERROR] ${chatName}: ${err.message}`);
+      await bot.sendMessage(chatId, 'Не удалось нарисовать... Джунгли иногда капризны.', { reply_to_message_id: msg.message_id });
+    }
+  }
+
+  // Сохраняем ответ в историю (без тегов действий)
   storage.addMessage(chatId, {
     role: 'assistant',
-    text: result.text,
+    text: responseText,
     ts: Date.now(),
   });
 
-  // Обновляем профиль пользователя асинхронно
+  // Обновляем профиль пользователя и глобальную память асинхронно
   updateProfileAsync(chatId, userId, userName, text, result.text);
->>>>>>> Stashed changes
 }
 
 // Обновляем профиль пользователя в фоне
 async function updateProfileAsync(chatId, userId, userName, userText, botResponse) {
   try {
-    const { getProfileUpdate } = require('./ai');
+    const { getProfileUpdate, updateUserMemory } = require('./ai');
     const update = await getProfileUpdate(userName, userText, botResponse);
     if (update) {
       storage.updateProfile(chatId, userId, update);
+    }
+
+    // Обновляем глобальную память каждые N сообщений (чтобы не тратить лимиты на каждое)
+    const uid = String(userId);
+    const count = (memoryUpdateCounters.get(uid) || 0) + 1;
+    memoryUpdateCounters.set(uid, count);
+
+    if (count >= MEMORY_UPDATE_EVERY) {
+      memoryUpdateCounters.set(uid, 0);
+      const currentMemory = storage.getUserMemory(userId);
+      // Собираем последние сообщения пользователя из текущего чата
+      const history = storage.getHistory(chatId);
+      const recentUserMsgs = history
+        .filter(m => m.role === 'user' && String(m.userId) === uid)
+        .slice(-10)
+        .map(m => `${m.name || userName}: ${m.text}`)
+        .join('\n');
+
+      if (recentUserMsgs) {
+        const newMemory = await updateUserMemory(userName, currentMemory, recentUserMsgs);
+        if (newMemory) {
+          storage.setUserMemory(userId, newMemory);
+          console.log(`[MEMORY] Updated global memory for ${userName} (${uid})`);
+        }
+      }
     }
   } catch (err) {
     // Не критично, просто логируем
@@ -179,4 +432,116 @@ async function updateProfileAsync(chatId, userId, userName, userText, botRespons
   }
 }
 
-module.exports = { processMessage };
+// Периодический анализ контекста чата (вызывается для КАЖДОГО сообщения)
+async function updateChatContextAsync(chatId) {
+  try {
+    const cid = String(chatId);
+    const count = (contextUpdateCounters.get(cid) || 0) + 1;
+    contextUpdateCounters.set(cid, count);
+
+    if (count < CONTEXT_UPDATE_EVERY) return;
+    contextUpdateCounters.set(cid, 0);
+
+    // Берём последние сообщения из дневного буфера
+    const buffer = storage.getDailyBuffer(chatId);
+    const recentMessages = buffer.slice(-30);
+    if (recentMessages.length < 5) return;
+
+    const currentTopics = storage.getChatTopics(chatId);
+    const newTopics = await analyzeChatContext(recentMessages, currentTopics);
+
+    if (newTopics) {
+      storage.updateChatTopics(chatId, newTopics);
+      console.log(`[CONTEXT] Updated chat topics for ${cid}`);
+    }
+  } catch (err) {
+    console.error('[CONTEXT] Error updating chat context:', err.message);
+  }
+}
+
+// Отправляем меню выбора персоны (inline keyboard)
+async function sendPersonaMenu(bot, chatId, replyToMessageId) {
+  const { PERSONAS } = require('./personas');
+
+  // Строим кнопки — по 2 в ряд
+  const buttons = [];
+  for (let i = 0; i < PERSONAS.length; i += 2) {
+    const row = [
+      { text: `${PERSONAS[i].name} — ${PERSONAS[i].description}`, callback_data: `persona:${PERSONAS[i].id}` },
+    ];
+    if (PERSONAS[i + 1]) {
+      row.push({ text: `${PERSONAS[i + 1].name} — ${PERSONAS[i + 1].description}`, callback_data: `persona:${PERSONAS[i + 1].id}` });
+    }
+    buttons.push(row);
+  }
+  // Кнопка "случайный"
+  buttons.push([{ text: '🎲 Случайный', callback_data: 'persona:random' }]);
+
+  await bot.sendMessage(chatId, 'Выбери с кем поговорить сегодня:', {
+    reply_to_message_id: replyToMessageId,
+    reply_markup: { inline_keyboard: buttons },
+  });
+}
+
+// Обработчик нажатия на кнопку выбора персоны
+async function handlePersonaCallback(bot, query) {
+  const data = query.data;
+  if (!data?.startsWith('persona:')) return false;
+
+  const userId = query.from.id;
+  const userName = query.from.first_name || 'Пользователь';
+  const chatId = query.message.chat.id;
+
+  let personaId = data.replace('persona:', '');
+
+  if (personaId === 'random') {
+    const assigned = getRandomPersona();
+    personaId = assigned.id;
+  }
+
+  storage.setUserPersona(userId, personaId);
+  const persona = getPersonaById(personaId);
+
+  console.log(`[PERSONA] Выбрана "${persona.name}" через меню для ${userName} (${userId})`);
+
+  // Убираем кнопки из сообщения-меню
+  try {
+    await bot.editMessageReplyMarkup(
+      { inline_keyboard: [] },
+      { chat_id: chatId, message_id: query.message.message_id }
+    );
+  } catch (_) {}
+
+  await bot.answerCallbackQuery(query.id, { text: `Сегодня с тобой — ${persona.name}` });
+
+  // Первый ответ от выбранной личности
+  try {
+    const { getAIResponse } = require('./ai');
+    const chatHistory = storage.getHistory(chatId);
+    const userMemory = storage.getUserMemory(userId);
+    const result = await getAIResponse({
+      text: `Привет, представься`,
+      userName,
+      userProfile: storage.getProfile(chatId, userId),
+      userMemory,
+      userMemoryFull: storage.getUserMemoryFull(userId),
+      chatHistory,
+      chatId,
+      searchContext: null,
+      chatTopics: storage.getChatTopics(chatId),
+      chatArchive: storage.getChatArchive(chatId, 3),
+      persona,
+    });
+
+    if (result?.text) {
+      await bot.sendMessage(chatId, result.text);
+      storage.addMessage(chatId, { role: 'assistant', text: result.text, ts: Date.now() });
+    }
+  } catch (err) {
+    console.error('[PERSONA CB] Ошибка первого ответа:', err.message);
+  }
+
+  return true;
+}
+
+module.exports = { processMessage, handlePersonaCallback };
