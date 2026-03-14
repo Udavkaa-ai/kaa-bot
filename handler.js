@@ -5,6 +5,7 @@ const { trySearch } = require('./search');
 const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
 const { handleGameMessage } = require('./games');
 const { generateImage } = require('./imagegen');
+const { getRandomPersona, getPersonaById } = require('./personas');
 
 // Кэш ID бота (заполняется при первом вызове)
 let botId = null;
@@ -111,6 +112,19 @@ async function _handleMessage(bot, msg) {
     );
   }
 
+  // Назначаем персону пользователю при первом контакте (остаётся навсегда)
+  let userPersona = null;
+  if (userId && userId !== 0 && !isChannel) {
+    let personaId = storage.getUserPersona(userId);
+    if (!personaId) {
+      const assigned = getRandomPersona();
+      storage.setUserPersona(userId, assigned.id);
+      personaId = assigned.id;
+      console.log(`[PERSONA] Назначена персона "${assigned.name}" (${assigned.description}) для ${userName} (${userId})`);
+    }
+    userPersona = getPersonaById(personaId);
+  }
+
   // Игры — обрабатываем ДО сохранения в историю (буквы и PM не должны попадать в историю)
   if (config.GAMES_ENABLED) {
     const handled = await handleGameMessage(bot, msg);
@@ -154,7 +168,10 @@ async function _handleMessage(bot, msg) {
 
   // Команды
   if (text.startsWith('/start')) {
-    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}. Говори со мной, маугли...`);
+    const greeting = userPersona
+      ? `Привет. Я — ${config.BOT_NAME}. Можешь писать мне.`
+      : `Привет. Я — ${config.BOT_NAME}. Можешь писать мне.`;
+    await bot.sendMessage(chatId, greeting);
     return;
   }
 
@@ -173,7 +190,7 @@ async function _handleMessage(bot, msg) {
       ? `\n\nАктивные модули:\n${modules.join('\n')}`
       : '';
 
-    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}.\nОбращайся ко мне по имени в чате.${moduleText}`);
+    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}.\nПиши мне в личку или упоминай в чате.${moduleText}`);
     return;
   }
 
@@ -241,7 +258,7 @@ async function _handleMessage(bot, msg) {
 
         console.log(`[VISION] ${chatName} | ${userName}: картинка ${Math.round(buffer.length / 1024)}KB`);
 
-        const result = await describeImage(base64, text, userName);
+        const result = await describeImage(base64, text, userName, userPersona);
         if (!result?.text) return;
 
         let responseText = result.text;
@@ -287,10 +304,11 @@ async function _handleMessage(bot, msg) {
       searchContext,
       chatTopics,
       chatArchive,
+      persona: userPersona,
     });
   } catch (err) {
     console.error(`[AI ERROR] ${chatName}: ${err.message}`);
-    await bot.sendMessage(chatId, 'Все нейронки заняты, попробуй позже...', { reply_to_message_id: msg.message_id });
+    await bot.sendMessage(chatId, 'Что-то пошло не так, попробуй позже...', { reply_to_message_id: msg.message_id });
     return;
   }
 
@@ -326,7 +344,8 @@ async function _handleMessage(bot, msg) {
   if (!responseText) return;
 
   const hasImage = !!imagePrompt;
-  console.log(`[OUT] ${chatName} | ${result.model}${searchContext ? ' +search' : ''}${hasImage ? ' +image' : ''}${actions.reaction ? ` +react:${actions.reaction}` : ''}${actions.sticker ? ' +sticker' : ''} | "${responseText.slice(0, 80)}"`);
+  const personaTag = userPersona ? ` [${userPersona.name}]` : '';
+  console.log(`[OUT] ${chatName} | ${result.model}${personaTag}${searchContext ? ' +search' : ''}${hasImage ? ' +image' : ''}${actions.reaction ? ` +react:${actions.reaction}` : ''}${actions.sticker ? ' +sticker' : ''} | "${responseText.slice(0, 80)}"`);
 
   // Отправляем ответ и выполняем действия параллельно
   const sendPromises = [

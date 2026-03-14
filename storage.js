@@ -316,6 +316,22 @@ function getAllUserIds() {
   return Object.keys(userMemory);
 }
 
+// ================= ПЕРСОНАЖИ (BILLY) =================
+
+function getUserPersona(userId) {
+  const uid = String(userId);
+  return userMemory[uid]?.personaId || null;
+}
+
+function setUserPersona(userId, personaId) {
+  const uid = String(userId);
+  if (!userMemory[uid]) {
+    userMemory[uid] = { summary: '', updatedAt: Date.now() };
+  }
+  userMemory[uid].personaId = personaId;
+  scheduleUserMemorySave();
+}
+
 // ================= ПАМЯТЬ ЧАТА (темы, ежедневный буфер, архив) =================
 
 function _ensureChatMemory(chatId) {
@@ -499,6 +515,10 @@ module.exports = {
   setUserMemory,
   trackUserGlobal,
   getAllUserIds,
+
+  // Персонажи
+  getUserPersona,
+  setUserPersona,
 
   // Память чата (темы, буфер, архив)
   addToDailyBuffer,
