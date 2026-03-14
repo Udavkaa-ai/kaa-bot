@@ -1,12 +1,12 @@
 const config = require('./config');
 
 // OpenRouter модели — сортированы по цена/качество
-// Основной: Gemini Flash 1.5 — дешёвый и умный
-// Fallback: Mistral Small, GPT-4o Mini, Llama 70B
+// Основной: Gemini 2.0 Flash — дешёвый и умный (~$0.1/1M токенов)
+// Fallback: GPT-4o Mini, Mistral Small, Llama 70B
 const OPENROUTER_MODELS = [
-  'google/gemini-flash-1.5',
-  'mistralai/mistral-small-3.1-24b-instruct',
+  'google/gemini-2.0-flash-001',
   'openai/gpt-4o-mini',
+  'mistralai/mistral-small-3.1-24b-instruct',
   'meta-llama/llama-3.3-70b-instruct',
 ];
 
@@ -217,7 +217,7 @@ async function getProfileUpdate(userName, userText) {
 
 // OpenRouter Vision — модели поддерживающие изображения
 const OPENROUTER_VISION_MODELS = [
-  'google/gemini-flash-1.5',
+  'google/gemini-2.0-flash-001',
   'openai/gpt-4o-mini',
 ];
 
