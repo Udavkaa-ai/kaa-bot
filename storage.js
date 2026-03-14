@@ -320,7 +320,15 @@ function getAllUserIds() {
 
 function getUserPersona(userId) {
   const uid = String(userId);
-  return userMemory[uid]?.personaId || null;
+  const rec = userMemory[uid];
+  if (!rec?.personaId) return null;
+
+  // Ежедневная ротация — новый день, новая личность
+  const today = new Date().toISOString().slice(0, 10); // "2026-03-14"
+  if (rec.personaDate && rec.personaDate !== today) {
+    return null; // сигнал: нужна новая персона
+  }
+  return rec.personaId;
 }
 
 function setUserPersona(userId, personaId) {
@@ -329,6 +337,7 @@ function setUserPersona(userId, personaId) {
     userMemory[uid] = { summary: '', updatedAt: Date.now() };
   }
   userMemory[uid].personaId = personaId;
+  userMemory[uid].personaDate = new Date().toISOString().slice(0, 10);
   scheduleUserMemorySave();
 }
 

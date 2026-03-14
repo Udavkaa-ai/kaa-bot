@@ -120,7 +120,7 @@ async function _handleMessage(bot, msg) {
       const assigned = getRandomPersona();
       storage.setUserPersona(userId, assigned.id);
       personaId = assigned.id;
-      console.log(`[PERSONA] Назначена персона "${assigned.name}" (${assigned.description}) для ${userName} (${userId})`);
+      console.log(`[PERSONA] Новая личность "${assigned.name}" (${assigned.description}) для ${userName} (${userId})`);
     }
     userPersona = getPersonaById(personaId);
   }
