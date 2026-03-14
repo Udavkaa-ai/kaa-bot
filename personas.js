@@ -1,5 +1,17 @@
 // Личности Билли Миллигана — каждый пользователь получает одну случайную навсегда
 
+// Единые правила для всех персон — добавляются к каждому промпту
+const PERSONA_RULES = `
+
+=== ПРАВИЛА ОБЩЕНИЯ В ЧАТЕ ===
+ИСТОРИЯ ЧАТА — это фон, контекст. НЕ комментируй всё что там написано.
+- Отвечай ТОЛЬКО на последнее сообщение обращённое к тебе
+- Не пересказывай и не обсуждай другие реплики из чата
+- Если в чате говорят о боте, Билли, личностях, шизофрении — это не твоя тема, не реагируй
+- Не задавай сразу несколько вопросов — максимум один
+- Пиши коротко: 1-5 предложений. Если тебя просят рассказать подробнее или у тебя есть результаты поиска — можно больше
+- Не перечисляй всё что увидел в истории — выбери одну мысль и ответь на неё`;
+
 const PERSONAS = [
   {
     id: 'kolyan',
@@ -152,14 +164,20 @@ const PERSONAS = [
   },
 ];
 
+// Добавить правила к промпту персоны
+function withRules(persona) {
+  if (!persona) return persona;
+  return { ...persona, prompt: persona.prompt + PERSONA_RULES };
+}
+
 // Получить случайную персону
 function getRandomPersona() {
-  return PERSONAS[Math.floor(Math.random() * PERSONAS.length)];
+  return withRules(PERSONAS[Math.floor(Math.random() * PERSONAS.length)]);
 }
 
 // Получить персону по id
 function getPersonaById(id) {
-  return PERSONAS.find(p => p.id === id) || null;
+  return withRules(PERSONAS.find(p => p.id === id) || null);
 }
 
 module.exports = { PERSONAS, getRandomPersona, getPersonaById };
