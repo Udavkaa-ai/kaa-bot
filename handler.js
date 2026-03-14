@@ -5,6 +5,7 @@ const { trySearch } = require('./search');
 const { parseActions, cleanText, executeActions, randomReaction } = require('./reactions');
 const { handleGameMessage } = require('./games');
 const { generateImage } = require('./imagegen');
+const { getRandomPersona, getPersonaById, findPersonaInText } = require('./personas');
 
 // Кэш ID бота (заполняется при первом вызове)
 let botId = null;
@@ -111,6 +112,29 @@ async function _handleMessage(bot, msg) {
     );
   }
 
+  // Назначаем персону пользователю на день
+  let userPersona = null;
+  if (userId && userId !== 0 && !isChannel) {
+    let personaId = storage.getUserPersona(userId); // null если новый день или первый раз
+
+    // Проверяем: пользователь позвал конкретную личность по имени?
+    const namedPersona = findPersonaInText(text);
+    if (namedPersona) {
+      // Назначаем ту что позвали — перезаписывает текущую на сегодня
+      if (namedPersona.id !== personaId) {
+        console.log(`[PERSONA] Назначена "${namedPersona.name}" по имени для ${userName} (${userId})`);
+      }
+      storage.setUserPersona(userId, namedPersona.id);
+      personaId = namedPersona.id;
+    } else if (!personaId) {
+      // Нет персоны на сегодня — показываем меню выбора
+      await sendPersonaMenu(bot, chatId, msg.message_id);
+      return;
+    }
+
+    userPersona = getPersonaById(personaId);
+  }
+
   // Игры — обрабатываем ДО сохранения в историю (буквы и PM не должны попадать в историю)
   if (config.GAMES_ENABLED) {
     const handled = await handleGameMessage(bot, msg);
@@ -154,7 +178,10 @@ async function _handleMessage(bot, msg) {
 
   // Команды
   if (text.startsWith('/start')) {
-    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}. Говори со мной, маугли...`);
+    const greeting = userPersona
+      ? `Привет. Я — ${config.BOT_NAME}. Можешь писать мне.`
+      : `Привет. Я — ${config.BOT_NAME}. Можешь писать мне.`;
+    await bot.sendMessage(chatId, greeting);
     return;
   }
 
@@ -173,7 +200,7 @@ async function _handleMessage(bot, msg) {
       ? `\n\nАктивные модули:\n${modules.join('\n')}`
       : '';
 
-    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}.\nОбращайся ко мне по имени в чате.${moduleText}`);
+    await bot.sendMessage(chatId, `Я — ${config.BOT_NAME}.\nПиши мне в личку или упоминай в чате.${moduleText}`);
     return;
   }
 
@@ -241,7 +268,7 @@ async function _handleMessage(bot, msg) {
 
         console.log(`[VISION] ${chatName} | ${userName}: картинка ${Math.round(buffer.length / 1024)}KB`);
 
-        const result = await describeImage(base64, text, userName);
+        const result = await describeImage(base64, text, userName, userPersona);
         if (!result?.text) return;
 
         let responseText = result.text;
@@ -287,10 +314,11 @@ async function _handleMessage(bot, msg) {
       searchContext,
       chatTopics,
       chatArchive,
+      persona: userPersona,
     });
   } catch (err) {
     console.error(`[AI ERROR] ${chatName}: ${err.message}`);
-    await bot.sendMessage(chatId, 'Все нейронки заняты, попробуй позже...', { reply_to_message_id: msg.message_id });
+    await bot.sendMessage(chatId, 'Что-то пошло не так, попробуй позже...', { reply_to_message_id: msg.message_id });
     return;
   }
 
@@ -326,7 +354,8 @@ async function _handleMessage(bot, msg) {
   if (!responseText) return;
 
   const hasImage = !!imagePrompt;
-  console.log(`[OUT] ${chatName} | ${result.model}${searchContext ? ' +search' : ''}${hasImage ? ' +image' : ''}${actions.reaction ? ` +react:${actions.reaction}` : ''}${actions.sticker ? ' +sticker' : ''} | "${responseText.slice(0, 80)}"`);
+  const personaTag = userPersona ? ` [${userPersona.name}]` : '';
+  console.log(`[OUT] ${chatName} | ${result.model}${personaTag}${searchContext ? ' +search' : ''}${hasImage ? ' +image' : ''}${actions.reaction ? ` +react:${actions.reaction}` : ''}${actions.sticker ? ' +sticker' : ''} | "${responseText.slice(0, 80)}"`);
 
   // Отправляем ответ и выполняем действия параллельно
   const sendPromises = [
@@ -430,4 +459,89 @@ async function updateChatContextAsync(chatId) {
   }
 }
 
-module.exports = { processMessage };
+// Отправляем меню выбора персоны (inline keyboard)
+async function sendPersonaMenu(bot, chatId, replyToMessageId) {
+  const { PERSONAS } = require('./personas');
+
+  // Строим кнопки — по 2 в ряд
+  const buttons = [];
+  for (let i = 0; i < PERSONAS.length; i += 2) {
+    const row = [
+      { text: `${PERSONAS[i].name} — ${PERSONAS[i].description}`, callback_data: `persona:${PERSONAS[i].id}` },
+    ];
+    if (PERSONAS[i + 1]) {
+      row.push({ text: `${PERSONAS[i + 1].name} — ${PERSONAS[i + 1].description}`, callback_data: `persona:${PERSONAS[i + 1].id}` });
+    }
+    buttons.push(row);
+  }
+  // Кнопка "случайный"
+  buttons.push([{ text: '🎲 Случайный', callback_data: 'persona:random' }]);
+
+  await bot.sendMessage(chatId, 'Выбери с кем поговорить сегодня:', {
+    reply_to_message_id: replyToMessageId,
+    reply_markup: { inline_keyboard: buttons },
+  });
+}
+
+// Обработчик нажатия на кнопку выбора персоны
+async function handlePersonaCallback(bot, query) {
+  const data = query.data;
+  if (!data?.startsWith('persona:')) return false;
+
+  const userId = query.from.id;
+  const userName = query.from.first_name || 'Пользователь';
+  const chatId = query.message.chat.id;
+
+  let personaId = data.replace('persona:', '');
+
+  if (personaId === 'random') {
+    const assigned = getRandomPersona();
+    personaId = assigned.id;
+  }
+
+  storage.setUserPersona(userId, personaId);
+  const persona = getPersonaById(personaId);
+
+  console.log(`[PERSONA] Выбрана "${persona.name}" через меню для ${userName} (${userId})`);
+
+  // Убираем кнопки из сообщения-меню
+  try {
+    await bot.editMessageReplyMarkup(
+      { inline_keyboard: [] },
+      { chat_id: chatId, message_id: query.message.message_id }
+    );
+  } catch (_) {}
+
+  await bot.answerCallbackQuery(query.id, { text: `Сегодня с тобой — ${persona.name}` });
+
+  // Первый ответ от выбранной личности
+  try {
+    const { getAIResponse } = require('./ai');
+    const chatHistory = storage.getHistory(chatId);
+    const userMemory = storage.getUserMemory(userId);
+    const result = await getAIResponse({
+      text: `Привет, представься`,
+      userName,
+      userProfile: storage.getProfile(chatId, userId),
+      userMemory,
+      userMemoryFull: storage.getUserMemoryFull(userId),
+      chatHistory,
+      chatId,
+      searchContext: null,
+      chatTopics: storage.getChatTopics(chatId),
+      chatArchive: storage.getChatArchive(chatId, 3),
+      persona,
+    });
+
+    if (result?.text) {
+      await bot.sendMessage(chatId, result.text);
+      storage.addMessage(chatId, { role: 'assistant', text: result.text, ts: Date.now() });
+    }
+  } catch (err) {
+    console.error('[PERSONA CB] Ошибка первого ответа:', err.message);
+  }
+
+  return true;
+}
+
+module.exports = { processMessage, handlePersonaCallback };

@@ -1,6 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
-const { processMessage } = require('./handler');
+const { processMessage, handlePersonaCallback } = require('./handler');
 const { generateAutoRevive, createDailySummary, condenseUserMemory } = require('./ai');
 const storage = require('./storage');
 
@@ -21,17 +21,25 @@ bot.on('polling_error', (err) => {
   console.error('Polling error:', err.message);
 });
 
-// === GAMES (inline keyboard callbacks) ===
-if (config.GAMES_ENABLED) {
-  const { handleGameCallback } = require('./games');
-  bot.on('callback_query', async (query) => {
-    try {
+// === CALLBACK QUERIES (персоны + игры) ===
+bot.on('callback_query', async (query) => {
+  try {
+    // Сначала проверяем выбор персоны
+    const handled = await handlePersonaCallback(bot, query);
+    if (handled) return;
+
+    // Затем игры (если включены)
+    if (config.GAMES_ENABLED) {
+      const { handleGameCallback } = require('./games');
       await handleGameCallback(bot, query);
-    } catch (err) {
-      console.error('Ошибка callback_query:', err.message);
-      try { await bot.answerCallbackQuery(query.id); } catch (_) {}
     }
-  });
+  } catch (err) {
+    console.error('Ошибка callback_query:', err.message);
+    try { await bot.answerCallbackQuery(query.id); } catch (_) {}
+  }
+});
+
+if (config.GAMES_ENABLED) {
   console.log('[CONFIG] GAMES=true');
 }
 
