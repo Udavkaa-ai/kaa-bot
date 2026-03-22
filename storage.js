@@ -5,6 +5,8 @@ const config = require('./config');
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
+const USERMEMORY_FILE = path.join(DATA_DIR, 'usermemory.json');
+const CHATMEMORY_FILE = path.join(DATA_DIR, 'chatmemory.json');
 
 // Убедимся что папка существует
 if (!fs.existsSync(DATA_DIR)) {
@@ -14,9 +16,13 @@ if (!fs.existsSync(DATA_DIR)) {
 // Загружаем данные
 let db = loadJSON(DB_FILE, { chats: {} });
 let profiles = loadJSON(PROFILES_FILE, {});
+let userMemory = loadJSON(USERMEMORY_FILE, {});
+let chatMemory = loadJSON(CHATMEMORY_FILE, {});
 
 let saveTimer = null;
 let profilesSaveTimer = null;
+let userMemorySaveTimer = null;
+let chatMemorySaveTimer = null;
 
 // Очередь обновлений профилей — предотвращает race condition при одновременных обновлениях
 let profileUpdateQueue = Promise.resolve();
@@ -42,6 +48,16 @@ function scheduleProfilesSave() {
   profilesSaveTimer = setTimeout(() => _saveProfiles(), 5000);
 }
 
+function scheduleUserMemorySave() {
+  if (userMemorySaveTimer) clearTimeout(userMemorySaveTimer);
+  userMemorySaveTimer = setTimeout(() => _saveUserMemory(), 5000);
+}
+
+function scheduleChatMemorySave() {
+  if (chatMemorySaveTimer) clearTimeout(chatMemorySaveTimer);
+  chatMemorySaveTimer = setTimeout(() => _saveChatMemory(), 5000);
+}
+
 function _saveDB() {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
@@ -58,6 +74,22 @@ function _saveProfiles() {
   }
 }
 
+function _saveUserMemory() {
+  try {
+    fs.writeFileSync(USERMEMORY_FILE, JSON.stringify(userMemory, null, 2));
+  } catch (err) {
+    console.error('Ошибка сохранения UserMemory:', err.message);
+  }
+}
+
+function _saveChatMemory() {
+  try {
+    fs.writeFileSync(CHATMEMORY_FILE, JSON.stringify(chatMemory, null, 2));
+  } catch (err) {
+    console.error('Ошибка сохранения ChatMemory:', err.message);
+  }
+}
+
 // Принудительное сохранение при выходе — сбрасываем отложенные таймеры
 function forceSave() {
   if (saveTimer) {
@@ -70,9 +102,20 @@ function forceSave() {
     profilesSaveTimer = null;
     _saveProfiles();
   }
+  if (userMemorySaveTimer) {
+    clearTimeout(userMemorySaveTimer);
+    userMemorySaveTimer = null;
+    _saveUserMemory();
+  }
+  if (chatMemorySaveTimer) {
+    clearTimeout(chatMemorySaveTimer);
+    chatMemorySaveTimer = null;
+    _saveChatMemory();
+  }
 }
 
-// История сообщений
+// ================= ИСТОРИЯ СООБЩЕНИЙ =================
+
 function addMessage(chatId, message) {
   const id = String(chatId);
   if (!db.chats[id]) db.chats[id] = { history: [], lastTs: 0 };
@@ -100,7 +143,8 @@ function updateLastMessageTime(chatId) {
   scheduleSave();
 }
 
-// Мут чата/топика
+// ================= МУТ ЧАТА/ТОПИКА =================
+
 function isTopicMuted(chatId, threadId) {
   const id = String(chatId);
   const tid = String(threadId === null || threadId === undefined ? 'general' : threadId);
@@ -125,7 +169,8 @@ function toggleMute(chatId, threadId) {
   }
 }
 
-// Auto-revive
+// ================= AUTO-REVIVE =================
+
 function setAutoRevive(chatId, enabled) {
   const id = String(chatId);
   if (!db.chats[id]) db.chats[id] = { history: [], lastTs: 0 };
@@ -145,7 +190,8 @@ function getInactiveChats(thresholdMs) {
   return result;
 }
 
-// Уведомление о новом чате (для проверки в handler)
+// ================= ЧАТ МЕТА-ДАННЫЕ =================
+
 function hasChat(chatId) {
   return !!db.chats[String(chatId)];
 }
@@ -159,15 +205,18 @@ function updateChatName(chatId, name) {
   }
 }
 
-// Профили пользователей
+function getChatName(chatId) {
+  return db.chats[String(chatId)]?.chatName || null;
+}
+
+// ================= ПРОФИЛИ ПОЛЬЗОВАТЕЛЕЙ =================
+
 function getProfile(chatId, userId) {
   const cid = String(chatId);
   const uid = String(userId);
   if (!profiles[cid]) profiles[cid] = {};
   const p = profiles[cid][uid];
-  if (!p) return { facts: [], attitude: 'нейтральное', relationship: 50 };
-  // Миграция: если relationship не задан — ставим 50
-  if (typeof p.relationship === 'undefined') p.relationship = 50;
+  if (!p) return { facts: [], attitude: 'нейтральное' };
   return p;
 }
 
@@ -187,7 +236,7 @@ function _applyProfileUpdates(chatId, updatesMap) {
 
   for (const [userId, data] of Object.entries(updatesMap)) {
     const uid = String(userId);
-    const current = profiles[cid][uid] || { facts: [], attitude: 'нейтральное', relationship: 50 };
+    const current = profiles[cid][uid] || { facts: [], attitude: 'нейтральное' };
 
     // Обновляем факты (не дублируем)
     if (data.facts?.length) {
@@ -198,50 +247,164 @@ function _applyProfileUpdates(chatId, updatesMap) {
 
     if (data.attitude) current.attitude = data.attitude;
 
-    // Репутация: плавное изменение с ограничениями
-    if (data.relationship !== undefined) {
-      const newScore = parseInt(data.relationship, 10);
-      if (!isNaN(newScore)) {
-        const oldScore = current.relationship || 50;
-        let delta = newScore - oldScore;
-        // Ограничиваем: максимум +3 за позитив, -5..-10 за негатив
-        if (delta > 0) delta = Math.min(delta, 3);
-        else if (delta < 0) {
-          delta = Math.max(delta, -10);
-          if (delta > -5) delta = -5;
-        }
-        current.relationship = Math.max(0, Math.min(100, oldScore + delta));
-      }
-    }
-
     profiles[cid][uid] = current;
   }
 
   scheduleProfilesSave();
 }
 
-// Одиночное обновление профиля (для совместимости с текущим кодом)
+// Одиночное обновление профиля
 function updateProfile(chatId, userId, update) {
   bulkUpdateProfiles(chatId, { [userId]: update });
 }
 
-module.exports = {
-  addMessage,
-  getHistory,
-  getProfile,
-  updateProfile,
-  bulkUpdateProfiles,
-  updateLastMessageTime,
-  isTopicMuted,
-  toggleMute,
-  setAutoRevive,
-  getInactiveChats,
-  hasChat,
-  updateChatName,
-  forceSave,
-};
+// ================= ГЛОБАЛЬНАЯ ПАМЯТЬ О ПОЛЬЗОВАТЕЛЯХ =================
 
-// Отслеживание юзеров в чате (для "кто из нас" и поиска по нику)
+function getUserMemory(userId) {
+  const uid = String(userId);
+  return userMemory[uid]?.summary || '';
+}
+
+function getUserMemoryFull(userId) {
+  const uid = String(userId);
+  return userMemory[uid] || null;
+}
+
+function setUserMemory(userId, summary) {
+  const uid = String(userId);
+  if (!userMemory[uid]) {
+    userMemory[uid] = {};
+  }
+  userMemory[uid].summary = summary.substring(0, 5000);
+  userMemory[uid].updatedAt = Date.now();
+  scheduleUserMemorySave();
+}
+
+// Обновить мета-данные пользователя (имя, юзернейм, чаты)
+function trackUserGlobal(userId, name, username, chatId, chatName) {
+  const uid = String(userId);
+  const cid = String(chatId);
+
+  if (!userMemory[uid]) {
+    userMemory[uid] = { summary: '', updatedAt: Date.now() };
+  }
+
+  let changed = false;
+
+  if (name && userMemory[uid].name !== name) {
+    userMemory[uid].name = name;
+    changed = true;
+  }
+  if (username && userMemory[uid].username !== username) {
+    userMemory[uid].username = username;
+    changed = true;
+  }
+
+  if (!userMemory[uid].chats) userMemory[uid].chats = {};
+  if (chatName && userMemory[uid].chats[cid] !== chatName) {
+    userMemory[uid].chats[cid] = chatName;
+    changed = true;
+  }
+
+  if (changed) {
+    scheduleUserMemorySave();
+  }
+}
+
+// Получить список всех пользователей для архивации
+function getAllUserIds() {
+  return Object.keys(userMemory);
+}
+
+// ================= ПАМЯТЬ ЧАТА (темы, ежедневный буфер, архив) =================
+
+function _ensureChatMemory(chatId) {
+  const id = String(chatId);
+  if (!chatMemory[id]) {
+    chatMemory[id] = {
+      topics: '',
+      dailyBuffer: [],
+      archive: [],
+      updatedAt: 0,
+    };
+  }
+  return chatMemory[id];
+}
+
+// Добавить сообщение в ежедневный буфер (для анализа контекста и архивации)
+function addToDailyBuffer(chatId, msg) {
+  const mem = _ensureChatMemory(chatId);
+  mem.dailyBuffer.push({
+    name: msg.name || 'Пользователь',
+    userId: msg.userId,
+    text: msg.text,
+    ts: msg.ts || Date.now(),
+  });
+  // Лимит буфера — 500 сообщений на день
+  if (mem.dailyBuffer.length > 500) {
+    mem.dailyBuffer = mem.dailyBuffer.slice(-500);
+  }
+  scheduleChatMemorySave();
+}
+
+function getDailyBuffer(chatId) {
+  return chatMemory[String(chatId)]?.dailyBuffer || [];
+}
+
+function getChatTopics(chatId) {
+  return chatMemory[String(chatId)]?.topics || '';
+}
+
+function updateChatTopics(chatId, topics) {
+  const mem = _ensureChatMemory(chatId);
+  mem.topics = topics.substring(0, 3000);
+  mem.updatedAt = Date.now();
+  scheduleChatMemorySave();
+}
+
+function getChatArchive(chatId, limit = 7) {
+  const archive = chatMemory[String(chatId)]?.archive || [];
+  return archive.slice(-limit);
+}
+
+// Архивировать день: сохранить сводку, очистить буфер
+function archiveDay(chatId, dateSummary, dateStr) {
+  const mem = _ensureChatMemory(chatId);
+
+  mem.archive.push({
+    date: dateStr,
+    summary: dateSummary.substring(0, 2000),
+  });
+
+  // Хранить архив за последние 30 дней
+  if (mem.archive.length > 30) {
+    mem.archive = mem.archive.slice(-30);
+  }
+
+  // Очистить дневной буфер
+  mem.dailyBuffer = [];
+  mem.updatedAt = Date.now();
+  scheduleChatMemorySave();
+}
+
+// Получить все chatId у которых есть дневной буфер
+function getChatsWithBuffer() {
+  const result = [];
+  for (const [chatId, mem] of Object.entries(chatMemory)) {
+    if (mem.dailyBuffer && mem.dailyBuffer.length > 0) {
+      result.push(chatId);
+    }
+  }
+  return result;
+}
+
+// Получить все chatId
+function getAllChatIds() {
+  return Object.keys(db.chats);
+}
+
+// ================= ОТСЛЕЖИВАНИЕ ЮЗЕРОВ В ЧАТЕ =================
+
 function trackUser(chatId, user) {
   if (user.is_bot) return;
   const id = String(chatId);
@@ -285,7 +448,8 @@ function findProfileByQuery(chatId, query) {
   return null;
 }
 
-// Профиль чата
+// ================= ПРОФИЛЬ ЧАТА =================
+
 function getChatProfile(chatId) {
   const id = String(chatId);
   if (!db.chats[id]?.chatProfile) return { topic: null, facts: null, style: null };
@@ -303,8 +467,58 @@ function updateChatProfile(chatId, updates) {
   scheduleSave();
 }
 
-module.exports.trackUser = trackUser;
-module.exports.getRandomUser = getRandomUser;
-module.exports.findProfileByQuery = findProfileByQuery;
-module.exports.getChatProfile = getChatProfile;
-module.exports.updateChatProfile = updateChatProfile;
+// ================= EXPORTS =================
+
+module.exports = {
+  // История
+  addMessage,
+  getHistory,
+  updateLastMessageTime,
+
+  // Мут
+  isTopicMuted,
+  toggleMute,
+
+  // Auto-revive
+  setAutoRevive,
+  getInactiveChats,
+
+  // Чат мета
+  hasChat,
+  updateChatName,
+  getChatName,
+
+  // Профили
+  getProfile,
+  updateProfile,
+  bulkUpdateProfiles,
+
+  // Глобальная память пользователей
+  getUserMemory,
+  getUserMemoryFull,
+  setUserMemory,
+  trackUserGlobal,
+  getAllUserIds,
+
+  // Память чата (темы, буфер, архив)
+  addToDailyBuffer,
+  getDailyBuffer,
+  getChatTopics,
+  updateChatTopics,
+  getChatArchive,
+  archiveDay,
+  getChatsWithBuffer,
+  getAllChatIds,
+
+  // Юзеры в чате
+  trackUser,
+  getRandomUser,
+  findProfileByQuery,
+
+  // Профиль чата
+  getChatProfile,
+  updateChatProfile,
+
+  // Сохранение
+  forceSave,
+};
