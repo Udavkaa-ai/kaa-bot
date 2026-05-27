@@ -7,7 +7,20 @@ const chatsRepo = require('./db/repo/chats');
 const statsRepo = require('./db/repo/stats');
 const messagesRepo = require('./db/repo/messages');
 const claude = require('./providers/claude');
+const giveaway = require('./handlers/giveaway');
+const quiz = require('./handlers/quiz');
 const { moscowHour } = require('./utils/time');
+
+// Глобальные хендлеры — чтобы любая ошибка попала в логи Railway
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err?.message || err);
+  if (err?.stack) console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[UNHANDLED REJECTION]', reason?.message || reason);
+  if (reason?.stack) console.error(reason.stack);
+});
 
 async function main() {
   // Миграция БД
@@ -15,6 +28,7 @@ async function main() {
     await db.migrate();
   } catch (err) {
     console.error('[DB] Миграция упала:', err.message);
+    if (err.stack) console.error(err.stack);
     process.exit(1);
   }
 
@@ -40,6 +54,19 @@ async function main() {
   bot.on('polling_error', (err) => {
     console.error('[POLLING]', err.message);
   });
+
+  bot.on('poll_answer', async (pollAnswer) => {
+    try {
+      await quiz.handlePollAnswer(bot, pollAnswer);
+    } catch (err) {
+      console.error('[POLL_ANSWER]', err.message);
+    }
+  });
+
+  // Cron: завершение розыгрышей по таймеру (каждые 30 сек)
+  setInterval(() => {
+    giveaway.tickExpired(bot).catch(err => console.error('[GW TICK]', err.message));
+  }, 30 * 1000);
 
   // Cron: напоминания каждую минуту
   setInterval(async () => {

@@ -35,8 +35,11 @@ async function _process(bot, msg) {
     return handleSystemEvent(bot, msg);
   }
 
-  // Базовая запись чата
-  await chatsRepo.upsertChat(chatId, msg.chat.title || (msg.chat.first_name || 'private'), msg.chat.type);
+  // Базовая запись чата + получение настроек (включая per-chat триггеры)
+  const chatRow = await chatsRepo.upsertChat(chatId, msg.chat.title || (msg.chat.first_name || 'private'), msg.chat.type);
+  const chatTriggers = chatRow?.triggers
+    ? chatRow.triggers.toLowerCase().split(',').map(s => s.trim()).filter(Boolean)
+    : null;
 
   // Бан
   if (config.banEnabled && msg.from?.id && await chatsRepo.isBanned(msg.from.id)) {
@@ -73,7 +76,7 @@ async function _process(bot, msg) {
 
   // Фото
   if (msg.photo && msg.photo.length > 0) {
-    if (shouldRespond(msg, isGroup)) {
+    if (shouldRespond(msg, isGroup, chatTriggers)) {
       return handlePhoto(bot, msg);
     }
     return;
@@ -98,7 +101,7 @@ async function _process(bot, msg) {
   const text = msg.text || msg.caption || '';
   if (!text) return;
 
-  if (!shouldRespond(msg, isGroup)) {
+  if (!shouldRespond(msg, isGroup, chatTriggers)) {
     // в группе без упоминания — просто сохраняем в историю для контекста
     const messagesRepo = require('../db/repo/messages');
     await messagesRepo.addMessage(chatId, 'user', text, {
@@ -112,12 +115,12 @@ async function _process(bot, msg) {
   return handleText(bot, msg);
 }
 
-function shouldRespond(msg, isGroup) {
+function shouldRespond(msg, isGroup, chatTriggers) {
   if (!isGroup) return true;
   const text = msg.text || msg.caption || '';
   const isReplyToMe = msg.reply_to_message?.from?.id === botMeta.id;
   if (isReplyToMe) return true;
-  return isMentioned(text, botMeta.username);
+  return isMentioned(text, botMeta.username, chatTriggers);
 }
 
 async function handleSystemEvent(bot, msg) {

@@ -9,6 +9,8 @@ const { sendPersonaMenu } = require('./persona');
 const { sendSafe } = require('../utils/telegram');
 const { withTyping } = require('../utils/typing');
 const { humorReply } = require('../ai/errorHumor');
+const giveaway = require('./giveaway');
+const quiz = require('./quiz');
 
 function isAdmin(msg) {
   return config.adminId && msg.from?.id === config.adminId;
@@ -63,6 +65,29 @@ async function handleCommand(bot, msg) {
     case '/досье':
       return handleProfile(bot, msg, args);
 
+    case '/giveaway':
+    case '/розыгрыш':
+      await giveaway.handleGiveawayCommand(bot, msg, args.join(' '));
+      return true;
+
+    case '/quiz':
+    case '/викторина':
+      await quiz.handleQuizCommand(bot, msg, args.join(' '));
+      return true;
+
+    case '/leaderboard':
+    case '/топ':
+      await quiz.handleLeaderboard(bot, msg);
+      return true;
+
+    case '/trigger':
+    case '/триггер':
+      return handleTrigger(bot, msg, args);
+
+    case '/triggers':
+    case '/триггеры':
+      return handleShowTriggers(bot, msg);
+
     case '/stats':
       if (!isAdmin(msg)) return true;
       return handleStats(bot, msg);
@@ -99,6 +124,11 @@ function buildHelp() {
     '/recap [N] — пересказ чата за последние N часов (по умолчанию 6)',
     '/mute — заткнуть/расткнуть',
     '/profile <ник> — досье на участника',
+    '/giveaway <приз> [время|до N] [winners=K] — розыгрыш',
+    '/quiz [тема] — викторина с вариантами ответа',
+    '/leaderboard — топ викторины в этом чате',
+    '/trigger <слова> — задать как меня звать в этом чате (только админ)',
+    '/triggers — показать текущие триггеры',
     config.imagesEnabled ? '/draw <описание> — нарисую' : null,
     '',
     modules.length ? 'Активно:\n' + modules.join('\n') : null,
@@ -235,6 +265,69 @@ async function handleBan(bot, msg, args, isBan) {
   } else {
     await chatsRepo.unbanUser(targetId);
     await sendSafe(bot, chatId, `Разбанен: ${targetId}`, { reply_to_message_id: msg.message_id });
+  }
+  return true;
+}
+
+async function isChatAdmin(bot, chatId, userId) {
+  if (config.adminId && userId === config.adminId) return true;
+  try {
+    const member = await bot.getChatMember(chatId, userId);
+    return member && ['creator', 'administrator'].includes(member.status);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function handleTrigger(bot, msg, args) {
+  const chatId = msg.chat.id;
+  const userId = msg.from?.id;
+  const isPrivate = msg.chat.type === 'private';
+
+  if (!isPrivate && !(await isChatAdmin(bot, chatId, userId))) {
+    await sendSafe(bot, chatId, 'Триггеры может менять только админ чата.', { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  const arg = args.join(' ').trim();
+  if (!arg) {
+    await sendSafe(bot, chatId,
+      `Текущие триггеры — посмотри /triggers.\n` +
+      `Установить: /trigger слово1, слово2, слово3\n` +
+      `Сбросить на стандартные: /trigger reset`,
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  if (/^(reset|сброс|default|по умолчанию)$/i.test(arg)) {
+    await chatsRepo.setTriggers(chatId, null);
+    await sendSafe(bot, chatId, `Триггеры сброшены на стандартные: ${config.botTriggers.join(', ')}`,
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  const triggers = arg.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  if (triggers.length === 0 || triggers.some(t => t.length < 2 || t.length > 30)) {
+    await sendSafe(bot, chatId, 'Каждый триггер должен быть 2-30 символов. Раздели запятыми.',
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  await chatsRepo.setTriggers(chatId, triggers.join(','));
+  await sendSafe(bot, chatId, `Теперь зови меня так: ${triggers.join(', ')}`,
+    { reply_to_message_id: msg.message_id });
+  return true;
+}
+
+async function handleShowTriggers(bot, msg) {
+  const chatId = msg.chat.id;
+  const custom = await chatsRepo.getTriggers(chatId);
+  if (custom) {
+    await sendSafe(bot, chatId, `В этом чате зови: ${custom.join(', ')}\nСтандартные: ${config.botTriggers.join(', ')}`,
+      { reply_to_message_id: msg.message_id });
+  } else {
+    await sendSafe(bot, chatId, `Триггеры: ${config.botTriggers.join(', ')}\nИзменить: /trigger <слова через запятую>`,
+      { reply_to_message_id: msg.message_id });
   }
   return true;
 }

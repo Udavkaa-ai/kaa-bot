@@ -1,9 +1,15 @@
 const usersRepo = require('../db/repo/users');
 const { getPersonaById, getRandomPersona } = require('../ai/personas');
 const { moscowToday } = require('../utils/time');
+const giveaway = require('./giveaway');
 
 async function handleCallback(bot, query) {
   const data = query.data || '';
+
+  if (data.startsWith('gw:')) {
+    return giveaway.handleJoinCallback(bot, query);
+  }
+
   if (!data.startsWith('persona:')) return false;
 
   const userId = query.from.id;

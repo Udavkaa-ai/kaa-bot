@@ -1,15 +1,28 @@
 const { query } = require('../pool');
 
 async function upsertChat(chatId, title, type) {
-  await query(
+  const r = await query(
     `INSERT INTO chats (id, title, type, last_msg_ts)
      VALUES ($1, $2, $3, now())
      ON CONFLICT (id) DO UPDATE SET
-       title = EXCLUDED.title,
-       type = EXCLUDED.type,
-       last_msg_ts = now()`,
+       title = COALESCE(EXCLUDED.title, chats.title),
+       type = COALESCE(EXCLUDED.type, chats.type),
+       last_msg_ts = now()
+     RETURNING *`,
     [chatId, title, type]
   );
+  return r.rows[0];
+}
+
+async function setTriggers(chatId, triggersCsv) {
+  await query(`UPDATE chats SET triggers = $2 WHERE id = $1`, [chatId, triggersCsv]);
+}
+
+async function getTriggers(chatId) {
+  const r = await query(`SELECT triggers FROM chats WHERE id = $1`, [chatId]);
+  const raw = r.rows[0]?.triggers;
+  if (!raw) return null;
+  return raw.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
 }
 
 async function getChat(chatId) {
@@ -95,6 +108,8 @@ async function listBanned() {
 module.exports = {
   upsertChat,
   getChat,
+  setTriggers,
+  getTriggers,
   updateChatTopic,
   setAutoRevive,
   getInactiveChats,

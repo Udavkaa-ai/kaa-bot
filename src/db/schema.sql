@@ -17,9 +17,12 @@ CREATE TABLE IF NOT EXISTS chats (
   chat_topic TEXT,
   chat_facts TEXT,
   chat_style TEXT,
+  triggers TEXT,
   last_msg_ts TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- Идемпотентная миграция: добавляем колонку если её ещё нет
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS triggers TEXT;
 
 CREATE TABLE IF NOT EXISTS user_personas (
   user_id BIGINT NOT NULL,
@@ -113,4 +116,60 @@ CREATE TABLE IF NOT EXISTS chat_users (
   display_name TEXT,
   last_seen TIMESTAMPTZ DEFAULT now(),
   PRIMARY KEY (chat_id, user_id)
+);
+
+-- Розыгрыши
+CREATE TABLE IF NOT EXISTS giveaways (
+  id BIGSERIAL PRIMARY KEY,
+  chat_id BIGINT NOT NULL,
+  message_id BIGINT NOT NULL,
+  creator_id BIGINT NOT NULL,
+  prize TEXT NOT NULL,
+  ends_at TIMESTAMPTZ,
+  target_count INTEGER,
+  winners_count INTEGER DEFAULT 1,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_giveaways_active ON giveaways (status, ends_at) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS giveaway_participants (
+  giveaway_id BIGINT NOT NULL REFERENCES giveaways(id) ON DELETE CASCADE,
+  user_id BIGINT NOT NULL,
+  username TEXT,
+  joined_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (giveaway_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS giveaway_winners (
+  giveaway_id BIGINT NOT NULL REFERENCES giveaways(id) ON DELETE CASCADE,
+  user_id BIGINT NOT NULL,
+  username TEXT,
+  PRIMARY KEY (giveaway_id, user_id)
+);
+
+-- Викторины
+CREATE TABLE IF NOT EXISTS quizzes (
+  poll_id TEXT PRIMARY KEY,
+  chat_id BIGINT NOT NULL,
+  message_id BIGINT,
+  question TEXT,
+  correct_option INTEGER,
+  topic TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS quiz_scores (
+  chat_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  username TEXT,
+  correct INTEGER DEFAULT 0,
+  total INTEGER DEFAULT 0,
+  PRIMARY KEY (chat_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS quiz_answers (
+  poll_id TEXT NOT NULL,
+  user_id BIGINT NOT NULL,
+  PRIMARY KEY (poll_id, user_id)
 );

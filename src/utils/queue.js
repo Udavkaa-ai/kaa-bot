@@ -3,8 +3,8 @@ const chatQueues = new Map();
 function enqueue(chatId, fn) {
   const prev = chatQueues.get(chatId) || Promise.resolve();
   const next = prev.then(fn).catch(err => {
-    console.error(`[QUEUE] chat=${chatId}: ${err.message}`);
-    if (err.stack) console.error(err.stack);
+    console.error(`[QUEUE] chat=${chatId}: ${err?.message || err}`);
+    if (err?.stack) console.error(err.stack);
   });
   chatQueues.set(chatId, next);
   // Очистка старых цепочек
