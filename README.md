@@ -47,13 +47,13 @@ npm start
    - `TAVILY_KEY` — с [tavily.com](https://tavily.com) (1000 запросов бесплатно)
    - `DATABASE_URL` — нажми **Reference** → выбери `Postgres.DATABASE_URL`
 5. **Deploy** — Railway сам соберёт по `Dockerfile`
-6. После первого запуска посмотри логи — должно появиться `🐍 Каа запущен`
+6. После первого запуска посмотри логи — должно появиться `🐍 Дух запущен`
 
 ### Опциональные переменные
 
 ```env
-BOT_NAME=Каа                              # как тебя зовут
-BOT_TRIGGER=каа,kaa,удав,udav             # слова на которые откликается в группах
+BOT_NAME=Дух                                       # как тебя зовут
+BOT_TRIGGER=дух,духи,духа,духу,spirit,duh          # слова на которые откликается в группах (можно переопределить per-chat через /trigger)
 CLAUDE_MODEL=anthropic/claude-sonnet-4.6  # модель Claude
 FALLBACK_MODELS=google/gemini-2.5-flash,meta-llama/llama-3.3-70b-instruct:free
 AUTO_REVIVE=true                          # оживлять мёртвые чаты

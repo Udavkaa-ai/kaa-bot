@@ -21,8 +21,8 @@ const config = {
   // Telegram
   botToken: process.env.BOT_TOKEN,
   adminId: process.env.ADMIN_ID ? parseInt(process.env.ADMIN_ID, 10) : null,
-  botName: process.env.BOT_NAME || 'Каа',
-  botTriggers: (process.env.BOT_TRIGGER || 'каа,kaa,удав,udav')
+  botName: process.env.BOT_NAME || 'Дух',
+  botTriggers: (process.env.BOT_TRIGGER || 'дух,духи,духа,духу,spirit,duh')
     .toLowerCase().split(',').map(s => s.trim()).filter(Boolean),
 
   // БД

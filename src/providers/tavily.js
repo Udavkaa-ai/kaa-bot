@@ -18,7 +18,7 @@ function needsSearch(text) {
 
 function extractQuery(text) {
   let q = text;
-  q = q.replace(/^(каа|удав|kaa|udav)[,!\s]+/i, '');
+  q = q.replace(/^(дух|духи|spirit|duh)[,!\s]+/i, '');
   const phrases = [
     'последние новости про', 'последние новости о', 'последние новости',
     'расскажи про', 'расскажи о',
