@@ -1,17 +1,23 @@
 {
   "name": "kaa-bot",
-  "version": "1.0.0",
-  "description": "Telegram bot — Удав Каа",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Умный Telegram-бот: Claude Sonnet 4.6, долговременная память, vision, voice, audio",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "migrate": "node src/db/migrate.js"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.66.0",
-    "dotenv": "^16.4.5"
-  }
+    "openai": "^4.77.0",
+    "pg": "^8.13.1",
+    "pgvector": "^0.2.0",
+    "dotenv": "^16.4.7",
+    "lodash.debounce": "^4.0.8"
+  },
+  "license": "ISC"
 }
