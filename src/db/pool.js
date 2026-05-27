@@ -13,12 +13,13 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
 });
 
-pool.on('connect', async (client) => {
-  try {
-    await pgvector.registerType(client);
-  } catch (err) {
-    console.error('[DB] pgvector registerType failed:', err.message);
-  }
+let vectorReady = false;
+
+pool.on('connect', (client) => {
+  if (!vectorReady) return;
+  pgvector.registerType(client).catch((err) => {
+    console.error('[DB] pgvector registerType failed on new connection:', err.message);
+  });
 });
 
 pool.on('error', (err) => {
@@ -30,10 +31,23 @@ async function query(sql, params) {
 }
 
 async function migrate() {
-  const schemaPath = path.join(__dirname, 'schema.sql');
-  const sql = fs.readFileSync(schemaPath, 'utf8');
-  await pool.query(sql);
-  console.log('[DB] Схема применена');
+  const client = await pool.connect();
+  try {
+    try {
+      await client.query('CREATE EXTENSION IF NOT EXISTS vector');
+      await pgvector.registerType(client);
+      vectorReady = true;
+      console.log('[DB] pgvector готов');
+    } catch (err) {
+      console.error('[DB] pgvector недоступен — embeddings/memory отключаются:', err.message);
+    }
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    const sql = fs.readFileSync(schemaPath, 'utf8');
+    await client.query(sql);
+    console.log('[DB] Схема применена');
+  } finally {
+    client.release();
+  }
 }
 
 async function close() {
