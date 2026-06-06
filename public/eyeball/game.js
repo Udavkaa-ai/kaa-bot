@@ -6,301 +6,406 @@
     tg.ready();
     tg.expand();
     try {
-      tg.setHeaderColor('#0a0d18');
-      tg.setBackgroundColor('#0a0d18');
+      tg.setHeaderColor('#f5f3ef');
+      tg.setBackgroundColor('#f5f3ef');
     } catch (_) {}
   }
 
-  const RANGE = 1800;
-  const HIT_THRESHOLD_PCT = 5;
-  const MAX_ANGLE_DEG = 30;
   const SVG_NS = 'http://www.w3.org/2000/svg';
+  const HIT_THRESHOLD_PCT = 2; // streak hit if error <= 2% (mint zone)
+  const FRACTIONS = [
+    [1,2], [1,3], [2,3], [1,4], [3,4],
+    [1,5], [2,5], [3,5], [4,5],
+    [1,6], [5,6],
+    [3,8], [5,8],
+  ];
+  const PENTATONIC = [
+    220.00, 246.94, 277.18, 329.63, 369.99, // A3 B3 C#4 E4 F#4
+    440.00, 493.88, 554.37, 659.25, 739.99, // A4 B4 C#5 E5 F#5
+    880.00,                                  // A5
+  ];
 
   const $ = id => document.getElementById(id);
 
   const state = {
-    target: 0,
-    track: null,            // { p0:{x,y}, p1:{x,y}, dx, dy, len }
+    target: 0,          // 0..100 percent
+    taskText: '',
+    track: null,        // { x0, x1, y, len } in SVG coords
     best: null,
     avgSum: 0,
     streak: 0,
     rounds: 0,
     awaiting: false,
     showingResult: false,
-    rolling: false,
   };
 
-  function fmtNum(n) {
-    return String(Math.max(0, Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  // ---- Audio (tuning fork) ----
+  let audioCtx = null;
+  function ensureAudio() {
+    if (audioCtx) return audioCtx;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (_) {}
+    return audioCtx;
+  }
+  function playTone(freq, gainPeak = 0.18, duration = 0.7) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    try {
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = ctx.currentTime;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(gainPeak, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + duration + 0.05);
+    } catch (_) {}
+  }
+  function playAccuracyChord(accuracy) {
+    const idx = Math.min(PENTATONIC.length - 1,
+      Math.max(0, Math.floor((accuracy / 100) * (PENTATONIC.length - 1))));
+    const f = PENTATONIC[idx];
+    playTone(f, 0.18, 0.7);
+    // little harmony for high accuracy
+    if (accuracy >= 95) setTimeout(() => playTone(f * 1.5, 0.10, 0.6), 80);
+    if (accuracy >= 99.5) setTimeout(() => playTone(f * 2.0, 0.08, 0.8), 160);
   }
 
-  function viewport() {
+  // ---- Tasks ----
+  function pickTask() {
+    if (Math.random() < 0.45) {
+      const [n, d] = FRACTIONS[Math.floor(Math.random() * FRACTIONS.length)];
+      const pct = (n / d) * 100;
+      return {
+        html: `Отмерь <span class="accent">${n}/${d}</span>`,
+        percent: pct,
+      };
+    }
+    const p = 5 + Math.floor(Math.random() * 91);
     return {
-      w: window.innerWidth || document.documentElement.clientWidth,
-      h: window.innerHeight || document.documentElement.clientHeight,
+      html: `Поставь точку на <span class="accent">${p}%</span>`,
+      percent: p,
     };
   }
 
-  function clearSvg() {
-    const svg = $('track-svg');
-    while (svg.firstChild) svg.removeChild(svg.firstChild);
-    const vp = viewport();
-    svg.setAttribute('viewBox', `0 0 ${vp.w} ${vp.h}`);
-    svg.setAttribute('width', vp.w);
-    svg.setAttribute('height', vp.h);
-  }
-
+  // ---- Geometry ----
   function buildTrack() {
-    const vp = viewport();
-    const safeTop = Math.round(vp.h * 0.55);
-    const safeBottom = Math.round(vp.h - 200);
-    const cyBase = safeTop + Math.random() * Math.max(20, safeBottom - safeTop);
-
-    const minLen = Math.min(vp.w * 0.55, 240);
-    const maxLen = Math.min(vp.w * 0.78, 540);
-    const len = Math.round(minLen + Math.random() * (maxLen - minLen));
-
-    // angle: ±30° (random)
-    const angleDeg = (Math.random() * 2 - 1) * MAX_ANGLE_DEG;
-    const angleRad = angleDeg * Math.PI / 180;
-    const dx = Math.cos(angleRad);
-    const dy = Math.sin(angleRad);
-
-    // horizontal extent of the rotated line
-    const halfW = Math.abs(dx) * len / 2;
-    const halfH = Math.abs(dy) * len / 2;
-
-    // pick a center such that line stays within safe bounds
-    const padX = 30;
-    const cxMin = padX + halfW;
-    const cxMax = vp.w - padX - halfW;
-    const cx = cxMin + Math.random() * Math.max(0, cxMax - cxMin);
-    // adjust cy so vertical extent fits
-    let cy = cyBase;
-    if (cy - halfH < safeTop - 20) cy = safeTop - 20 + halfH;
-    if (cy + halfH > safeBottom + 20) cy = safeBottom + 20 - halfH;
-
-    const p0 = { x: cx - dx * len / 2, y: cy - dy * len / 2 };
-    const p1 = { x: cx + dx * len / 2, y: cy + dy * len / 2 };
-
-    state.track = { p0, p1, dx, dy, len, cx, cy, angleRad };
-    drawTrack();
+    const svg = $('track');
+    const rect = svg.getBoundingClientRect();
+    svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+    const padX = 20;
+    const x0 = padX;
+    const x1 = rect.width - padX;
+    const y = rect.height / 2;
+    state.track = { x0, x1, y, len: x1 - x0 };
+    drawIdleLine();
   }
 
-  function drawTrack() {
-    clearSvg();
-    const svg = $('track-svg');
-    const { p0, p1, dx, dy } = state.track;
+  function clearSvg() {
+    const svg = $('track');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+  }
 
-    // glow filter
+  function drawIdleLine() {
+    const svg = $('track');
+    clearSvg();
+    const { x0, x1, y } = state.track;
+
+    // soft glow filter
     const defs = document.createElementNS(SVG_NS, 'defs');
     defs.innerHTML = `
-      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="3" result="blur"/>
-        <feMerge>
-          <feMergeNode in="blur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
+      <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="0.6"/>
       </filter>
-      <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%"
-        gradientUnits="userSpaceOnUse"
-        x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}">
-        <stop offset="0%" stop-color="#cbd5e1" stop-opacity="0.4"/>
-        <stop offset="50%" stop-color="#f1f3f9" stop-opacity="0.95"/>
-        <stop offset="100%" stop-color="#cbd5e1" stop-opacity="0.4"/>
-      </linearGradient>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="2"/>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
     `;
     svg.appendChild(defs);
 
-    // The actual line — animated draw-in
+    // breathing main line (animate-in from center)
     const line = document.createElementNS(SVG_NS, 'line');
-    line.setAttribute('x1', p0.x);
-    line.setAttribute('y1', p0.y);
-    line.setAttribute('x2', p0.x);
-    line.setAttribute('y2', p0.y);
-    line.setAttribute('stroke', 'url(#lineGrad)');
-    line.setAttribute('stroke-width', '4');
+    const mid = (x0 + x1) / 2;
+    line.setAttribute('x1', mid);
+    line.setAttribute('y1', y);
+    line.setAttribute('x2', mid);
+    line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#1a1a1a');
+    line.setAttribute('stroke-width', '2.5');
     line.setAttribute('stroke-linecap', 'round');
     svg.appendChild(line);
 
-    // animate the line growing from center outward
-    const cx = (p0.x + p1.x) / 2;
-    const cy = (p0.y + p1.y) / 2;
-    line.setAttribute('x1', cx);
-    line.setAttribute('y1', cy);
-    line.setAttribute('x2', cx);
-    line.setAttribute('y2', cy);
+    // endpoint ticks
+    const tickLeft = document.createElementNS(SVG_NS, 'line');
+    tickLeft.setAttribute('x1', x0);
+    tickLeft.setAttribute('x2', x0);
+    tickLeft.setAttribute('y1', y - 7);
+    tickLeft.setAttribute('y2', y + 7);
+    tickLeft.setAttribute('stroke', '#1a1a1a');
+    tickLeft.setAttribute('stroke-width', '2');
+    tickLeft.setAttribute('opacity', '0');
+    svg.appendChild(tickLeft);
+
+    const tickRight = document.createElementNS(SVG_NS, 'line');
+    tickRight.setAttribute('x1', x1);
+    tickRight.setAttribute('x2', x1);
+    tickRight.setAttribute('y1', y - 7);
+    tickRight.setAttribute('y2', y + 7);
+    tickRight.setAttribute('stroke', '#1a1a1a');
+    tickRight.setAttribute('stroke-width', '2');
+    tickRight.setAttribute('opacity', '0');
+    svg.appendChild(tickRight);
 
     requestAnimationFrame(() => {
-      line.style.transition = 'all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)';
-      line.setAttribute('x1', p0.x);
-      line.setAttribute('y1', p0.y);
-      line.setAttribute('x2', p1.x);
-      line.setAttribute('y2', p1.y);
+      line.style.transition = 'all 0.55s cubic-bezier(0.22, 1, 0.36, 1)';
+      tickLeft.style.transition = 'opacity 0.4s ease-out 0.45s';
+      tickRight.style.transition = 'opacity 0.4s ease-out 0.45s';
+      line.setAttribute('x1', x0);
+      line.setAttribute('x2', x1);
+      tickLeft.setAttribute('opacity', '0.6');
+      tickRight.setAttribute('opacity', '0.6');
     });
 
-    // perpendicular "down" vector for labels
-    const px = -dy, py = dx;
-    const lblOffset = 22;
-
-    const lbl0 = document.createElementNS(SVG_NS, 'text');
-    lbl0.setAttribute('x', p0.x + px * lblOffset);
-    lbl0.setAttribute('y', p0.y + py * lblOffset + 4);
-    lbl0.setAttribute('text-anchor', 'middle');
-    lbl0.setAttribute('fill', '#4a5067');
-    lbl0.setAttribute('font-size', '11');
-    lbl0.setAttribute('font-family', 'inherit');
-    lbl0.setAttribute('font-weight', '500');
-    lbl0.setAttribute('letter-spacing', '1');
-    lbl0.textContent = '0';
-    svg.appendChild(lbl0);
-
-    const lblMax = document.createElementNS(SVG_NS, 'text');
-    lblMax.setAttribute('x', p1.x + px * lblOffset);
-    lblMax.setAttribute('y', p1.y + py * lblOffset + 4);
-    lblMax.setAttribute('text-anchor', 'middle');
-    lblMax.setAttribute('fill', '#4a5067');
-    lblMax.setAttribute('font-size', '11');
-    lblMax.setAttribute('font-family', 'inherit');
-    lblMax.setAttribute('font-weight', '500');
-    lblMax.setAttribute('letter-spacing', '1');
-    lblMax.textContent = fmtNum(RANGE);
-    svg.appendChild(lblMax);
-
-    state.svgRefs = { line, lbl0, lblMax };
+    state.svgRefs = { line, tickLeft, tickRight };
   }
 
-  function drawMarkers(tapT) {
-    const svg = $('track-svg');
-    const { p0, dx, dy, len } = state.track;
-
-    // target marker
-    const tT = (state.target / RANGE) * len;
-    const tx = p0.x + dx * tT;
-    const ty = p0.y + dy * tT;
-
-    const targetMarker = document.createElementNS(SVG_NS, 'circle');
-    targetMarker.setAttribute('cx', tx);
-    targetMarker.setAttribute('cy', ty);
-    targetMarker.setAttribute('r', '0');
-    targetMarker.setAttribute('fill', '#fbbf24');
-    targetMarker.setAttribute('filter', 'url(#glow)');
-    svg.appendChild(targetMarker);
-
-    // user marker
-    const ux = p0.x + dx * tapT;
-    const uy = p0.y + dy * tapT;
-    const userMarker = document.createElementNS(SVG_NS, 'circle');
-    userMarker.setAttribute('cx', ux);
-    userMarker.setAttribute('cy', uy);
-    userMarker.setAttribute('r', '0');
-    userMarker.setAttribute('fill', '#22d3ee');
-    userMarker.setAttribute('filter', 'url(#glow)');
-    svg.appendChild(userMarker);
-
-    // connecting line between user tap and target (shows error)
-    const errLine = document.createElementNS(SVG_NS, 'line');
-    errLine.setAttribute('x1', ux);
-    errLine.setAttribute('y1', uy);
-    errLine.setAttribute('x2', ux);
-    errLine.setAttribute('y2', uy);
-    errLine.setAttribute('stroke', '#fbbf24');
-    errLine.setAttribute('stroke-width', '2');
-    errLine.setAttribute('stroke-dasharray', '3 3');
-    errLine.setAttribute('opacity', '0.5');
-    svg.appendChild(errLine);
-
-    requestAnimationFrame(() => {
-      targetMarker.style.transition = 'r 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)';
-      userMarker.style.transition = 'r 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s';
-      errLine.style.transition = 'all 0.4s ease-out 0.2s';
-      targetMarker.setAttribute('r', '9');
-      userMarker.setAttribute('r', '9');
-      errLine.setAttribute('x2', tx);
-      errLine.setAttribute('y2', ty);
-    });
+  function projectTap(clientX) {
+    const svg = $('track');
+    const rect = svg.getBoundingClientRect();
+    const localX = clientX - rect.left;
+    const { x0, x1 } = state.track;
+    let t = localX;
+    if (t < x0) t = x0;
+    if (t > x1) t = x1;
+    return t; // svg-local X
   }
 
-  function animateTargetReveal(finalValue) {
-    const el = $('target-num');
-    state.rolling = true;
-    el.classList.add('rolling');
-    el.classList.remove('settle');
+  function colorClassFor(error) {
+    if (error <= 2) return 'mint';
+    if (error <= 10) return 'amber';
+    return 'coral';
+  }
+  function colorFor(error) {
+    if (error <= 2) return '#10b981';
+    if (error <= 10) return '#f59e0b';
+    return '#ef4444';
+  }
+  function statusFor(accuracy) {
+    if (accuracy >= 99.5) return 'идеально';
+    if (accuracy >= 98) return 'глаз-алмаз';
+    if (accuracy >= 95) return 'почти безупречно';
+    if (accuracy >= 90) return 'очень близко';
+    if (accuracy >= 80) return 'хорошо';
+    if (accuracy >= 70) return 'сойдёт';
+    if (accuracy >= 50) return 'нужно сфокусироваться';
+    return 'мимо';
+  }
 
-    const start = performance.now();
-    const duration = 550;
-
-    function step(now) {
-      const elapsed = now - start;
-      if (elapsed < duration) {
-        // random flicker
-        const fake = Math.floor(50 + Math.random() * (RANGE - 100));
-        el.textContent = fmtNum(fake);
-        requestAnimationFrame(step);
-      } else {
-        el.textContent = fmtNum(finalValue);
-        el.classList.remove('rolling');
-        el.classList.add('settle');
-        setTimeout(() => el.classList.remove('settle'), 450);
-        state.rolling = false;
-      }
+  function ripple(tapX, tapY) {
+    const svg = $('track');
+    // two concentric circles + horizontal wave along line
+    for (let i = 0; i < 2; i++) {
+      const c = document.createElementNS(SVG_NS, 'circle');
+      c.setAttribute('cx', tapX);
+      c.setAttribute('cy', tapY);
+      c.setAttribute('r', 4);
+      c.setAttribute('fill', 'none');
+      c.setAttribute('stroke', '#1a1a1a');
+      c.setAttribute('stroke-width', '1.2');
+      c.setAttribute('opacity', '0.6');
+      svg.appendChild(c);
+      requestAnimationFrame(() => {
+        c.style.transition = `all ${0.55 + i * 0.25}s ease-out`;
+        c.setAttribute('r', 55 + i * 25);
+        c.setAttribute('opacity', '0');
+      });
+      setTimeout(() => c.remove(), 1200);
     }
-    requestAnimationFrame(step);
+  }
+
+  function sparkles(x, y) {
+    const svg = $('track');
+    const n = 14;
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * Math.PI * 2 + Math.random() * 0.3;
+      const dist = 28 + Math.random() * 30;
+      const s = document.createElementNS(SVG_NS, 'circle');
+      s.setAttribute('cx', x);
+      s.setAttribute('cy', y);
+      s.setAttribute('r', 1.6);
+      s.setAttribute('fill', '#10b981');
+      s.setAttribute('filter', 'url(#glow)');
+      svg.appendChild(s);
+      requestAnimationFrame(() => {
+        s.style.transition = `all ${0.7 + Math.random() * 0.4}s cubic-bezier(0.22, 1, 0.36, 1)`;
+        s.setAttribute('cx', x + Math.cos(angle) * dist);
+        s.setAttribute('cy', y + Math.sin(angle) * dist);
+        s.setAttribute('r', 0);
+      });
+      setTimeout(() => s.remove(), 1300);
+    }
+  }
+
+  function drawResult(tapX, accuracy, error) {
+    const svg = $('track');
+    const { x0, x1, y, len } = state.track;
+    const targetX = x0 + (state.target / 100) * len;
+    const errColor = colorFor(error);
+
+    // 1. Faded baseline line
+    const base = document.createElementNS(SVG_NS, 'line');
+    base.setAttribute('x1', x0);
+    base.setAttribute('y1', y);
+    base.setAttribute('x2', x1);
+    base.setAttribute('y2', y);
+    base.setAttribute('stroke', '#1a1a1a');
+    base.setAttribute('stroke-width', '1');
+    base.setAttribute('opacity', '0.18');
+    svg.appendChild(base);
+
+    // 2. Filled segment from 0 to user tap
+    const filled = document.createElementNS(SVG_NS, 'line');
+    filled.setAttribute('x1', x0);
+    filled.setAttribute('y1', y);
+    filled.setAttribute('x2', x0);
+    filled.setAttribute('y2', y);
+    filled.setAttribute('stroke', '#1a1a1a');
+    filled.setAttribute('stroke-width', '2.5');
+    filled.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(filled);
+
+    // 3. Error zone (between user and target) — colored
+    const errZone = document.createElementNS(SVG_NS, 'line');
+    const errLow = Math.min(tapX, targetX);
+    const errHigh = Math.max(tapX, targetX);
+    errZone.setAttribute('x1', errLow);
+    errZone.setAttribute('y1', y);
+    errZone.setAttribute('x2', errLow);
+    errZone.setAttribute('y2', y);
+    errZone.setAttribute('stroke', errColor);
+    errZone.setAttribute('stroke-width', '5');
+    errZone.setAttribute('stroke-linecap', 'round');
+    errZone.setAttribute('opacity', '0.55');
+    svg.appendChild(errZone);
+
+    // 4. Ideal target tick mark
+    const tick = document.createElementNS(SVG_NS, 'line');
+    tick.setAttribute('x1', targetX);
+    tick.setAttribute('x2', targetX);
+    tick.setAttribute('y1', y - 14);
+    tick.setAttribute('y2', y + 14);
+    tick.setAttribute('stroke', '#1a1a1a');
+    tick.setAttribute('stroke-width', '2');
+    tick.setAttribute('opacity', '0');
+    svg.appendChild(tick);
+
+    // 5. User dot
+    const dot = document.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('cx', tapX);
+    dot.setAttribute('cy', y);
+    dot.setAttribute('r', 0);
+    dot.setAttribute('fill', errColor);
+    dot.setAttribute('filter', 'url(#glow)');
+    svg.appendChild(dot);
+
+    // 6. endpoint ticks
+    const tickLeft = document.createElementNS(SVG_NS, 'line');
+    tickLeft.setAttribute('x1', x0); tickLeft.setAttribute('x2', x0);
+    tickLeft.setAttribute('y1', y - 7); tickLeft.setAttribute('y2', y + 7);
+    tickLeft.setAttribute('stroke', '#1a1a1a');
+    tickLeft.setAttribute('stroke-width', '2');
+    tickLeft.setAttribute('opacity', '0.6');
+    svg.appendChild(tickLeft);
+    const tickRight = document.createElementNS(SVG_NS, 'line');
+    tickRight.setAttribute('x1', x1); tickRight.setAttribute('x2', x1);
+    tickRight.setAttribute('y1', y - 7); tickRight.setAttribute('y2', y + 7);
+    tickRight.setAttribute('stroke', '#1a1a1a');
+    tickRight.setAttribute('stroke-width', '2');
+    tickRight.setAttribute('opacity', '0.6');
+    svg.appendChild(tickRight);
+
+    requestAnimationFrame(() => {
+      filled.style.transition = 'all 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+      errZone.style.transition = 'all 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s';
+      tick.style.transition = 'opacity 0.35s ease-out 0.25s';
+      dot.style.transition = 'r 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      filled.setAttribute('x2', tapX);
+      errZone.setAttribute('x1', errLow);
+      errZone.setAttribute('x2', errHigh);
+      tick.setAttribute('opacity', '1');
+      dot.setAttribute('r', '8');
+    });
   }
 
   function newRound() {
-    state.target = Math.round(50 + Math.random() * (RANGE - 100));
-    $('range-label').textContent = `от 0 до ${fmtNum(RANGE)}`;
+    const task = pickTask();
+    state.target = task.percent;
+    state.taskText = task.html;
+
+    const taskEl = $('task');
+    taskEl.classList.remove('appear');
+    void taskEl.offsetWidth;
+    taskEl.innerHTML = task.html;
+    taskEl.classList.add('appear');
+
     $('result').classList.add('hidden');
     $('share').classList.add('hidden');
     $('hint').classList.remove('hidden');
+    $('next-hint').classList.add('hidden');
 
     buildTrack();
-    animateTargetReveal(state.target);
 
     state.awaiting = true;
     state.showingResult = false;
   }
 
-  function projectTapOntoTrack(tx, ty) {
-    const { p0, dx, dy, len } = state.track;
-    const vx = tx - p0.x;
-    const vy = ty - p0.y;
-    // projection of (vx,vy) onto (dx,dy)
-    let t = vx * dx + vy * dy;
-    if (t < 0) t = 0;
-    if (t > len) t = len;
-    return t;
-  }
-
   function evaluateTap(clientX, clientY) {
-    if (state.rolling) return; // ignore taps during number reveal
-    const t = projectTapOntoTrack(clientX, clientY);
-    const { len } = state.track;
-    const userValue = Math.round((t / len) * RANGE);
-    const error = Math.abs(userValue - state.target);
-    const errorPct = (error / RANGE) * 100;
-    const accuracy = Math.max(0, 100 - errorPct);
+    const tapX = projectTap(clientX);
+    const { x0, len, y } = state.track;
+    const userPercent = ((tapX - x0) / len) * 100;
+    const error = Math.abs(userPercent - state.target);
+    const accuracy = Math.max(0, 100 - error);
 
     state.rounds++;
     state.avgSum += accuracy;
     state.best = state.best === null ? accuracy : Math.max(state.best, accuracy);
-    const isHit = errorPct <= HIT_THRESHOLD_PCT;
+    const isHit = error <= HIT_THRESHOLD_PCT;
     const prevStreak = state.streak;
     if (isHit) state.streak++;
     else state.streak = 0;
 
-    drawMarkers(t);
-    showResult(accuracy, error);
-    updateStatsUI(state.streak > prevStreak);
+    // ripple wave from tap
+    ripple(tapX, y);
 
+    // draw result viz
+    setTimeout(() => drawResult(tapX, accuracy, error), 220);
+
+    // text result
+    setTimeout(() => showResult(accuracy, error), 380);
+
+    // sound
+    playAccuracyChord(accuracy);
+
+    // haptic + sparkles for perfect
     if (tg && tg.HapticFeedback) {
       try {
-        if (accuracy >= 99) tg.HapticFeedback.notificationOccurred('success');
-        else if (accuracy >= 85) tg.HapticFeedback.impactOccurred('light');
+        if (accuracy >= 99.5) tg.HapticFeedback.notificationOccurred('success');
+        else if (accuracy >= 90) tg.HapticFeedback.impactOccurred('light');
         else tg.HapticFeedback.impactOccurred('rigid');
       } catch (_) {}
     }
+    if (accuracy >= 99.5) {
+      setTimeout(() => sparkles(tapX, y), 350);
+    }
+
+    updateStatsUI(state.streak > prevStreak);
 
     state.awaiting = false;
     state.showingResult = true;
@@ -308,34 +413,32 @@
   }
 
   function showResult(accuracy, error) {
-    let emoji = '🫣', label = 'мимо';
-    if (accuracy >= 99.5) { emoji = '🎯'; label = 'точно в цель'; }
-    else if (accuracy >= 95) { emoji = '🔥'; label = 'отлично'; }
-    else if (accuracy >= 85) { emoji = '👁'; label = 'хорошо'; }
-    else if (accuracy >= 70) { emoji = '🙂'; label = 'неплохо'; }
-
-    $('result-emoji').textContent = emoji;
-    $('result-text').innerHTML =
-      `<span style="color:#22d3ee">${accuracy.toFixed(1)}%</span>` +
-      ` <span style="color:#4a5067">·</span> ` +
-      `<span style="color:#8b91a8">${label}, ±${error}</span>`;
-
+    const cls = colorClassFor(error);
+    $('accuracy').innerHTML =
+      `<span class="acc-num ${cls}">${accuracy.toFixed(1)}%</span>`;
+    $('status').textContent = statusFor(accuracy);
     $('result').classList.remove('hidden');
     $('hint').classList.add('hidden');
     $('share').classList.remove('hidden');
+    $('next-hint').classList.remove('hidden');
   }
 
-  function updateStatsUI(streakIncreased) {
+  function updateStatsUI(streakBumped) {
     $('best').textContent = state.best === null ? '—' : state.best.toFixed(1) + '%';
     $('avg').textContent = state.rounds === 0 ? '—' : (state.avgSum / state.rounds).toFixed(1) + '%';
     $('streak').textContent = state.streak;
     $('rounds').textContent = state.rounds;
-
-    if (streakIncreased) {
+    if (streakBumped) {
       const el = document.querySelector('.streak-stat');
       el.classList.remove('bump');
       void el.offsetWidth;
       el.classList.add('bump');
+    }
+    // record
+    if (state.best !== null) {
+      $('record').textContent = `рекорд сессии — ${state.best.toFixed(1)}%`;
+    } else {
+      $('record').innerHTML = '&nbsp;';
     }
   }
 
@@ -348,17 +451,7 @@
     newRound();
   }
 
-  function ripple(x, y) {
-    const r = document.createElement('div');
-    r.className = 'ripple';
-    r.style.left = x + 'px';
-    r.style.top = y + 'px';
-    document.body.appendChild(r);
-    setTimeout(() => r.remove(), 500);
-  }
-
   // ---- API sync ----
-
   let pendingFinish = false;
   let finishTimer = null;
   function queueFinishSync() {
@@ -385,14 +478,11 @@
   }
 
   async function share() {
-    if (!tg || !tg.initData) {
-      alert('Открой через бота');
-      return;
-    }
+    if (!tg || !tg.initData) { alert('Открой через бота'); return; }
     const btn = $('share');
     btn.disabled = true;
-    const oldHtml = btn.innerHTML;
-    btn.innerHTML = '<span>⏳</span> Отправляю...';
+    const old = btn.textContent;
+    btn.textContent = 'Отправляю...';
     try {
       const resp = await fetch('/api/eyeball/share', {
         method: 'POST',
@@ -407,29 +497,26 @@
       const data = await resp.json();
       if (data && data.ok) {
         if (tg.HapticFeedback) try { tg.HapticFeedback.notificationOccurred('success'); } catch (_) {}
-        btn.innerHTML = '<span>✓</span> Отправлено';
+        btn.textContent = 'Отправлено ✓';
         setTimeout(() => { try { tg.close(); } catch (_) {} }, 600);
       } else {
         btn.disabled = false;
-        btn.innerHTML = oldHtml;
+        btn.textContent = old;
         if (tg.showAlert) tg.showAlert('Не получилось отправить');
       }
     } catch (err) {
       btn.disabled = false;
-      btn.innerHTML = oldHtml;
+      btn.textContent = old;
       if (tg && tg.showAlert) tg.showAlert('Ошибка сети');
     }
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+    return String(s).replace(/[<>&"]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;' }[c]));
   }
 
   async function showLeaderboard() {
-    if (!tg || !tg.initData) {
-      alert('Открой через бота');
-      return;
-    }
+    if (!tg || !tg.initData) { alert('Открой через бота'); return; }
     $('lb-list').innerHTML = '<div class="lb-loading">Загружаю...</div>';
     $('lb-modal').classList.remove('hidden');
     try {
@@ -439,13 +526,13 @@
       if (!data.top || data.top.length === 0) {
         list.innerHTML = '<div class="lb-empty">Пока никто не играл</div>';
       } else {
-        const medals = ['🥇', '🥈', '🥉'];
+        const medals = ['1', '2', '3'];
         list.innerHTML = data.top.map((r, i) => {
-          const m = medals[i] || `${i + 1}.`;
+          const m = medals[i] || (i + 1);
           return `<div class="lb-row">
             <span class="lb-pos">${m}</span>
             <span class="lb-name">${escapeHtml(r.username)}</span>
-            <span class="lb-score">🔥 ${r.best_streak} · ${Number(r.best_accuracy).toFixed(1)}%</span>
+            <span class="lb-score">streak ${r.best_streak} · ${Number(r.best_accuracy).toFixed(1)}%</span>
           </div>`;
         }).join('');
       }
@@ -455,14 +542,18 @@
   }
 
   // ---- Event handlers ----
-
   function onTap(ev) {
     const t = ev.target;
-    if (t.closest('button') || t.closest('.modal') || t.closest('header')) return;
+    if (t.closest('button') || t.closest('.modal')) return;
+    // Activate audio on first user interaction
+    ensureAudio();
+
     const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
     const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
     if (state.awaiting) {
-      ripple(cx, cy);
+      // Only count tap inside line zone
+      const svgRect = $('track').getBoundingClientRect();
+      if (cy < svgRect.top - 40 || cy > svgRect.bottom + 40) return;
       evaluateTap(cx, cy);
     } else if (state.showingResult) {
       newRound();
@@ -475,7 +566,6 @@
     if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('light'); } catch (_) {}
     resetSession();
   });
-
   $('share').addEventListener('click', (e) => { e.stopPropagation(); share(); });
   $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(); });
   $('lb-close').addEventListener('click', (e) => {
@@ -487,9 +577,13 @@
   window.addEventListener('resize', () => {
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (state.awaiting) newRound();
+      // rebuild track at new size
+      if (state.awaiting) buildTrack();
     }, 200);
   });
 
-  resetSession();
+  // wait for layout, then start
+  requestAnimationFrame(() => {
+    setTimeout(resetSession, 50);
+  });
 })();
