@@ -45,7 +45,11 @@ function start() {
   app.use('/eyeball', express.static(path.join(__dirname, '..', '..', 'public', 'eyeball'), {
     maxAge: '5m',
     extensions: ['html'],
+    index: 'index.html',
   }));
+
+  app.get('/', (req, res) => res.redirect(302, '/eyeball/'));
+  app.get('/eyeball', (req, res) => res.redirect(302, '/eyeball/'));
 
   app.get('/healthz', (req, res) => res.type('text/plain').send('ok'));
 
