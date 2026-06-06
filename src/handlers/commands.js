@@ -81,8 +81,8 @@ async function handleCommand(bot, msg) {
       await quiz.handleLeaderboard(bot, msg);
       return true;
 
-    case '/eyeball':
-    case '/глазомер':
+    case '/sec':
+    case '/сечение':
       return handleEyeball(bot, msg, args);
 
     case '/trigger':
@@ -132,7 +132,7 @@ function buildHelp() {
     '/giveaway <приз> [время|до N] [winners=K] — розыгрыш',
     '/quiz [тема] — викторина с вариантами ответа',
     '/leaderboard — топ викторины в этом чате',
-    '/eyeball — игра на глазомер (мини-приложение), /eyeball top — топ чата',
+    '/sec — Сечение, игра на глазомер. /sec top — топ чата',
     '/trigger <слова> — задать как меня звать в этом чате (только админ)',
     '/triggers — показать текущие триггеры',
     config.imagesEnabled ? '/draw <описание> — нарисую' : null,
@@ -345,7 +345,7 @@ async function handleEyeball(bot, msg, args) {
   if (sub === 'top' || sub === 'топ') {
     const top = await eyeballRepo.topByStreak(chatId, 10);
     if (top.length === 0) {
-      await sendSafe(bot, chatId, 'В этом чате ещё никто не играл. Команда: /eyeball', { reply_to_message_id: msg.message_id });
+      await sendSafe(bot, chatId, 'В этом чате ещё никто не играл. Команда: /sec', { reply_to_message_id: msg.message_id });
       return true;
     }
     const medals = ['🥇', '🥈', '🥉'];
@@ -355,7 +355,7 @@ async function handleEyeball(bot, msg, args) {
       const acc = Number(r.best_accuracy).toFixed(1);
       return `${m} ${name} — 🔥 ${r.best_streak} · ${acc}%`;
     });
-    await sendSafe(bot, chatId, `👁 Глазомер — топ чата:\n\n${lines.join('\n')}`,
+    await sendSafe(bot, chatId, `Сечение — топ чата:\n\n${lines.join('\n')}`,
       { reply_to_message_id: msg.message_id });
     return true;
   }
@@ -373,12 +373,12 @@ async function handleEyeball(bot, msg, args) {
 
   const url = `https://t.me/${config.botUsername}/${config.eyeballAppShortName}?startapp=${chatId}`;
   await bot.sendMessage(chatId,
-    '👁 Глазомер — проверь свой глаз.\nЛучший streak попадает в топ чата.',
+    'Сечение — проверь глазомер.\nПопадание ≤2% по линии засчитывается в streak. Лучшая серия за сессию → в топ чата.',
     {
       reply_to_message_id: msg.message_id,
       reply_markup: {
         inline_keyboard: [[
-          { text: '▶ Играть', url },
+          { text: 'Открыть', url },
         ]],
       },
     });
