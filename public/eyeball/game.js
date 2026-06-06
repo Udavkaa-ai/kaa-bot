@@ -210,23 +210,93 @@
 
   function ripple(tapX, tapY) {
     const svg = $('track');
-    // two concentric circles + horizontal wave along line
-    for (let i = 0; i < 2; i++) {
+    const { x0, x1, y } = state.track;
+
+    // 1. Маленькая «капля» в точке касания — мгновенный bounce
+    const drop = document.createElementNS(SVG_NS, 'circle');
+    drop.setAttribute('cx', tapX);
+    drop.setAttribute('cy', y);
+    drop.setAttribute('r', '0');
+    drop.setAttribute('fill', '#1a1a1a');
+    svg.appendChild(drop);
+    requestAnimationFrame(() => {
+      drop.style.transition = 'r 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      drop.setAttribute('r', '6');
+      setTimeout(() => {
+        drop.style.transition = 'r 0.32s ease-out, opacity 0.32s ease-out';
+        drop.setAttribute('r', '1.5');
+        drop.setAttribute('opacity', '0');
+      }, 180);
+    });
+    setTimeout(() => drop.remove(), 700);
+
+    // 2. Концентрические круги — 4 штуки с разной задержкой и шириной,
+    // как круги от капли на воде
+    const rings = [
+      { r: 45, dur: 0.55, delay: 0,    width: 1.6, opacity: 0.7 },
+      { r: 70, dur: 0.75, delay: 0.08, width: 1.2, opacity: 0.55 },
+      { r: 95, dur: 0.95, delay: 0.18, width: 0.9, opacity: 0.4 },
+      { r: 120,dur: 1.15, delay: 0.30, width: 0.7, opacity: 0.28 },
+    ];
+    rings.forEach(cfg => {
       const c = document.createElementNS(SVG_NS, 'circle');
       c.setAttribute('cx', tapX);
       c.setAttribute('cy', tapY);
-      c.setAttribute('r', 4);
+      c.setAttribute('r', '3');
       c.setAttribute('fill', 'none');
       c.setAttribute('stroke', '#1a1a1a');
-      c.setAttribute('stroke-width', '1.2');
-      c.setAttribute('opacity', '0.6');
+      c.setAttribute('stroke-width', cfg.width);
+      c.setAttribute('opacity', cfg.opacity);
       svg.appendChild(c);
       requestAnimationFrame(() => {
-        c.style.transition = `all ${0.55 + i * 0.25}s ease-out`;
-        c.setAttribute('r', 55 + i * 25);
+        c.style.transition = `r ${cfg.dur}s ease-out ${cfg.delay}s, opacity ${cfg.dur}s ease-out ${cfg.delay}s, stroke-width ${cfg.dur}s ease-out ${cfg.delay}s`;
+        c.setAttribute('r', cfg.r);
         c.setAttribute('opacity', '0');
+        c.setAttribute('stroke-width', cfg.width * 0.3);
       });
-      setTimeout(() => c.remove(), 1200);
+      setTimeout(() => c.remove(), (cfg.dur + cfg.delay) * 1000 + 120);
+    });
+
+    // 3. Бегущие волны по самой струне в обе стороны
+    [-1, 1].forEach(dir => {
+      const endX = dir < 0 ? x0 : x1;
+      const distance = Math.abs(endX - tapX);
+      const dur = Math.max(0.4, distance / 700);
+
+      const wave = document.createElementNS(SVG_NS, 'circle');
+      wave.setAttribute('cx', tapX);
+      wave.setAttribute('cy', y);
+      wave.setAttribute('r', '5');
+      wave.setAttribute('fill', '#1a1a1a');
+      wave.setAttribute('opacity', '0.85');
+      svg.appendChild(wave);
+      requestAnimationFrame(() => {
+        wave.style.transition = `cx ${dur}s ease-out, r ${dur}s ease-out, opacity ${dur}s ease-out`;
+        wave.setAttribute('cx', endX);
+        wave.setAttribute('r', '1');
+        wave.setAttribute('opacity', '0');
+      });
+      setTimeout(() => wave.remove(), dur * 1000 + 100);
+    });
+
+    // 4. Кратковременный «дрожащий» glow вокруг всей струны
+    if (state.svgRefs && state.svgRefs.line) {
+      const glow = document.createElementNS(SVG_NS, 'line');
+      glow.setAttribute('x1', x0);
+      glow.setAttribute('y1', y);
+      glow.setAttribute('x2', x1);
+      glow.setAttribute('y2', y);
+      glow.setAttribute('stroke', '#1a1a1a');
+      glow.setAttribute('stroke-width', '7');
+      glow.setAttribute('stroke-linecap', 'round');
+      glow.setAttribute('opacity', '0.22');
+      svg.insertBefore(glow, state.svgRefs.line);
+      requestAnimationFrame(() => {
+        glow.style.transition = 'opacity 0.55s ease-out, stroke-width 0.55s ease-out';
+        glow.setAttribute('opacity', '0');
+        glow.setAttribute('stroke-width', '14');
+      });
+      setTimeout(() => glow.remove(), 700);
     }
   }
 
