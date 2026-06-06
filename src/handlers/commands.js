@@ -373,7 +373,7 @@ async function handleEyeball(bot, msg, args) {
 
   const url = `https://t.me/${config.botUsername}/${config.eyeballAppShortName}?startapp=${chatId}`;
   await bot.sendMessage(chatId,
-    'Сечение — проверь глазомер.\nПопадание ≤2% по линии засчитывается в streak. Лучшая серия за сессию → в топ чата.',
+    'Сечение — проверь глазомер.\nПопадание с точностью ≤5% засчитывается в streak. Лучшая серия за сессию → в топ чата.',
     {
       reply_to_message_id: msg.message_id,
       reply_markup: {

@@ -12,7 +12,7 @@
   }
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
-  const HIT_THRESHOLD_PCT = 2; // streak hit if error <= 2% (mint zone)
+  const HIT_THRESHOLD_PCT = 5; // streak hit if error <= 5%
   const FRACTIONS = [
     [1,2], [1,3], [2,3], [1,4], [3,4],
     [1,5], [2,5], [3,5], [4,5],
