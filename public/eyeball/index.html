@@ -26,12 +26,12 @@
       <div class="task" id="task">&nbsp;</div>
     </div>
 
-    <div class="line-zone">
+    <div class="line-zone" id="line-zone">
       <svg id="track" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>
     </div>
 
     <div class="feedback">
-      <div class="hint" id="hint">коснись линии</div>
+      <div class="hint" id="hint">нажми, тяни по линии, отпусти</div>
       <div class="result hidden" id="result">
         <div class="accuracy" id="accuracy">—</div>
         <div class="status" id="status">—</div>
@@ -39,19 +39,27 @@
     </div>
 
     <div class="actions" id="actions">
-      <button id="share" class="btn hidden" type="button">Поделиться</button>
+      <button id="next-btn" class="btn btn-next hidden" type="button">Дальше →</button>
+      <button id="share" class="btn ghost hidden" type="button">Поделиться</button>
       <button id="leaderboard-btn" class="btn ghost" type="button">Топ чата</button>
-    </div>
-
-    <div class="next-hint hidden" id="next-hint">
-      <span class="next-arrow">↑</span>
-      <span>тапни — следующая задача</span>
     </div>
   </main>
 
   <div id="lb-modal" class="modal hidden">
     <div class="modal-content">
       <h3>Топ чата</h3>
+
+      <div class="lb-me hidden" id="lb-me">
+        <div class="lb-me-row">
+          <div class="lb-me-stat"><div class="lb-me-lbl">лучшая</div><div class="lb-me-val" id="me-best">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">серия</div><div class="lb-me-val" id="me-streak">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">раундов</div><div class="lb-me-val" id="me-rounds">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">место</div><div class="lb-me-val" id="me-rank">—</div></div>
+        </div>
+        <div class="lb-me-compare" id="lb-me-compare"></div>
+      </div>
+
+      <div class="lb-divider"></div>
       <div id="lb-list" class="lb-list"></div>
       <button id="lb-close" class="btn" type="button">Закрыть</button>
     </div>

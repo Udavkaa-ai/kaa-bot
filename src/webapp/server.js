@@ -77,7 +77,11 @@ function start() {
   app.get('/api/eyeball/leaderboard', authMiddleware, async (req, res) => {
     try {
       if (!req.tgChatId) return res.status(400).json({ error: 'no_chat' });
-      const top = await eyeballRepo.topByStreak(req.tgChatId, 10);
+      const [top, me, agg] = await Promise.all([
+        eyeballRepo.topByStreak(req.tgChatId, 10),
+        eyeballRepo.getUserStats(req.tgChatId, req.tgUser.id),
+        eyeballRepo.getChatAggregates(req.tgChatId),
+      ]);
       res.json({
         top: top.map(r => ({
           user_id: String(r.user_id),
@@ -86,6 +90,19 @@ function start() {
           best_accuracy: Number(r.best_accuracy),
           rounds: r.rounds,
         })),
+        me: me ? {
+          best_streak: me.best_streak,
+          best_accuracy: Number(me.best_accuracy),
+          rounds: me.rounds,
+          rank: Number(me.rank),
+        } : null,
+        aggregates: {
+          avg_acc: Number(agg.avg_acc),
+          max_acc: Number(agg.max_acc),
+          max_streak: Number(agg.max_streak),
+          total_rounds: Number(agg.total_rounds),
+          players: Number(agg.players),
+        },
       });
     } catch (err) {
       console.error('[EYEBALL LB]', err.message);

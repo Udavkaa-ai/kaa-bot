@@ -235,28 +235,67 @@ main {
   color: var(--ink);
 }
 
-.next-hint {
-  text-align: center;
-  font-size: 12px;
-  letter-spacing: 2.5px;
-  color: var(--ink);
-  opacity: 0.7;
-  padding-bottom: 14px;
-  margin-top: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.next-arrow {
-  display: inline-block;
-  font-size: 16px;
+/* Primary "Дальше" button — must stand out */
+.btn-next {
+  font-size: 14px;
+  padding: 12px 28px;
   font-weight: 600;
-  animation: arrowBob 1.6s ease-in-out infinite;
+  letter-spacing: 1px;
+  animation: nextPulse 1.8s ease-in-out infinite;
 }
-@keyframes arrowBob {
-  0%, 100% { transform: translateY(0); opacity: 0.5; }
-  50%      { transform: translateY(-5px); opacity: 1; }
+@keyframes nextPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.0); }
+  50%      { box-shadow: 0 0 0 8px rgba(26, 26, 26, 0.06); }
+}
+
+/* Personal stats panel inside leaderboard */
+.lb-me {
+  background: rgba(26, 26, 26, 0.04);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.lb-me-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.lb-me-stat {
+  text-align: center;
+}
+.lb-me-lbl {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--ink-soft);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+.lb-me-val {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.lb-me-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lb-me-compare .cmp {
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.lb-me-compare .cmp .frac {
+  color: var(--ink);
+  font-weight: 600;
+}
+.lb-divider {
+  height: 1px;
+  background: var(--ink-faint);
+  margin: 4px 0 14px;
 }
 
 /* MODAL */
@@ -311,6 +350,19 @@ main {
   font-size: 13px;
 }
 .lb-row:last-child { border-bottom: none; }
+.lb-row.mine {
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: 8px;
+  border-bottom-color: transparent;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.lb-row.mine .lb-name::after {
+  content: ' · ты';
+  color: var(--mint);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
 .lb-pos {
   width: 26px;
   color: var(--ink-soft);

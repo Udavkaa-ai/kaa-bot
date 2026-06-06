@@ -426,8 +426,8 @@
 
     $('result').classList.add('hidden');
     $('share').classList.add('hidden');
+    $('next-btn').classList.add('hidden');
     $('hint').classList.remove('hidden');
-    $('next-hint').classList.add('hidden');
 
     buildTrack();
 
@@ -435,8 +435,7 @@
     state.showingResult = false;
   }
 
-  function evaluateTap(clientX, clientY) {
-    const tapX = projectTap(clientX);
+  function evaluateAtSvgX(tapX) {
     const { x0, len, y } = state.track;
     const userPercent = ((tapX - x0) / len) * 100;
     const error = Math.abs(userPercent - state.target);
@@ -495,7 +494,7 @@
     $('result').classList.remove('hidden');
     $('hint').classList.add('hidden');
     $('share').classList.remove('hidden');
-    $('next-hint').classList.remove('hidden');
+    $('next-btn').classList.remove('hidden');
   }
 
   function updateStatsUI(streakBumped) {
@@ -593,21 +592,29 @@
   async function showLeaderboard() {
     if (!tg || !tg.initData) { alert('Открой через бота'); return; }
     $('lb-list').innerHTML = '<div class="lb-loading">Загружаю...</div>';
+    $('lb-me').classList.add('hidden');
     $('lb-modal').classList.remove('hidden');
     try {
       const resp = await fetch('/api/eyeball/leaderboard?initData=' + encodeURIComponent(tg.initData));
       const data = await resp.json();
+
+      // Personal stats panel
+      renderPersonalStats(data.me, data.aggregates);
+
+      // Top list
       const list = $('lb-list');
       if (!data.top || data.top.length === 0) {
         list.innerHTML = '<div class="lb-empty">Пока никто не играл</div>';
       } else {
         const medals = ['1', '2', '3'];
+        const meId = tg.initDataUnsafe && tg.initDataUnsafe.user && String(tg.initDataUnsafe.user.id);
         list.innerHTML = data.top.map((r, i) => {
           const m = medals[i] || (i + 1);
-          return `<div class="lb-row">
+          const mine = meId && r.user_id === meId ? ' mine' : '';
+          return `<div class="lb-row${mine}">
             <span class="lb-pos">${m}</span>
             <span class="lb-name">${escapeHtml(r.username)}</span>
-            <span class="lb-score">streak ${r.best_streak} · ${Number(r.best_accuracy).toFixed(1)}%</span>
+            <span class="lb-score">серия ${r.best_streak} · ${Number(r.best_accuracy).toFixed(1)}%</span>
           </div>`;
         }).join('');
       }
@@ -616,26 +623,181 @@
     }
   }
 
-  // ---- Event handlers ----
-  function onTap(ev) {
-    const t = ev.target;
-    if (t.closest('button') || t.closest('.modal')) return;
-    // Activate audio on first user interaction
-    ensureAudio();
+  function renderPersonalStats(me, agg) {
+    if (!me || me.rounds === 0) {
+      $('lb-me').classList.add('hidden');
+      return;
+    }
+    $('me-best').textContent = me.best_accuracy.toFixed(1) + '%';
+    $('me-streak').textContent = me.best_streak;
+    $('me-rounds').textContent = me.rounds;
+    $('me-rank').textContent = '#' + me.rank;
 
-    const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
-    const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
-    if (state.awaiting) {
-      // Only count tap inside line zone
-      const svgRect = $('track').getBoundingClientRect();
-      if (cy < svgRect.top - 40 || cy > svgRect.bottom + 40) return;
-      evaluateTap(cx, cy);
-    } else if (state.showingResult) {
-      newRound();
+    const compareEl = $('lb-me-compare');
+    const lines = buildComparisons(me, agg);
+    compareEl.innerHTML = lines.map(t => `<div class="cmp">${t}</div>`).join('');
+    $('lb-me').classList.remove('hidden');
+  }
+
+  // Pick the closest simple fraction n/d in (0,1] with denom up to maxDenom.
+  function simpleFraction(value, maxDenom = 9) {
+    if (!isFinite(value) || value <= 0) return null;
+    if (value >= 0.995) return { n: 1, d: 1 };
+    let best = null, bestErr = Infinity;
+    for (let d = 2; d <= maxDenom; d++) {
+      const n = Math.round(value * d);
+      if (n < 1 || n >= d) continue;
+      const err = Math.abs(value - n / d);
+      if (err < bestErr) { bestErr = err; best = { n, d }; }
+    }
+    return best;
+  }
+
+  function buildComparisons(me, agg) {
+    const lines = [];
+    if (!me || !agg) return lines;
+
+    // vs леадер по точности
+    if (agg.max_acc > 0 && me.best_accuracy > 0) {
+      if (me.best_accuracy + 0.05 >= agg.max_acc) {
+        lines.push('Ты — лидер чата 👑');
+      } else {
+        const f = simpleFraction(me.best_accuracy / agg.max_acc);
+        if (f && !(f.n === 1 && f.d === 1)) {
+          lines.push(`Ты на <span class="frac">${f.n}/${f.d}</span> от лидера`);
+        }
+      }
+    }
+
+    // vs средний игрок (по точности)
+    if (agg.players >= 2 && agg.avg_acc > 0) {
+      const delta = me.best_accuracy - agg.avg_acc;
+      if (delta > 0.5) {
+        const ratio = delta / agg.avg_acc;
+        if (ratio >= 0.95) {
+          lines.push('Ты <span class="frac">вдвое</span> точнее среднего');
+        } else {
+          const f = simpleFraction(ratio);
+          if (f) lines.push(`Ты на <span class="frac">${f.n}/${f.d}</span> точнее среднего`);
+        }
+      } else if (delta < -0.5) {
+        const ratio = Math.min(0.95, -delta / agg.avg_acc);
+        const f = simpleFraction(ratio);
+        if (f) lines.push(`До среднего: ещё <span class="frac">${f.n}/${f.d}</span>`);
+      }
+    }
+
+    // серия vs рекорд серии
+    if (agg.max_streak > 0 && me.best_streak >= 0) {
+      if (me.best_streak >= agg.max_streak && me.best_streak > 0) {
+        lines.push('Твоя серия — рекорд чата 🔥');
+      } else if (me.best_streak > 0) {
+        const f = simpleFraction(me.best_streak / agg.max_streak);
+        if (f) lines.push(`Серия — <span class="frac">${f.n}/${f.d}</span> от рекорда`);
+      }
+    }
+    return lines;
+  }
+
+  // ---- Pointer aim (drag-to-aim) ----
+  let aimState = null;
+  let aimDot = null;
+  let aimGuide = null;
+
+  function showAimMarker(svgX) {
+    const svg = $('track');
+    const { y } = state.track;
+    aimGuide = document.createElementNS(SVG_NS, 'line');
+    aimGuide.setAttribute('x1', svgX);
+    aimGuide.setAttribute('x2', svgX);
+    aimGuide.setAttribute('y1', y - 20);
+    aimGuide.setAttribute('y2', y + 20);
+    aimGuide.setAttribute('stroke', '#1a1a1a');
+    aimGuide.setAttribute('stroke-width', '1');
+    aimGuide.setAttribute('opacity', '0.25');
+    svg.appendChild(aimGuide);
+
+    aimDot = document.createElementNS(SVG_NS, 'circle');
+    aimDot.setAttribute('cx', svgX);
+    aimDot.setAttribute('cy', y);
+    aimDot.setAttribute('r', '0');
+    aimDot.setAttribute('fill', '#1a1a1a');
+    aimDot.setAttribute('filter', 'url(#glow)');
+    svg.appendChild(aimDot);
+    requestAnimationFrame(() => {
+      aimDot.style.transition = 'r 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      aimDot.setAttribute('r', '9');
+    });
+  }
+  function updateAimMarker(svgX) {
+    if (aimGuide) {
+      aimGuide.setAttribute('x1', svgX);
+      aimGuide.setAttribute('x2', svgX);
+    }
+    if (aimDot) aimDot.setAttribute('cx', svgX);
+  }
+  function removeAimMarker() {
+    if (aimGuide) { aimGuide.remove(); aimGuide = null; }
+    if (aimDot) { aimDot.remove(); aimDot = null; }
+  }
+
+  function clientToSvgX(clientX) {
+    const svg = $('track');
+    const rect = svg.getBoundingClientRect();
+    const localX = clientX - rect.left;
+    const { x0, x1 } = state.track;
+    return Math.min(x1, Math.max(x0, localX));
+  }
+
+  function inAimZone(clientY) {
+    const svg = $('track');
+    const rect = svg.getBoundingClientRect();
+    const pad = 80; // generous touch zone above/below the line
+    return clientY >= rect.top - pad && clientY <= rect.bottom + pad;
+  }
+
+  function onPointerDown(e) {
+    if (!state.awaiting) return;
+    if (e.target.closest('button') || e.target.closest('.modal') || e.target.closest('header')) return;
+    if (!inAimZone(e.clientY)) return;
+    ensureAudio();
+    const svgX = clientToSvgX(e.clientX);
+    showAimMarker(svgX);
+    aimState = { pointerId: e.pointerId, svgX };
+    if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('light'); } catch (_) {}
+    try { e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  }
+  function onPointerMove(e) {
+    if (!aimState || aimState.pointerId !== e.pointerId) return;
+    const svgX = clientToSvgX(e.clientX);
+    if (Math.abs(svgX - aimState.svgX) > 0.5) {
+      updateAimMarker(svgX);
+      aimState.svgX = svgX;
     }
   }
-  document.addEventListener('click', onTap);
+  function onPointerUp(e) {
+    if (!aimState || aimState.pointerId !== e.pointerId) return;
+    const finalX = aimState.svgX;
+    removeAimMarker();
+    aimState = null;
+    evaluateAtSvgX(finalX);
+  }
+  function onPointerCancel() {
+    if (!aimState) return;
+    removeAimMarker();
+    aimState = null;
+  }
+  document.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+  document.addEventListener('pointercancel', onPointerCancel);
 
+  $('next-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('light'); } catch (_) {}
+    if (state.showingResult) newRound();
+  });
   $('reset').addEventListener('click', (e) => {
     e.stopPropagation();
     if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('light'); } catch (_) {}
