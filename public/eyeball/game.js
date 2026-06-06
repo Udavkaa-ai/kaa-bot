@@ -426,7 +426,7 @@
 
     $('result').classList.add('hidden');
     $('share').classList.add('hidden');
-    $('next-btn').classList.add('hidden');
+    $('next-hint').classList.add('hidden');
     $('hint').classList.remove('hidden');
 
     buildTrack();
@@ -494,7 +494,7 @@
     $('result').classList.remove('hidden');
     $('hint').classList.add('hidden');
     $('share').classList.remove('hidden');
-    $('next-btn').classList.remove('hidden');
+    $('next-hint').classList.remove('hidden');
   }
 
   function updateStatsUI(streakBumped) {
@@ -757,10 +757,16 @@
   }
 
   function onPointerDown(e) {
-    if (!state.awaiting) return;
     if (e.target.closest('button') || e.target.closest('.modal') || e.target.closest('header')) return;
-    if (!inAimZone(e.clientY)) return;
     ensureAudio();
+
+    // Если результат показан — тап в любом месте запускает новую попытку
+    if (state.showingResult) {
+      newRound();
+      return;
+    }
+    if (!state.awaiting) return;
+
     const svgX = clientToSvgX(e.clientX);
     showAimMarker(svgX);
     aimState = { pointerId: e.pointerId, svgX };
@@ -793,11 +799,6 @@
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('pointercancel', onPointerCancel);
 
-  $('next-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('light'); } catch (_) {}
-    if (state.showingResult) newRound();
-  });
   $('reset').addEventListener('click', (e) => {
     e.stopPropagation();
     if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('light'); } catch (_) {}
