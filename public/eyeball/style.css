@@ -6,6 +6,7 @@
   --line: #1a1a1a;
   --mint: #10b981;
   --amber: #f59e0b;
+  --orange: #fb923c;
   --coral: #ef4444;
 }
 
@@ -190,8 +191,12 @@ main {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-.accuracy .acc-num.mint { color: var(--mint); }
+.accuracy .acc-num.mint {
+  color: var(--mint);
+  text-shadow: 0 0 24px rgba(16, 185, 129, 0.35);
+}
 .accuracy .acc-num.amber { color: var(--amber); }
+.accuracy .acc-num.orange { color: var(--orange); }
 .accuracy .acc-num.coral { color: var(--coral); }
 .status {
   margin-top: 6px;

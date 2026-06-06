@@ -189,22 +189,22 @@
 
   function colorClassFor(error) {
     if (error <= 2) return 'mint';
-    if (error <= 10) return 'amber';
+    if (error <= 5) return 'amber';
+    if (error <= 10) return 'orange';
     return 'coral';
   }
   function colorFor(error) {
-    if (error <= 2) return '#10b981';
-    if (error <= 10) return '#f59e0b';
-    return '#ef4444';
+    if (error <= 2) return '#10b981';   // mint — глаз-алмаз
+    if (error <= 5) return '#f59e0b';   // amber — попадание (streak)
+    if (error <= 10) return '#fb923c';  // orange — почти
+    return '#ef4444';                    // coral — мимо
   }
-  function statusFor(accuracy) {
-    if (accuracy >= 99.5) return 'идеально';
-    if (accuracy >= 98) return 'глаз-алмаз';
-    if (accuracy >= 95) return 'почти безупречно';
-    if (accuracy >= 90) return 'очень близко';
-    if (accuracy >= 80) return 'хорошо';
-    if (accuracy >= 70) return 'сойдёт';
-    if (accuracy >= 50) return 'нужно сфокусироваться';
+  function statusFor(error) {
+    if (error <= 0.3) return 'идеально';
+    if (error <= 2)   return 'глаз-алмаз';
+    if (error <= 5)   return 'точное попадание';
+    if (error <= 10)  return 'почти';
+    if (error <= 20)  return 'нужно сфокусироваться';
     return 'мимо';
   }
 
@@ -300,12 +300,11 @@
     }
   }
 
-  function sparkles(x, y) {
+  function sparkles(x, y, count = 14, spread = 30) {
     const svg = $('track');
-    const n = 14;
-    for (let i = 0; i < n; i++) {
-      const angle = (i / n) * Math.PI * 2 + Math.random() * 0.3;
-      const dist = 28 + Math.random() * 30;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
+      const dist = 22 + Math.random() * spread;
       const s = document.createElementNS(SVG_NS, 'circle');
       s.setAttribute('cx', x);
       s.setAttribute('cy', y);
@@ -466,13 +465,19 @@
     // haptic + sparkles for perfect
     if (tg && tg.HapticFeedback) {
       try {
-        if (accuracy >= 99.5) tg.HapticFeedback.notificationOccurred('success');
-        else if (accuracy >= 90) tg.HapticFeedback.impactOccurred('light');
+        if (error <= 2) tg.HapticFeedback.notificationOccurred('success');
+        else if (error <= 5) tg.HapticFeedback.impactOccurred('light');
+        else if (error <= 10) tg.HapticFeedback.impactOccurred('medium');
         else tg.HapticFeedback.impactOccurred('rigid');
       } catch (_) {}
     }
-    if (accuracy >= 99.5) {
-      setTimeout(() => sparkles(tapX, y), 350);
+    // Глаз-алмаз (ошибка ≤2%) — отдельная похвала с искрами,
+    // у идеального попадания (≤0.3%) — больше искр и второй залп
+    if (error <= 0.3) {
+      setTimeout(() => sparkles(tapX, y, 18, 38), 350);
+      setTimeout(() => sparkles(tapX, y, 10, 24), 600);
+    } else if (error <= 2) {
+      setTimeout(() => sparkles(tapX, y, 10, 26), 350);
     }
 
     updateStatsUI(state.streak > prevStreak);
@@ -486,7 +491,7 @@
     const cls = colorClassFor(error);
     $('accuracy').innerHTML =
       `<span class="acc-num ${cls}">${accuracy.toFixed(1)}%</span>`;
-    $('status').textContent = statusFor(accuracy);
+    $('status').textContent = statusFor(error);
     $('result').classList.remove('hidden');
     $('hint').classList.add('hidden');
     $('share').classList.remove('hidden');
