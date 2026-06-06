@@ -9,6 +9,7 @@ const messagesRepo = require('./db/repo/messages');
 const claude = require('./providers/claude');
 const giveaway = require('./handlers/giveaway');
 const quiz = require('./handlers/quiz');
+const webapp = require('./webapp/server');
 const { moscowHour } = require('./utils/time');
 
 // Глобальные хендлеры — чтобы любая ошибка попала в логи Railway
@@ -34,6 +35,17 @@ async function main() {
 
   const bot = new TelegramBot(config.botToken, { polling: true });
   await handlers.init(bot);
+
+  try {
+    const me = await bot.getMe();
+    config.botUsername = me.username;
+  } catch (err) {
+    console.error('[BOT] getMe failed:', err.message);
+  }
+
+  webapp.setBot(bot);
+  webapp.start();
+
   console.log(`🐍 ${config.botName} запущен`);
 
   bot.on('message', (msg) => {

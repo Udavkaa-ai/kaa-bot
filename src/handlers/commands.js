@@ -11,6 +11,7 @@ const { withTyping } = require('../utils/typing');
 const { humorReply } = require('../ai/errorHumor');
 const giveaway = require('./giveaway');
 const quiz = require('./quiz');
+const eyeballRepo = require('../db/repo/eyeball');
 
 function isAdmin(msg) {
   return config.adminId && msg.from?.id === config.adminId;
@@ -80,6 +81,10 @@ async function handleCommand(bot, msg) {
       await quiz.handleLeaderboard(bot, msg);
       return true;
 
+    case '/eyeball':
+    case '/глазомер':
+      return handleEyeball(bot, msg, args);
+
     case '/trigger':
     case '/триггер':
       return handleTrigger(bot, msg, args);
@@ -127,6 +132,7 @@ function buildHelp() {
     '/giveaway <приз> [время|до N] [winners=K] — розыгрыш',
     '/quiz [тема] — викторина с вариантами ответа',
     '/leaderboard — топ викторины в этом чате',
+    '/eyeball — игра на глазомер (мини-приложение), /eyeball top — топ чата',
     '/trigger <слова> — задать как меня звать в этом чате (только админ)',
     '/triggers — показать текущие триггеры',
     config.imagesEnabled ? '/draw <описание> — нарисую' : null,
@@ -329,6 +335,53 @@ async function handleShowTriggers(bot, msg) {
     await sendSafe(bot, chatId, `Триггеры: ${config.botTriggers.join(', ')}\nИзменить: /trigger <слова через запятую>`,
       { reply_to_message_id: msg.message_id });
   }
+  return true;
+}
+
+async function handleEyeball(bot, msg, args) {
+  const chatId = msg.chat.id;
+  const sub = (args[0] || '').toLowerCase();
+
+  if (sub === 'top' || sub === 'топ') {
+    const top = await eyeballRepo.topByStreak(chatId, 10);
+    if (top.length === 0) {
+      await sendSafe(bot, chatId, 'В этом чате ещё никто не играл. Команда: /eyeball', { reply_to_message_id: msg.message_id });
+      return true;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    const lines = top.map((r, i) => {
+      const m = medals[i] || `${i + 1}.`;
+      const name = r.username || ('id' + r.user_id);
+      const acc = Number(r.best_accuracy).toFixed(1);
+      return `${m} ${name} — 🔥 ${r.best_streak} · ${acc}%`;
+    });
+    await sendSafe(bot, chatId, `👁 Глазомер — топ чата:\n\n${lines.join('\n')}`,
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  if (!config.botUsername) {
+    try {
+      const me = await bot.getMe();
+      config.botUsername = me.username;
+    } catch (_) {}
+  }
+  if (!config.botUsername) {
+    await sendSafe(bot, chatId, 'Не получилось узнать имя бота.', { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  const url = `https://t.me/${config.botUsername}/${config.eyeballAppShortName}?startapp=${chatId}`;
+  await bot.sendMessage(chatId,
+    '👁 Глазомер — проверь свой глаз.\nЛучший streak попадает в топ чата.',
+    {
+      reply_to_message_id: msg.message_id,
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '▶ Играть', url },
+        ]],
+      },
+    });
   return true;
 }
 

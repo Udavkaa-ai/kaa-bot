@@ -12,12 +12,13 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.22.2",
+    "lodash.debounce": "^4.0.8",
     "node-telegram-bot-api": "^0.66.0",
     "openai": "^4.77.0",
     "pg": "^8.13.1",
-    "pgvector": "^0.2.0",
-    "dotenv": "^16.4.7",
-    "lodash.debounce": "^4.0.8"
+    "pgvector": "^0.2.0"
   },
   "license": "ISC"
 }

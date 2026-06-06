@@ -173,3 +173,16 @@ CREATE TABLE IF NOT EXISTS quiz_answers (
   user_id BIGINT NOT NULL,
   PRIMARY KEY (poll_id, user_id)
 );
+
+-- Eyeball mini-app
+CREATE TABLE IF NOT EXISTS eyeball_scores (
+  chat_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  username TEXT,
+  best_streak INTEGER DEFAULT 0,
+  best_accuracy REAL DEFAULT 0,
+  rounds INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (chat_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_eyeball_top ON eyeball_scores (chat_id, best_streak DESC, best_accuracy DESC);

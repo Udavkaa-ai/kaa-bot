@@ -72,6 +72,11 @@ const config = {
   adminMustBeInGroup: process.env.ADMIN_MUST_BE_IN_GROUP === 'true',
   typingDelay: parseInt(process.env.TYPING_DELAY_MS, 10) || 600,
   semanticRecallK: parseInt(process.env.SEMANTIC_RECALL_K, 10) || 5,
+
+  // Mini-app (eyeball game)
+  webappPort: parseInt(process.env.PORT, 10) || 3000,
+  eyeballAppShortName: process.env.EYEBALL_APP || 'eyeball',
+  botUsername: null,
 };
 
 // Базовая валидация

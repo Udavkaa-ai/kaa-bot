@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>eyeball</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="logo">eyeball<span class="dot">.</span></div>
+    <div class="stats">
+      <div class="row"><span class="label">BEST</span><span id="best">—</span></div>
+      <div class="row"><span class="label">AVG</span><span id="avg">—</span></div>
+      <div class="row"><span class="label">STREAK</span><span id="streak">0</span></div>
+      <div class="row"><span class="label">ROUNDS</span><span id="rounds">0</span></div>
+      <button id="reset" class="reset" type="button">RESET</button>
+    </div>
+  </header>
+
+  <main id="stage">
+    <div id="target-num" class="target-num"></div>
+    <div id="range-label" class="range-label"></div>
+
+    <div id="track" class="track"></div>
+    <div id="track-min" class="endlabel">0</div>
+    <div id="track-max" class="endlabel"></div>
+    <div id="marker-target" class="marker target-marker hidden"></div>
+    <div id="marker-user" class="marker user-marker hidden"></div>
+  </main>
+
+  <footer>
+    <div id="result" class="result hidden"></div>
+    <div class="hint" id="hint">ТКНИ В ЛИНИЮ</div>
+    <div class="actions">
+      <button id="share" class="btn primary hidden" type="button">📤 Поделиться</button>
+      <button id="leaderboard-btn" class="btn ghost" type="button">🏆 Топ</button>
+    </div>
+    <div class="credit">inspired by eyeball.rory.codes</div>
+  </footer>
+
+  <div id="lb-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>🏆 Топ чата</h3>
+      <div id="lb-list"></div>
+      <button id="lb-close" type="button">Закрыть</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
