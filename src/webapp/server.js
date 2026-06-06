@@ -103,10 +103,10 @@ function start() {
       const rounds = clampInt(req.body.rounds, 0, 99999);
       const name = userDisplay(u, true);
       const text =
-        `👁 ${name} — eyeball\n` +
-        `🔥 streak ${streak}\n` +
-        `🎯 best ${accuracy.toFixed(1)}%\n` +
-        `🎲 rounds ${rounds}`;
+        `Сечение · ${name}\n` +
+        `🔥 серия ${streak}\n` +
+        `🎯 лучшее ${accuracy.toFixed(1)}%\n` +
+        `🎲 раундов ${rounds}`;
       await botRef.sendMessage(req.tgChatId, text, { disable_notification: true });
       res.json({ ok: true });
     } catch (err) {
