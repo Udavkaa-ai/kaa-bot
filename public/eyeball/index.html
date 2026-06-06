@@ -3,48 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>eyeball</title>
+  <title>Глазомер</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="grain"></div>
+
   <header>
-    <div class="logo">eyeball<span class="dot">.</span></div>
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div class="brand-name">ГЛАЗОМЕР</div>
+    </div>
     <div class="stats">
-      <div class="row"><span class="label">BEST</span><span id="best">—</span></div>
-      <div class="row"><span class="label">AVG</span><span id="avg">—</span></div>
-      <div class="row"><span class="label">STREAK</span><span id="streak">0</span></div>
-      <div class="row"><span class="label">ROUNDS</span><span id="rounds">0</span></div>
-      <button id="reset" class="reset" type="button">RESET</button>
+      <div class="stat"><span class="stat-label">BEST</span><span class="stat-val" id="best">—</span></div>
+      <div class="stat"><span class="stat-label">AVG</span><span class="stat-val" id="avg">—</span></div>
+      <div class="stat streak-stat"><span class="stat-label">🔥 STREAK</span><span class="stat-val streak-val" id="streak">0</span></div>
+      <div class="stat"><span class="stat-label">ROUND</span><span class="stat-val" id="rounds">0</span></div>
+      <button id="reset" class="reset-btn" type="button">↺ RESET</button>
     </div>
   </header>
 
   <main id="stage">
-    <div id="target-num" class="target-num"></div>
-    <div id="range-label" class="range-label"></div>
+    <div class="prompt">
+      <div class="prompt-label" id="prompt-label">найди эту точку</div>
+      <div class="target-num" id="target-num">—</div>
+      <div class="range-label" id="range-label">от 0 до 1800</div>
+    </div>
 
-    <div id="track" class="track"></div>
-    <div id="track-min" class="endlabel">0</div>
-    <div id="track-max" class="endlabel"></div>
-    <div id="marker-target" class="marker target-marker hidden"></div>
-    <div id="marker-user" class="marker user-marker hidden"></div>
+    <svg id="track-svg" class="track-svg" xmlns="http://www.w3.org/2000/svg"></svg>
   </main>
 
   <footer>
-    <div id="result" class="result hidden"></div>
-    <div class="hint" id="hint">ТКНИ В ЛИНИЮ</div>
-    <div class="actions">
-      <button id="share" class="btn primary hidden" type="button">📤 Поделиться</button>
-      <button id="leaderboard-btn" class="btn ghost" type="button">🏆 Топ</button>
+    <div class="feedback" id="feedback">
+      <div class="hint" id="hint">тапни по линии</div>
+      <div class="result hidden" id="result">
+        <div class="result-emoji" id="result-emoji"></div>
+        <div class="result-text" id="result-text"></div>
+      </div>
     </div>
-    <div class="credit">inspired by eyeball.rory.codes</div>
+
+    <div class="actions">
+      <button id="share" class="btn btn-primary hidden" type="button">
+        <span>📨</span> Поделиться
+      </button>
+      <button id="leaderboard-btn" class="btn btn-ghost" type="button">
+        <span>🏆</span> Топ чата
+      </button>
+    </div>
   </footer>
 
   <div id="lb-modal" class="modal hidden">
     <div class="modal-content">
-      <h3>🏆 Топ чата</h3>
-      <div id="lb-list"></div>
-      <button id="lb-close" type="button">Закрыть</button>
+      <div class="modal-header">
+        <h3>Топ чата</h3>
+      </div>
+      <div id="lb-list" class="lb-list"></div>
+      <button id="lb-close" class="btn btn-primary" type="button">Закрыть</button>
     </div>
   </div>
 

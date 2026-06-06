@@ -15,8 +15,12 @@ function authMiddleware(req, res, next) {
   }
   req.tgUser = data.user;
   const sp = data.start_param;
-  req.tgChatId = sp ? parseInt(sp, 10) : null;
-  if (!Number.isFinite(req.tgChatId)) req.tgChatId = null;
+  let chatId = sp ? parseInt(sp, 10) : null;
+  if (!Number.isFinite(chatId)) chatId = null;
+  // Если мини-апп открыт без startapp (через меню-кнопку, прямой t.me/bot/app) —
+  // считаем что это приватный чат с юзером (chat_id = user.id).
+  if (chatId === null) chatId = data.user.id;
+  req.tgChatId = chatId;
   next();
 }
 
