@@ -65,8 +65,8 @@ async function callRest(path, body, modelForStats) {
   throw lastErr || new Error('Все Gemini ключи исчерпаны');
 }
 
-// Некоторые модели периодически deprecated. Пробуем основную, если не найдена — старые версии.
-const MULTIMODAL_FALLBACKS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+// Fallback только на актуальные модели 2.5 семейства (1.5/2.0 flash Google выключил).
+const MULTIMODAL_FALLBACKS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
 
 async function callWithModelFallback(primaryModel, buildBody) {
   const tried = new Set();
