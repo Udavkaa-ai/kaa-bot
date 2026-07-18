@@ -43,8 +43,14 @@ async function handleVoice(bot, msg) {
     if (!transcript && gemini.isAvailable()) {
       try {
         const base64 = buffer.toString('base64');
-        transcript = await gemini.describeAudio(base64, mimeType,
-          'Транскрибируй ДОСЛОВНО что сказано в этом аудио на языке оригинала. Верни только текст сказанного, без комментариев.');
+        const raw = await gemini.describeAudio(base64, mimeType,
+`Задача: транскрибировать голосовое сообщение.
+ПРАВИЛА:
+- Верни ТОЛЬКО то что сказано, слово в слово, на языке оригинала.
+- Не добавляй пояснений, эмоций, описаний, кавычек.
+- Не пиши "К сожалению", "Извините", "Не могу" — если не разобрал, верни ПУСТУЮ строку.
+- Не пиши "Пользователь сказал:" или "Говорящий сказал:" — просто сами слова.`);
+        transcript = raw;
         if (transcript) sttSource = 'gemini';
       } catch (err) {
         console.warn('[VOICE] Gemini тоже упал:', err.message);
@@ -53,12 +59,20 @@ async function handleVoice(bot, msg) {
       console.warn('[VOICE] GEMINI_KEY не задан — распознавать нечем');
     }
 
-    if (!transcript || transcript.length < 2) {
+    // Отсеиваем отказы вида "К сожалению, я не могу..." — их модель возвращает
+    // если не разобрала, и они бы пошли к Claude как якобы речь юзера.
+    if (transcript && looksLikeRefusal(transcript)) {
+      console.warn(`[VOICE] STT вернул отказ вместо текста: "${transcript.slice(0, 120)}"`);
+      transcript = null;
+    }
+
+    if (!transcript || transcript.trim().length < 2) {
       console.warn(`[VOICE] chat=${chatId} транскрипция пустая. groq=${groq.isAvailable()} gemini=${gemini.isAvailable()}`);
-      await sendSafe(bot, chatId, 'Не разобрал что сказано. Проверь ключи GROQ_KEY / GEMINI_KEY на Railway.', { reply_to_message_id: msg.message_id });
+      await sendSafe(bot, chatId, 'Не разобрал что сказано.', { reply_to_message_id: msg.message_id });
       return;
     }
 
+    transcript = transcript.trim();
     console.log(`[STT/${sttSource}] "${transcript.slice(0, 100)}"`);
 
     // 2. Сохраняем ЧИСТУЮ расшифровку — без пометки "(голосовым сообщением)",

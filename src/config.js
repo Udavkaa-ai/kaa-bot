@@ -23,6 +23,16 @@ function upgradeLegacyGeminiModel(name) {
   return name;
 }
 
+function upgradeLegacyEmbedModel(name) {
+  if (!name) return null;
+  const dead = /^(text-embedding-004|embedding-001|models\/text-embedding-004)$/i;
+  if (dead.test(name)) {
+    console.warn(`[CONFIG] Embedding-модель ${name} снята с обслуживания, использую gemini-embedding-001`);
+    return 'gemini-embedding-001';
+  }
+  return name;
+}
+
 const geminiKeys = collectKeys('GEMINI_KEY');
 const openrouterKeys = collectKeys('OPENROUTER_KEY');
 
@@ -51,12 +61,12 @@ const config = {
   // Легаси-имена gemini-1.5-* / gemini-2.0-* Google отключил — тихо апгрейдим.
   geminiVisionModel: upgradeLegacyGeminiModel(process.env.GEMINI_VISION_MODEL) || 'gemini-2.5-flash',
   geminiAudioModel: upgradeLegacyGeminiModel(process.env.GEMINI_AUDIO_MODEL) || 'gemini-2.5-flash',
-  geminiEmbedModel: process.env.GEMINI_EMBED_MODEL || 'text-embedding-004',
+  geminiEmbedModel: upgradeLegacyEmbedModel(process.env.GEMINI_EMBED_MODEL) || 'gemini-embedding-001',
   embedDim: 768,
 
   // STT
   groqKey: process.env.GROQ_KEY,
-  groqSttModel: process.env.GROQ_STT_MODEL || 'whisper-large-v3-turbo',
+  groqSttModel: process.env.GROQ_STT_MODEL || 'whisper-large-v3',
 
   // Поиск
   tavilyKey: process.env.TAVILY_KEY,

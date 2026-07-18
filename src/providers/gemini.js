@@ -130,16 +130,34 @@ async function describeAudio(base64, mimeType, userPrompt) {
 async function embed(text) {
   if (!text) return null;
   const truncated = String(text).slice(0, 8000);
+  // gemini-embedding-001 по умолчанию отдаёт 3072 dims, но у нас БД vector(768).
+  // Просим 768 через output_dimensionality.
   const body = {
     model: `models/${config.geminiEmbedModel}`,
     content: { parts: [{ text: truncated }] },
+    outputDimensionality: config.embedDim || 768,
   };
-  const data = await callRest(
-    `models/${config.geminiEmbedModel}:embedContent`,
-    body,
-    config.geminiEmbedModel
-  );
-  return data.embedding?.values || null;
+  try {
+    const data = await callRest(
+      `models/${config.geminiEmbedModel}:embedContent`,
+      body,
+      config.geminiEmbedModel
+    );
+    return data.embedding?.values || null;
+  } catch (err) {
+    // Если основная embed-модель мертва, пробуем gemini-embedding-001 напрямую.
+    if (/404|NOT_FOUND|not found/i.test(err.message) && config.geminiEmbedModel !== 'gemini-embedding-001') {
+      console.warn(`[GEMINI] embed model ${config.geminiEmbedModel} мертва, пробую gemini-embedding-001`);
+      const fallbackBody = {
+        model: 'models/gemini-embedding-001',
+        content: { parts: [{ text: truncated }] },
+        outputDimensionality: config.embedDim || 768,
+      };
+      const data = await callRest('models/gemini-embedding-001:embedContent', fallbackBody, 'gemini-embedding-001');
+      return data.embedding?.values || null;
+    }
+    throw err;
+  }
 }
 
 function blockNoneSafety() {
