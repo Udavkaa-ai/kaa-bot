@@ -27,30 +27,39 @@ async function handleVoice(bot, msg) {
 
     console.log(`[VOICE] chat=${chatId} ${userName}: ${Math.round(buffer.length / 1024)}KB ${voice.duration}s`);
 
-    // 1. Транскрипция через Groq Whisper
+    // 1. Транскрипция: Groq Whisper приоритетно, fallback на Gemini
     let transcript = null;
+    let sttSource = null;
     if (groq.isAvailable()) {
       try {
         transcript = await groq.transcribe(buffer, filename, mimeType);
+        if (transcript) sttSource = 'groq';
       } catch (err) {
-        console.warn('[VOICE] Groq failed, fallback Gemini:', err.message);
+        console.warn('[VOICE] Groq упал, попробую Gemini:', err.message);
       }
+    } else {
+      console.warn('[VOICE] GROQ_KEY не задан — сразу Gemini');
     }
     if (!transcript && gemini.isAvailable()) {
       try {
         const base64 = buffer.toString('base64');
-        transcript = await gemini.describeAudio(base64, mimeType, 'Расшифруй дословно что сказано в этом аудио. Если несколько голосов — отметь.');
+        transcript = await gemini.describeAudio(base64, mimeType,
+          'Транскрибируй ДОСЛОВНО что сказано в этом аудио на языке оригинала. Верни только текст сказанного, без комментариев.');
+        if (transcript) sttSource = 'gemini';
       } catch (err) {
-        console.warn('[VOICE] Gemini failed:', err.message);
+        console.warn('[VOICE] Gemini тоже упал:', err.message);
       }
+    } else if (!transcript) {
+      console.warn('[VOICE] GEMINI_KEY не задан — распознавать нечем');
     }
 
     if (!transcript || transcript.length < 2) {
-      await sendSafe(bot, chatId, 'Не разобрал что сказано.', { reply_to_message_id: msg.message_id });
+      console.warn(`[VOICE] chat=${chatId} транскрипция пустая. groq=${groq.isAvailable()} gemini=${gemini.isAvailable()}`);
+      await sendSafe(bot, chatId, 'Не разобрал что сказано. Проверь ключи GROQ_KEY / GEMINI_KEY на Railway.', { reply_to_message_id: msg.message_id });
       return;
     }
 
-    console.log(`[STT] "${transcript.slice(0, 100)}"`);
+    console.log(`[STT/${sttSource}] "${transcript.slice(0, 100)}"`);
 
     // 2. Сохраняем расшифровку как обычное сообщение
     const messageText = `(голосовым сообщением) ${transcript}`;

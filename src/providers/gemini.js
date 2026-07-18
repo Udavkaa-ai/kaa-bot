@@ -80,12 +80,12 @@ async function callWithModelFallback(primaryModel, buildBody) {
       return data;
     } catch (err) {
       lastErr = err;
-      // если 404/модель не найдена — пробуем следующую
-      if (/404|NOT_FOUND|not found|deprecated|invalid.*model/i.test(err.message)) {
-        console.warn(`[GEMINI] Модель ${model} недоступна, пробую следующую`);
-        continue;
-      }
-      throw err;
+      // Quota — уже обработана внутри callRest (перебор ключей). Дальше бесполезно.
+      if (/quota|RESOURCE_EXHAUSTED/i.test(err.message)) throw err;
+      // На любую другую ошибку модели (404, 400 unsupported, deprecated, permission) —
+      // пробуем следующую в цепочке fallback.
+      console.warn(`[GEMINI] Модель ${model} не отработала (${err.message.slice(0, 120)}), пробую следующую`);
+      continue;
     }
   }
   throw lastErr || new Error('Все модели Gemini недоступны');

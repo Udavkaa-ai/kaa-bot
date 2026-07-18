@@ -12,6 +12,17 @@ function collectKeys(prefix) {
   return keys;
 }
 
+// Google убрал старые модели — заменяем на живой аналог, чтобы не было 404 на старте.
+function upgradeLegacyGeminiModel(name) {
+  if (!name) return null;
+  const dead = /^gemini-(1\.5|2\.0)-(flash|pro)(-\w+)?$/i;
+  if (dead.test(name)) {
+    console.warn(`[CONFIG] Модель ${name} снята с обслуживания, использую gemini-2.5-flash`);
+    return 'gemini-2.5-flash';
+  }
+  return name;
+}
+
 const geminiKeys = collectKeys('GEMINI_KEY');
 const openrouterKeys = collectKeys('OPENROUTER_KEY');
 
@@ -37,8 +48,9 @@ const config = {
 
   // Gemini
   geminiKeys,
-  geminiVisionModel: process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash',
-  geminiAudioModel: process.env.GEMINI_AUDIO_MODEL || 'gemini-2.5-flash',
+  // Легаси-имена gemini-1.5-* / gemini-2.0-* Google отключил — тихо апгрейдим.
+  geminiVisionModel: upgradeLegacyGeminiModel(process.env.GEMINI_VISION_MODEL) || 'gemini-2.5-flash',
+  geminiAudioModel: upgradeLegacyGeminiModel(process.env.GEMINI_AUDIO_MODEL) || 'gemini-2.5-flash',
   geminiEmbedModel: process.env.GEMINI_EMBED_MODEL || 'text-embedding-004',
   embedDim: 768,
 
