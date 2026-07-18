@@ -91,6 +91,11 @@ async function handleCommand(bot, msg) {
       await article.handleArticleCommand(bot, msg, args.join(' '));
       return true;
 
+    case '/transcribe':
+    case '/расшифровка':
+    case '/расшифровывать':
+      return handleTranscribe(bot, msg, args);
+
     case '/trigger':
     case '/триггер':
       return handleTrigger(bot, msg, args);
@@ -140,6 +145,7 @@ function buildHelp() {
     '/leaderboard — топ викторины в этом чате',
     '/sec — Сечение, игра на глазомер. /sec top — топ чата',
     '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',
+    '/transcribe on|off — авто-расшифровка голосовых в чат (только админ чата)',
     '/trigger <слова> — задать как меня звать в этом чате (только админ)',
     '/triggers — показать текущие триггеры',
     config.imagesEnabled ? '/draw <описание> — нарисую' : null,
@@ -389,6 +395,48 @@ async function handleEyeball(bot, msg, args) {
         ]],
       },
     });
+  return true;
+}
+
+async function handleTranscribe(bot, msg, args) {
+  const chatId = msg.chat.id;
+  const userId = msg.from?.id;
+  const isPrivate = msg.chat.type === 'private';
+
+  if (!isPrivate && !(await isChatAdmin(bot, chatId, userId))) {
+    await sendSafe(bot, chatId, 'Переключать может только админ чата.',
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  const arg = args.join(' ').trim().toLowerCase();
+  const current = await chatsRepo.getTranscribeVoice(chatId);
+
+  if (!arg) {
+    const state = current ? 'ВКЛючена' : 'ВЫКЛючена';
+    await sendSafe(bot, chatId,
+      `Автотранскрипция голосовых сейчас ${state}.\nПереключить: /transcribe on или /transcribe off`,
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  if (/^(on|вкл|да|yes|1|включи|enable)$/.test(arg)) {
+    await chatsRepo.setTranscribeVoice(chatId, true);
+    await sendSafe(bot, chatId,
+      'Ок. Теперь под каждым голосовым буду постить расшифровку в чат.',
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  if (/^(off|выкл|нет|no|0|выключи|disable)$/.test(arg)) {
+    await chatsRepo.setTranscribeVoice(chatId, false);
+    await sendSafe(bot, chatId, 'Расшифровку в чат отключил.',
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  await sendSafe(bot, chatId, 'Не понял. Скажи on или off.',
+    { reply_to_message_id: msg.message_id });
   return true;
 }
 

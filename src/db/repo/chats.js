@@ -105,6 +105,15 @@ async function listBanned() {
   return r.rows;
 }
 
+async function setTranscribeVoice(chatId, enabled) {
+  await query(`UPDATE chats SET transcribe_voice = $1 WHERE id = $2`, [!!enabled, chatId]);
+}
+
+async function getTranscribeVoice(chatId) {
+  const r = await query(`SELECT transcribe_voice FROM chats WHERE id = $1`, [chatId]);
+  return r.rows[0]?.transcribe_voice === true;
+}
+
 module.exports = {
   upsertChat,
   getChat,
@@ -119,4 +128,6 @@ module.exports = {
   unbanUser,
   isBanned,
   listBanned,
+  setTranscribeVoice,
+  getTranscribeVoice,
 };

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS chats (
 );
 -- Идемпотентная миграция: добавляем колонку если её ещё нет
 ALTER TABLE chats ADD COLUMN IF NOT EXISTS triggers TEXT;
+ALTER TABLE chats ADD COLUMN IF NOT EXISTS transcribe_voice BOOLEAN DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS user_personas (
   user_id BIGINT NOT NULL,

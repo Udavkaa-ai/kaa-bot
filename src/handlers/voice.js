@@ -2,11 +2,18 @@ const groq = require('../providers/groq');
 const gemini = require('../providers/gemini');
 const claude = require('../providers/claude');
 const messagesRepo = require('../db/repo/messages');
+const chatsRepo = require('../db/repo/chats');
 const { gatherContext } = require('./context');
 const { withTyping } = require('../utils/typing');
 const { sendSafe } = require('../utils/telegram');
 const { humorReply } = require('../ai/errorHumor');
 const config = require('../config');
+
+function escapeHtml(s) {
+  return String(s).replace(/[<>&"']/g, c => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
 
 async function handleVoice(bot, msg) {
   const chatId = msg.chat.id;
@@ -75,7 +82,22 @@ async function handleVoice(bot, msg) {
     transcript = transcript.trim();
     console.log(`[STT/${sttSource}] "${transcript.slice(0, 100)}"`);
 
-    // 2. Сохраняем ЧИСТУЮ расшифровку — без пометки "(голосовым сообщением)",
+    // 2а. Если в чате включён /transcribe on — постим расшифровку под голосовое,
+    // чтобы её могли прочитать все участники.
+    try {
+      if (await chatsRepo.getTranscribeVoice(chatId)) {
+        const html = `<blockquote>💬 ${escapeHtml(transcript)}</blockquote>`;
+        await bot.sendMessage(chatId, html, {
+          reply_to_message_id: msg.message_id,
+          parse_mode: 'HTML',
+          disable_notification: true,
+        });
+      }
+    } catch (err) {
+      console.warn('[VOICE] Не смог запостить транскрипт в чат:', err.message);
+    }
+
+    // 2б. Сохраняем ЧИСТУЮ расшифровку — без пометки "(голосовым сообщением)",
     // потому что Claude, увидев такую разметку, иногда рефлекторно отвечает
     // "я текстовый бот и голосовые не распознаю". Для него это просто текст юзера.
     await messagesRepo.addMessage(chatId, 'user', transcript, {
