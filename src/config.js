@@ -37,8 +37,8 @@ const config = {
 
   // Gemini
   geminiKeys,
-  geminiVisionModel: process.env.GEMINI_VISION_MODEL || 'gemini-2.0-flash',
-  geminiAudioModel: process.env.GEMINI_AUDIO_MODEL || 'gemini-2.0-flash',
+  geminiVisionModel: process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash',
+  geminiAudioModel: process.env.GEMINI_AUDIO_MODEL || 'gemini-2.5-flash',
   geminiEmbedModel: process.env.GEMINI_EMBED_MODEL || 'text-embedding-004',
   embedDim: 768,
 

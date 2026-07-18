@@ -65,8 +65,34 @@ async function callRest(path, body, modelForStats) {
   throw lastErr || new Error('Все Gemini ключи исчерпаны');
 }
 
+// Некоторые модели периодически deprecated. Пробуем основную, если не найдена — старые версии.
+const MULTIMODAL_FALLBACKS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+
+async function callWithModelFallback(primaryModel, buildBody) {
+  const tried = new Set();
+  const order = [primaryModel, ...MULTIMODAL_FALLBACKS.filter(m => m !== primaryModel)];
+  let lastErr = null;
+  for (const model of order) {
+    if (tried.has(model)) continue;
+    tried.add(model);
+    try {
+      const data = await callRest(`models/${model}:generateContent`, buildBody(), model);
+      return data;
+    } catch (err) {
+      lastErr = err;
+      // если 404/модель не найдена — пробуем следующую
+      if (/404|NOT_FOUND|not found|deprecated|invalid.*model/i.test(err.message)) {
+        console.warn(`[GEMINI] Модель ${model} недоступна, пробую следующую`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr || new Error('Все модели Gemini недоступны');
+}
+
 async function describeImage(base64, mimeType, userPrompt) {
-  const body = {
+  const buildBody = () => ({
     contents: [{
       parts: [
         { inline_data: { mime_type: mimeType, data: base64 } },
@@ -75,12 +101,8 @@ async function describeImage(base64, mimeType, userPrompt) {
     }],
     generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
     safetySettings: blockNoneSafety(),
-  };
-  const data = await callRest(
-    `models/${config.geminiVisionModel}:generateContent`,
-    body,
-    config.geminiVisionModel
-  );
+  });
+  const data = await callWithModelFallback(config.geminiVisionModel, buildBody);
   return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
 }
 
@@ -91,7 +113,7 @@ async function describeAudio(base64, mimeType, userPrompt) {
 - Если звуки/шум — опиши что это и где могло происходить.
 - Если несколько слоёв (например речь на фоне музыки) — опиши все.
 Будь точен и подробен.`;
-  const body = {
+  const buildBody = () => ({
     contents: [{
       parts: [
         { inline_data: { mime_type: mimeType, data: base64 } },
@@ -100,12 +122,8 @@ async function describeAudio(base64, mimeType, userPrompt) {
     }],
     generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
     safetySettings: blockNoneSafety(),
-  };
-  const data = await callRest(
-    `models/${config.geminiAudioModel}:generateContent`,
-    body,
-    config.geminiAudioModel
-  );
+  });
+  const data = await callWithModelFallback(config.geminiAudioModel, buildBody);
   return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
 }
 

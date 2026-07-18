@@ -11,6 +11,7 @@ const { withTyping } = require('../utils/typing');
 const { humorReply } = require('../ai/errorHumor');
 const giveaway = require('./giveaway');
 const quiz = require('./quiz');
+const article = require('./article');
 const eyeballRepo = require('../db/repo/eyeball');
 
 function isAdmin(msg) {
@@ -85,6 +86,11 @@ async function handleCommand(bot, msg) {
     case '/сечение':
       return handleEyeball(bot, msg, args);
 
+    case '/article':
+    case '/статья':
+      await article.handleArticleCommand(bot, msg, args.join(' '));
+      return true;
+
     case '/trigger':
     case '/триггер':
       return handleTrigger(bot, msg, args);
@@ -133,6 +139,7 @@ function buildHelp() {
     '/quiz [тема] — викторина с вариантами ответа',
     '/leaderboard — топ викторины в этом чате',
     '/sec — Сечение, игра на глазомер. /sec top — топ чата',
+    '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',
     '/trigger <слова> — задать как меня звать в этом чате (только админ)',
     '/triggers — показать текущие триггеры',
     config.imagesEnabled ? '/draw <описание> — нарисую' : null,
