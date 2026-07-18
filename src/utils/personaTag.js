@@ -12,20 +12,15 @@ const PERSONA_EMOJI = {
   babushka: '👵',
 };
 
-// Первая строка каждого ответа — имя персоны (и её эмодзи если есть).
-// Смысл — юзер видит кто именно ответил, потому что Telegram-имя бота
-// одно на все персоны.
+// Эмодзи-маркер персоны в начале сообщения. Один символ, никакого имени —
+// юзер по эмодзи узнаёт кто отвечает, а Telegram-имя бота одинаковое на всех.
 function withPersonaTag(text, persona) {
-  if (!persona || !persona.name || !text) return text;
-  const emoji = PERSONA_EMOJI[persona.id] || '';
-  const tag = emoji ? `${emoji} ${persona.name}` : persona.name;
-  // Если Claude сам начал ответ с имени персоны (например "Маша: ..."), не дублируем.
-  const firstLine = text.split('\n', 1)[0].trim().toLowerCase();
-  const nameLower = persona.name.toLowerCase();
-  if (firstLine.startsWith(nameLower + ':') || firstLine === nameLower) {
-    return text;
-  }
-  return `${tag}\n${text}`;
+  if (!persona || !text) return text;
+  const emoji = PERSONA_EMOJI[persona.id];
+  if (!emoji) return text;
+  // Если ответ уже начинается с этого же эмодзи — не дублируем.
+  if (text.startsWith(emoji)) return text;
+  return `${emoji} ${text}`;
 }
 
 module.exports = { withPersonaTag, PERSONA_EMOJI };
