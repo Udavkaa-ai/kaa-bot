@@ -61,9 +61,10 @@ async function handleVoice(bot, msg) {
 
     console.log(`[STT/${sttSource}] "${transcript.slice(0, 100)}"`);
 
-    // 2. Сохраняем расшифровку как обычное сообщение
-    const messageText = `(голосовым сообщением) ${transcript}`;
-    await messagesRepo.addMessage(chatId, 'user', messageText, {
+    // 2. Сохраняем ЧИСТУЮ расшифровку — без пометки "(голосовым сообщением)",
+    // потому что Claude, увидев такую разметку, иногда рефлекторно отвечает
+    // "я текстовый бот и голосовые не распознаю". Для него это просто текст юзера.
+    await messagesRepo.addMessage(chatId, 'user', transcript, {
       userId, username: userName, messageId: msg.message_id,
     });
 
