@@ -3,6 +3,7 @@ const { gatherContext, generateReply } = require('./context');
 const { withTyping } = require('../utils/typing');
 const { sendSafe } = require('../utils/telegram');
 const { humorReply } = require('../ai/errorHumor');
+const { withPersonaTag } = require('../utils/personaTag');
 const profile = require('../memory/profile');
 const semantic = require('../memory/semantic');
 
@@ -42,13 +43,14 @@ async function handleText(bot, msg, opts = {}) {
   }
 
   if (!result?.text) return;
-  const replyText = result.text.trim();
-  await sendSafe(bot, chatId, replyText, { reply_to_message_id: msg.message_id });
+  const clean = result.text.trim();
+  const tagged = withPersonaTag(clean, ctx.persona);
+  await sendSafe(bot, chatId, tagged, { reply_to_message_id: msg.message_id });
 
-  // Сохраняем ответ
-  await messagesRepo.addMessage(chatId, 'assistant', replyText, { userId: null, username: null });
+  // В историю пишем ЧИСТУЮ версию — эмодзи-тег добавляется только при отправке.
+  await messagesRepo.addMessage(chatId, 'assistant', clean, { userId: null, username: null });
 
-  console.log(`[OUT] chat=${chatId} ${result.model} | "${replyText.slice(0, 80)}"`);
+  console.log(`[OUT] chat=${chatId} ${result.model} ${ctx.persona?.name || '?'} | "${clean.slice(0, 80)}"`);
 
   // Асинхронные обновления памяти/профилей
   profile.reflectAsync(chatId, userId, userName, userText, replyText);

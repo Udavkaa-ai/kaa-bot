@@ -7,6 +7,7 @@ const { gatherContext } = require('./context');
 const { withTyping } = require('../utils/typing');
 const { sendSafe } = require('../utils/telegram');
 const { humorReply } = require('../ai/errorHumor');
+const { withPersonaTag } = require('../utils/personaTag');
 const config = require('../config');
 
 function escapeHtml(s) {
@@ -115,10 +116,13 @@ async function handleVoice(bot, msg) {
     );
 
     if (result?.text) {
-      const reply = result.text.trim();
-      await sendSafe(bot, chatId, reply, { reply_to_message_id: msg.message_id });
-      await messagesRepo.addMessage(chatId, 'assistant', reply, {});
-      console.log(`[OUT] chat=${chatId} ${result.model} +voice | "${reply.slice(0, 80)}"`);
+      const clean = result.text.trim();
+      const tagged = withPersonaTag(clean, ctx.persona);
+      await sendSafe(bot, chatId, tagged, { reply_to_message_id: msg.message_id });
+      // В историю пишем ЧИСТУЮ версию — без эмодзи-префикса, чтобы модель
+      // не думала будто это её реплика уже кем-то помечена.
+      await messagesRepo.addMessage(chatId, 'assistant', clean, {});
+      console.log(`[OUT] chat=${chatId} ${result.model} +voice ${ctx.persona?.name || '?'} | "${clean.slice(0, 80)}"`);
     }
   } catch (err) {
     console.error(`[VOICE] chat=${chatId}: ${err.message}`);
