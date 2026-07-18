@@ -104,4 +104,20 @@ async function handleVoice(bot, msg) {
   }
 }
 
+// Отсеиваем случаи когда модель вместо расшифровки написала отказ
+// вроде "К сожалению не могу разобрать" или "I cannot transcribe this".
+function looksLikeRefusal(text) {
+  const t = String(text).trim().toLowerCase();
+  if (!t) return true;
+  const patterns = [
+    /^(к\s+сожалению|извини|извините|прошу\s+прощения)/,
+    /не\s+могу\s+(разобрать|транскрибировать|распознать|понять)/,
+    /(sorry|unfortunately)[,\s]/,
+    /^i (cannot|can'?t|am\s+unable)/,
+    /^i\s+don'?t\s+(understand|know|hear)/,
+    /невозможно\s+(разобрать|расшифровать)/,
+  ];
+  return patterns.some(re => re.test(t));
+}
+
 module.exports = { handleVoice };
