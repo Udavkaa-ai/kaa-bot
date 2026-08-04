@@ -51,9 +51,9 @@ const config = {
 
   // Claude через OpenRouter
   openrouterKeys,
-  claudeModel: process.env.CLAUDE_MODEL || 'anthropic/claude-sonnet-4.6',
+  claudeModel: process.env.CLAUDE_MODEL || 'google/gemini-3.5-flash-lite',
   fallbackModels: (process.env.FALLBACK_MODELS ||
-    'google/gemini-2.5-flash,meta-llama/llama-3.3-70b-instruct:free')
+    'google/gemini-2.5-flash,anthropic/claude-sonnet-4.6,meta-llama/llama-3.3-70b-instruct:free')
     .split(',').map(s => s.trim()).filter(Boolean),
 
   // Gemini
