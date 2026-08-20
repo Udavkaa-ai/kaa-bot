@@ -252,19 +252,18 @@
     verbFrac: 'Налей',
     verbPct: 'Наполни на',
     build(svg, rect) {
-      const bw = Math.min(rect.width * 0.40, 190);
-      const bh = Math.min(rect.height * 0.86, 460);
+      const bw = Math.min(rect.width * 0.44, 210);
+      const bh = Math.min(rect.height * 0.90, 480);
       const bx = (rect.width - bw) / 2;
       const by = (rect.height - bh) / 2;
-      // Геометрия бутылки
-      const neckW = Math.max(30, bw * 0.30);
-      const neckH = Math.max(30, bh * 0.14);
-      const rimH = 5;                        // высота ободка горлышка
-      const shoulderH = Math.max(28, bh * 0.10);
-      const bottomR = Math.min(bw * 0.18, 18); // радиус нижних углов
-      // Внутренний верх воды — сразу под горлышком, где начинается тело
-      const waterTop = by + neckH + shoulderH;
-      const waterBottom = by + bh - 2;
+      // Явные пропорции винной бутылки: длинное узкое горлышко → покатое плечо → широкое тело
+      const neckW = bw * 0.24;                  // узкое горлышко (24% ширины тела)
+      const neckH = bh * 0.22;                  // длинное горлышко (22% высоты)
+      const rimH = 8;                            // ободок горлышка
+      const shoulderH = bh * 0.10;               // покатое плечо
+      const bottomR = Math.min(bw * 0.20, 22);   // круглые нижние углы
+      const waterTop = by + neckH + shoulderH + 4;
+      const waterBottom = by + bh - 3;
       return { bx, by, bw, bh, neckW, neckH, rimH, shoulderH, bottomR, waterTop, waterBottom };
     },
     _bottlePath(t) {
@@ -273,32 +272,39 @@
       const neckR = cx + t.neckW / 2;
       const bodyL = t.bx;
       const bodyR = t.bx + t.bw;
-      const shoulderY = t.by + t.neckH;
-      const bodyTopY = shoulderY + t.shoulderH;
+      const rimBottomY = t.by + t.rimH;
+      const neckBottomY = t.by + t.neckH;         // конец вертикального горлышка
+      const shoulderEndY = neckBottomY + t.shoulderH;
       const bottomY = t.by + t.bh;
-      const rimY = t.by + t.rimH;
-      // Начинаем с левой верхней точки горлышка (за ободком),
-      // идём вниз к плечу, потом по плечу к телу, вниз к скруглённому дну,
-      // по дну, вверх правая сторона.
+      // Кубическая кривая для плеча: контрольные точки создают S-образный сток
+      // от узкого горлышка к широкому телу.
+      const c1L_x = neckL;
+      const c1L_y = neckBottomY + t.shoulderH * 0.55;
+      const c2L_x = bodyL;
+      const c2L_y = neckBottomY + t.shoulderH * 0.45;
+      const c1R_x = neckR;
+      const c1R_y = neckBottomY + t.shoulderH * 0.55;
+      const c2R_x = bodyR;
+      const c2R_y = neckBottomY + t.shoulderH * 0.45;
       return (
-        `M ${neckL} ${rimY} ` +
-        `L ${neckL} ${shoulderY} ` +
-        `Q ${neckL} ${bodyTopY - 4} ${bodyL + t.bottomR * 0.3} ${bodyTopY} ` +
+        `M ${neckL} ${rimBottomY} ` +
+        `L ${neckL} ${neckBottomY} ` +
+        `C ${c1L_x} ${c1L_y} ${c2L_x} ${c2L_y} ${bodyL} ${shoulderEndY} ` +
         `L ${bodyL} ${bottomY - t.bottomR} ` +
         `Q ${bodyL} ${bottomY} ${bodyL + t.bottomR} ${bottomY} ` +
         `L ${bodyR - t.bottomR} ${bottomY} ` +
         `Q ${bodyR} ${bottomY} ${bodyR} ${bottomY - t.bottomR} ` +
-        `L ${bodyR} ${bodyTopY} ` +
-        `Q ${neckR} ${bodyTopY - 4} ${neckR} ${shoulderY} ` +
-        `L ${neckR} ${rimY}`
+        `L ${bodyR} ${shoulderEndY} ` +
+        `C ${c2R_x} ${c2R_y} ${c1R_x} ${c1R_y} ${neckR} ${neckBottomY} ` +
+        `L ${neckR} ${rimBottomY}`
       );
     },
     _rimPath(t) {
       const cx = t.bx + t.bw / 2;
       const neckL = cx - t.neckW / 2;
       const neckR = cx + t.neckW / 2;
-      // Ободок горлышка — короткий "П" сверху, слегка шире горлышка
-      const rimOverhang = 4;
+      // Ободок — заметно шире горлышка, чуть выше самой бутылки
+      const rimOverhang = 7;
       return (
         `M ${neckL - rimOverhang} ${t.by + t.rimH} ` +
         `L ${neckL - rimOverhang} ${t.by} ` +
@@ -359,71 +365,89 @@
       const clampedY = Math.min(t.waterBottom, Math.max(t.waterTop, p.y));
       return (t.waterBottom - clampedY) / (t.waterBottom - t.waterTop);
     },
-    // Волнистая поверхность воды: путь заливки от дна до уровня value
-    // с синусоидальной волной сверху
+    // Волнистая поверхность воды с явно заметной синусоидой
     _waterPath(t, value) {
       const topY = t.waterBottom - value * (t.waterBottom - t.waterTop);
-      const bottomY = t.waterBottom + 40; // с запасом за пределы дна — clip обрежет
-      const left = t.bx - 20;
-      const right = t.bx + t.bw + 20;
-      // Синусоидальная волна: 3 полуволны амплитудой ~3px
-      const amp = 2.5;
-      const period = (right - left) / 3;
-      let d = `M ${left} ${topY}`;
-      for (let x = left; x <= right; x += period / 8) {
+      const bottomY = t.waterBottom + 40; // clip обрежет
+      const left = t.bx - 30;
+      const right = t.bx + t.bw + 30;
+      // ~2.5 полуволны, амплитуда ~6px — читается как «волна»
+      const amp = 6;
+      const period = (right - left) / 2.5;
+      let d = `M ${left} ${topY + amp}`; // старт чуть ниже средней линии
+      const step = 6;
+      for (let x = left; x <= right; x += step) {
         const wy = topY + Math.sin((x - left) / period * Math.PI * 2) * amp;
         d += ` L ${x.toFixed(1)} ${wy.toFixed(1)}`;
       }
       d += ` L ${right} ${bottomY} L ${left} ${bottomY} Z`;
       return { d, topY };
     },
+    _bubblePositions(t, topY) {
+      const cx = t.bx + t.bw / 2;
+      return [
+        { cx: cx - t.bw * 0.20, cy: topY + 22, r: 3.5 },
+        { cx: cx + t.bw * 0.18, cy: topY + 46, r: 2.5 },
+        { cx: cx - t.bw * 0.05, cy: topY + 78, r: 2.0 },
+      ];
+    },
     showAim(svg, t, value) {
       const { d, topY } = this._waterPath(t, value);
       const water = makeSvgEl('path', {
-        d, fill: '#22d3ee', opacity: '0.55',
+        d, fill: '#38bdf8', opacity: '0.55',
         'clip-path': 'url(#bottleClip)',
       });
-      // Пузырьки внутри воды (2 штуки, разного размера)
-      const bubbles = [
-        makeSvgEl('circle', {
-          cx: t.bx + t.bw * 0.35, cy: topY + 30, r: '2.5',
-          fill: 'none', stroke: '#0891b2', 'stroke-width': '1.2', opacity: '0.7',
-          'clip-path': 'url(#bottleClip)',
-        }),
-        makeSvgEl('circle', {
-          cx: t.bx + t.bw * 0.65, cy: topY + 55, r: '1.8',
-          fill: 'none', stroke: '#0891b2', 'stroke-width': '1.2', opacity: '0.6',
-          'clip-path': 'url(#bottleClip)',
-        }),
-      ];
+      // Тёмный тонкий след поверхности волны — подчёркивает границу
+      const surfaceLine = makeSvgEl('path', {
+        d: d.split('L').slice(0, -3).join('L'),
+        fill: 'none', stroke: '#0284c7', 'stroke-width': '1.5', opacity: '0.7',
+        'clip-path': 'url(#bottleClip)',
+      });
       svg.appendChild(water);
+      svg.appendChild(surfaceLine);
+      // Пузырьки внутри воды
+      const bubbles = this._bubblePositions(t, topY).map(b => makeSvgEl('circle', {
+        cx: b.cx, cy: b.cy, r: b.r,
+        fill: 'none', stroke: '#0284c7', 'stroke-width': '1.4', opacity: '0.7',
+        'clip-path': 'url(#bottleClip)',
+      }));
       bubbles.forEach(b => svg.appendChild(b));
-      return { water, bubbles };
+      return { water, surfaceLine, bubbles, topY };
     },
     updateAim(refs, t, value) {
       if (refs.water) {
         const { d, topY } = this._waterPath(t, value);
         refs.water.setAttribute('d', d);
+        if (refs.surfaceLine) {
+          refs.surfaceLine.setAttribute('d', d.split('L').slice(0, -3).join('L'));
+        }
         if (refs.bubbles) {
-          if (refs.bubbles[0]) refs.bubbles[0].setAttribute('cy', topY + 30);
-          if (refs.bubbles[1]) refs.bubbles[1].setAttribute('cy', topY + 55);
+          const positions = this._bubblePositions(t, topY);
+          refs.bubbles.forEach((b, i) => {
+            if (positions[i]) {
+              b.setAttribute('cx', positions[i].cx);
+              b.setAttribute('cy', positions[i].cy);
+            }
+          });
         }
       }
     },
     drawResult(svg, t, userVal, targetVal, errColor) {
-      // Заливка юзера, цвет по ошибке, с волной и пузырьком
       const { d, topY } = this._waterPath(t, userVal);
       const water = makeSvgEl('path', {
         d, fill: errColor, opacity: '0.5',
         'clip-path': 'url(#bottleClip)',
       });
-      const bubble = makeSvgEl('circle', {
-        cx: t.bx + t.bw * 0.55, cy: topY + 40, r: '2.5',
-        fill: 'none', stroke: errColor, 'stroke-width': '1.4', opacity: '0.7',
-        'clip-path': 'url(#bottleClip)',
-      });
       svg.appendChild(water);
-      svg.appendChild(bubble);
+      // Пузырьки цветом ошибки
+      this._bubblePositions(t, topY).forEach(b => {
+        const c = makeSvgEl('circle', {
+          cx: b.cx, cy: b.cy, r: b.r,
+          fill: 'none', stroke: errColor, 'stroke-width': '1.4', opacity: '0.75',
+          'clip-path': 'url(#bottleClip)',
+        });
+        svg.appendChild(c);
+      });
 
       // Идеальный уровень — пунктирная линия
       const tTopY = t.waterBottom - targetVal * (t.waterBottom - t.waterTop);
@@ -483,54 +507,78 @@
       });
       return marks;
     },
-    // Рифлёный контур («корочка») — зубчики по окружности
-    _crustPath(t) {
-      const points = 32;
-      const rOuter = t.r + 3;
-      const rInner = t.r - 2;
-      let d = '';
-      for (let i = 0; i <= points; i++) {
-        const a = (i / points) * Math.PI * 2;
-        const r = i % 2 === 0 ? rOuter : rInner;
-        const x = t.cx + Math.sin(a) * r;
-        const y = t.cy - Math.cos(a) * r;
-        d += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+    // "Защипы" по краю пирога — заполненные точки, равномерно по окружности
+    _drawCrustPinches(svg, t) {
+      const pinches = 24;
+      const rOut = t.r + 4;      // чуть за окружность
+      const dots = [];
+      for (let i = 0; i < pinches; i++) {
+        const a = (i / pinches) * Math.PI * 2;
+        const x = t.cx + Math.sin(a) * rOut;
+        const y = t.cy - Math.cos(a) * rOut;
+        const dot = makeSvgEl('circle', {
+          cx: x, cy: y, r: '0', fill: '#1a1a1a', opacity: '0.75',
+        });
+        svg.appendChild(dot);
+        dots.push(dot);
       }
-      return d + 'Z';
+      requestAnimationFrame(() => {
+        dots.forEach((d, i) => {
+          d.style.transition = `r 0.35s cubic-bezier(0.34,1.56,0.64,1) ${0.55 + (i / pinches) * 0.25}s`;
+          d.setAttribute('r', '3');
+        });
+      });
+      return dots;
+    },
+    // Начинка — точки-«ягодки» разбросаны внутри круга
+    _drawFillingDots(svg, t) {
+      // Псевдо-случайные точки в пределах радиуса, с зазором от центра и края
+      const spots = [
+        [-0.32, -0.18], [0.28, -0.35], [0.42, 0.15], [-0.20, 0.35],
+        [0.10, -0.05], [-0.42, 0.05], [0.15, 0.42], [-0.05, -0.42],
+      ];
+      const dots = [];
+      spots.forEach((s, i) => {
+        const x = t.cx + s[0] * t.r * 0.92;
+        const y = t.cy + s[1] * t.r * 0.92;
+        const dot = makeSvgEl('circle', {
+          cx: x, cy: y, r: '0', fill: '#1a1a1a', opacity: '0',
+        });
+        svg.appendChild(dot);
+        dots.push(dot);
+      });
+      requestAnimationFrame(() => {
+        dots.forEach((d, i) => {
+          d.style.transition = `r 0.3s cubic-bezier(0.34,1.56,0.64,1) ${0.7 + i * 0.03}s, opacity 0.3s ease-out ${0.7 + i * 0.03}s`;
+          d.setAttribute('r', '2');
+          d.setAttribute('opacity', '0.18');
+        });
+      });
+      return dots;
     },
     drawIdle(svg, t) {
-      // Слайс-разметка первым слоем (под всё остальное)
       const sliceMarks = this._sliceMarks(svg, t);
-      // Рифлёный контур ("корочка")
-      const crust = makeSvgEl('path', {
-        d: this._crustPath(t),
-        fill: 'none', stroke: '#1a1a1a', 'stroke-width': '2',
-        'stroke-linejoin': 'round', opacity: '0',
-      });
-      // Внутренний ровный контур
       const circle = makeSvgEl('circle', {
         cx: t.cx, cy: t.cy, r: t.r,
         fill: 'none', stroke: '#1a1a1a', 'stroke-width': '2.5',
         'stroke-dasharray': 2 * Math.PI * t.r,
         'stroke-dashoffset': 2 * Math.PI * t.r,
       });
-      // Центральная точка (эстетика)
       const centerDot = makeSvgEl('circle', {
         cx: t.cx, cy: t.cy, r: '1.5',
         fill: '#1a1a1a', opacity: '0',
       });
-      svg.appendChild(crust);
       svg.appendChild(circle);
       svg.appendChild(centerDot);
+      const pinches = this._drawCrustPinches(svg, t);
+      const fillingDots = this._drawFillingDots(svg, t);
       requestAnimationFrame(() => {
         circle.style.transition = 'stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1)';
-        crust.style.transition = 'opacity 0.4s ease-out 0.5s';
         centerDot.style.transition = 'opacity 0.3s ease-out 0.7s';
         circle.setAttribute('stroke-dashoffset', '0');
-        crust.setAttribute('opacity', '0.5');
         centerDot.setAttribute('opacity', '0.5');
       });
-      return { circle, crust, centerDot, sliceMarks };
+      return { circle, centerDot, sliceMarks, pinches, fillingDots };
     },
     clientToValue(cx, cy, t) {
       const p = clientToSvgPoint(cx, cy);
