@@ -47,9 +47,19 @@ function start() {
   app.disable('x-powered-by');
 
   app.use('/eyeball', express.static(path.join(__dirname, '..', '..', 'public', 'eyeball'), {
-    maxAge: '5m',
     extensions: ['html'],
     index: 'index.html',
+    setHeaders(res, filePath) {
+      // JS/CSS/HTML — не кешируем, чтобы Telegram-браузер сразу подхватывал апдейты.
+      // Статичные ассеты (картинки, шрифты) — можно кешировать долго.
+      if (/\.(html|js|css)$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=604800');
+      }
+    },
   }));
 
   app.get('/', (req, res) => res.redirect(302, '/eyeball/'));
