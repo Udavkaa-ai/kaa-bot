@@ -748,7 +748,16 @@
   }
   function clearAimRefs() {
     if (!aimRefs) return;
-    for (const k in aimRefs) if (aimRefs[k]) aimRefs[k].remove();
+    for (const k in aimRefs) {
+      const v = aimRefs[k];
+      if (!v) continue;
+      if (Array.isArray(v)) {
+        v.forEach(el => { if (el && typeof el.remove === 'function') el.remove(); });
+      } else if (typeof v.remove === 'function') {
+        v.remove();
+      }
+      // числа/строки (topY и т.п.) — просто игнорируем
+    }
     aimRefs = null;
   }
 
