@@ -1112,8 +1112,14 @@
   });
   $('switch-mode').addEventListener('click', (e) => {
     e.stopPropagation();
-    if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('light'); } catch (_) {}
-    newRound(true); // форсированно берём другой режим
+    if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('medium'); } catch (_) {}
+    // Смена режима "прерывает" текущую задачу → серия сгорает.
+    // Без этого можно спамить кнопку, отсеивая сложные задачи, пока не выпадет простая.
+    if (state.streak > 0) {
+      state.streak = 0;
+      updateStatsUI(false);
+    }
+    newRound(true);
   });
   $('share').addEventListener('click', (e) => { e.stopPropagation(); share(); });
   $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(); });
