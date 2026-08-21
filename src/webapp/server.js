@@ -87,12 +87,16 @@ function start() {
   app.get('/api/eyeball/leaderboard', authMiddleware, async (req, res) => {
     try {
       if (!req.tgChatId) return res.status(400).json({ error: 'no_chat' });
+      // ?season=1 → архив, иначе → текущий сезон (2)
+      const seasonParam = parseInt(req.query.season, 10);
+      const season = seasonParam === 1 ? 1 : 2;
       const [top, me, agg] = await Promise.all([
-        eyeballRepo.topByStreak(req.tgChatId, 10),
-        eyeballRepo.getUserStats(req.tgChatId, req.tgUser.id),
-        eyeballRepo.getChatAggregates(req.tgChatId),
+        eyeballRepo.topByStreak(req.tgChatId, 10, season),
+        eyeballRepo.getUserStats(req.tgChatId, req.tgUser.id, season),
+        eyeballRepo.getChatAggregates(req.tgChatId, season),
       ]);
       res.json({
+        season,
         top: top.map(r => ({
           user_id: String(r.user_id),
           username: r.username || ('id' + r.user_id),

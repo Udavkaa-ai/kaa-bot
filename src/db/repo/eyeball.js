@@ -1,6 +1,14 @@
 const { query } = require('../pool');
 
+// Таблица, куда складываются очки, зависит от сезона:
+// 1 → архив eyeball_scores_s1 (read-only)
+// 2+ (текущий) → eyeball_scores
+function tableFor(season) {
+  return season === 1 ? 'eyeball_scores_s1' : 'eyeball_scores';
+}
+
 async function upsertScore(chatId, userId, username, { streak, bestAccuracy, addRounds }) {
+  // Пишем только в актуальный сезон
   await query(
     `INSERT INTO eyeball_scores (chat_id, user_id, username, best_streak, best_accuracy, rounds, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, now())
@@ -14,10 +22,11 @@ async function upsertScore(chatId, userId, username, { streak, bestAccuracy, add
   );
 }
 
-async function topByStreak(chatId, limit = 10) {
+async function topByStreak(chatId, limit = 10, season = 2) {
+  const t = tableFor(season);
   const r = await query(
     `SELECT user_id, username, best_streak, best_accuracy, rounds
-     FROM eyeball_scores
+     FROM ${t}
      WHERE chat_id = $1
      ORDER BY best_streak DESC, best_accuracy DESC, rounds DESC
      LIMIT $2`,
@@ -26,12 +35,13 @@ async function topByStreak(chatId, limit = 10) {
   return r.rows;
 }
 
-async function getUserStats(chatId, userId) {
+async function getUserStats(chatId, userId, season = 2) {
+  const t = tableFor(season);
   const r = await query(
     `WITH ranked AS (
        SELECT user_id, username, best_streak, best_accuracy, rounds,
               RANK() OVER (ORDER BY best_streak DESC, best_accuracy DESC, rounds DESC) AS rank
-       FROM eyeball_scores
+       FROM ${t}
        WHERE chat_id = $1
      )
      SELECT user_id, username, best_streak, best_accuracy, rounds, rank
@@ -41,7 +51,8 @@ async function getUserStats(chatId, userId) {
   return r.rows[0] || null;
 }
 
-async function getChatAggregates(chatId) {
+async function getChatAggregates(chatId, season = 2) {
+  const t = tableFor(season);
   const r = await query(
     `SELECT
        COALESCE(AVG(best_accuracy), 0)::float AS avg_acc,
@@ -49,7 +60,7 @@ async function getChatAggregates(chatId) {
        COALESCE(MAX(best_streak), 0)::int    AS max_streak,
        COALESCE(SUM(rounds), 0)::int          AS total_rounds,
        COUNT(*)::int                          AS players
-     FROM eyeball_scores
+     FROM ${t}
      WHERE chat_id = $1`,
     [chatId]
   );

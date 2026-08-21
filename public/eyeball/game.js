@@ -252,68 +252,59 @@
     verbFrac: 'Налей',
     verbPct: 'Наполни на',
     build(svg, rect) {
-      const bw = Math.min(rect.width * 0.44, 210);
-      const bh = Math.min(rect.height * 0.90, 480);
+      const bw = Math.min(rect.width * 0.42, 200);
+      const bh = Math.min(rect.height * 0.90, 500);
       const bx = (rect.width - bw) / 2;
       const by = (rect.height - bh) / 2;
-      // Явные пропорции винной бутылки: длинное узкое горлышко → покатое плечо → широкое тело
-      const neckW = bw * 0.24;                  // узкое горлышко (24% ширины тела)
-      const neckH = bh * 0.22;                  // длинное горлышко (22% высоты)
-      const rimH = 8;                            // ободок горлышка
-      const shoulderH = bh * 0.10;               // покатое плечо
+      // Простая цилиндрическая бутылка — вертикальные стенки, чтобы визуально
+      // легко оценить полный объём.
+      const capW = bw * 0.62;                    // ширина крышки (уже тела)
+      const capH = Math.max(22, bh * 0.055);     // невысокая крышка сверху
+      const topR = 8;                             // лёгкое скругление верхних углов тела
       const bottomR = Math.min(bw * 0.20, 22);   // круглые нижние углы
-      const waterTop = by + neckH + shoulderH + 4;
+      // Вода — от самого низа до самого верха тела (сразу под крышкой)
+      const waterTop = by + capH + 3;
       const waterBottom = by + bh - 3;
-      return { bx, by, bw, bh, neckW, neckH, rimH, shoulderH, bottomR, waterTop, waterBottom };
+      return { bx, by, bw, bh, capW, capH, topR, bottomR, waterTop, waterBottom };
     },
-    _bottlePath(t) {
-      const cx = t.bx + t.bw / 2;
-      const neckL = cx - t.neckW / 2;
-      const neckR = cx + t.neckW / 2;
-      const bodyL = t.bx;
-      const bodyR = t.bx + t.bw;
-      const rimBottomY = t.by + t.rimH;
-      const neckBottomY = t.by + t.neckH;         // конец вертикального горлышка
-      const shoulderEndY = neckBottomY + t.shoulderH;
-      const bottomY = t.by + t.bh;
-      // Кубическая кривая для плеча: контрольные точки создают S-образный сток
-      // от узкого горлышка к широкому телу.
-      const c1L_x = neckL;
-      const c1L_y = neckBottomY + t.shoulderH * 0.55;
-      const c2L_x = bodyL;
-      const c2L_y = neckBottomY + t.shoulderH * 0.45;
-      const c1R_x = neckR;
-      const c1R_y = neckBottomY + t.shoulderH * 0.55;
-      const c2R_x = bodyR;
-      const c2R_y = neckBottomY + t.shoulderH * 0.45;
+    // Контур тела (без крышки) — для stroke и clip
+    _bodyPath(t) {
+      const bx = t.bx;
+      const by = t.by + t.capH;      // тело начинается под крышкой
+      const bw = t.bw;
+      const bh = t.bh - t.capH;
       return (
-        `M ${neckL} ${rimBottomY} ` +
-        `L ${neckL} ${neckBottomY} ` +
-        `C ${c1L_x} ${c1L_y} ${c2L_x} ${c2L_y} ${bodyL} ${shoulderEndY} ` +
-        `L ${bodyL} ${bottomY - t.bottomR} ` +
-        `Q ${bodyL} ${bottomY} ${bodyL + t.bottomR} ${bottomY} ` +
-        `L ${bodyR - t.bottomR} ${bottomY} ` +
-        `Q ${bodyR} ${bottomY} ${bodyR} ${bottomY - t.bottomR} ` +
-        `L ${bodyR} ${shoulderEndY} ` +
-        `C ${c2R_x} ${c2R_y} ${c1R_x} ${c1R_y} ${neckR} ${neckBottomY} ` +
-        `L ${neckR} ${rimBottomY}`
+        `M ${bx + t.topR} ${by} ` +
+        `L ${bx + bw - t.topR} ${by} ` +
+        `Q ${bx + bw} ${by} ${bx + bw} ${by + t.topR} ` +
+        `L ${bx + bw} ${by + bh - t.bottomR} ` +
+        `Q ${bx + bw} ${by + bh} ${bx + bw - t.bottomR} ${by + bh} ` +
+        `L ${bx + t.bottomR} ${by + bh} ` +
+        `Q ${bx} ${by + bh} ${bx} ${by + bh - t.bottomR} ` +
+        `L ${bx} ${by + t.topR} ` +
+        `Q ${bx} ${by} ${bx + t.topR} ${by} Z`
       );
     },
-    _rimPath(t) {
+    // Крышка — прямоугольник со скруглёнными верхними углами, залит тёмным
+    _capPath(t) {
       const cx = t.bx + t.bw / 2;
-      const neckL = cx - t.neckW / 2;
-      const neckR = cx + t.neckW / 2;
-      // Ободок — заметно шире горлышка, чуть выше самой бутылки
-      const rimOverhang = 7;
+      const capL = cx - t.capW / 2;
+      const capR = cx + t.capW / 2;
+      const capTop = t.by;
+      const capBottom = t.by + t.capH;
+      const r = 4;
       return (
-        `M ${neckL - rimOverhang} ${t.by + t.rimH} ` +
-        `L ${neckL - rimOverhang} ${t.by} ` +
-        `L ${neckR + rimOverhang} ${t.by} ` +
-        `L ${neckR + rimOverhang} ${t.by + t.rimH}`
+        `M ${capL + r} ${capTop} ` +
+        `L ${capR - r} ${capTop} ` +
+        `Q ${capR} ${capTop} ${capR} ${capTop + r} ` +
+        `L ${capR} ${capBottom} ` +
+        `L ${capL} ${capBottom} ` +
+        `L ${capL} ${capTop + r} ` +
+        `Q ${capL} ${capTop} ${capL + r} ${capTop} Z`
       );
     },
     drawIdle(svg, t) {
-      // Устанавливаем clip по ФОРМЕ бутылки, чтобы вода строго внутри
+      // Clip строго по силуэту тела бутылки
       let clipPath = document.getElementById('bottleClip');
       if (!clipPath) {
         const defs = svg.querySelector('defs') || svg.appendChild(document.createElementNS(SVG_NS, 'defs'));
@@ -325,40 +316,41 @@
         defs.appendChild(clipPath);
       }
       const bpath = document.getElementById('bottleClipPath');
-      if (bpath) bpath.setAttribute('d', this._bottlePath(t));
+      if (bpath) bpath.setAttribute('d', this._bodyPath(t));
 
-      // Ободок горлышка
-      const rim = makeSvgEl('path', {
-        d: this._rimPath(t),
-        stroke: '#1a1a1a', 'stroke-width': '2.5', fill: 'none',
-        'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: '0',
-      });
-      // Тело бутылки
+      // Тело бутылки — прозрачное, с обводкой
       const body = makeSvgEl('path', {
-        d: this._bottlePath(t),
-        stroke: '#1a1a1a', 'stroke-width': '2.5', fill: 'none',
-        'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+        d: this._bodyPath(t),
+        fill: 'none', stroke: '#1a1a1a', 'stroke-width': '2.5',
+        'stroke-linejoin': 'round',
         'stroke-dasharray': '1400', 'stroke-dashoffset': '1400',
       });
-      // Едва заметный блик слева внутри бутылки (штрих у стенки)
+      // Крышка — залита тёмным
+      const cap = makeSvgEl('path', {
+        d: this._capPath(t),
+        fill: '#1a1a1a', stroke: '#1a1a1a', 'stroke-width': '1.5',
+        'stroke-linejoin': 'round', opacity: '0',
+      });
+      // Тонкий блик у левой стенки — стеклянная фактура
+      const bodyTopY = t.by + t.capH;
       const highlight = makeSvgEl('line', {
-        x1: t.bx + 6, x2: t.bx + 6,
-        y1: t.waterTop + 20, y2: t.waterBottom - 40,
+        x1: t.bx + 5, x2: t.bx + 5,
+        y1: bodyTopY + 20, y2: t.waterBottom - 40,
         stroke: '#1a1a1a', 'stroke-width': '1.2', opacity: '0',
         'stroke-linecap': 'round',
       });
-      svg.appendChild(rim);
       svg.appendChild(body);
+      svg.appendChild(cap);
       svg.appendChild(highlight);
       requestAnimationFrame(() => {
         body.style.transition = 'stroke-dashoffset 0.8s cubic-bezier(0.22,1,0.36,1)';
-        rim.style.transition = 'opacity 0.35s ease-out 0.6s';
+        cap.style.transition = 'opacity 0.35s ease-out 0.55s';
         highlight.style.transition = 'opacity 0.4s ease-out 0.7s';
         body.setAttribute('stroke-dashoffset', '0');
-        rim.setAttribute('opacity', '1');
-        highlight.setAttribute('opacity', '0.15');
+        cap.setAttribute('opacity', '1');
+        highlight.setAttribute('opacity', '0.18');
       });
-      return { body, rim, highlight };
+      return { body, cap, highlight };
     },
     clientToValue(cx, cy, t) {
       const p = clientToSvgPoint(cx, cy);
@@ -570,7 +562,6 @@
       });
       svg.appendChild(circle);
       svg.appendChild(centerDot);
-      const pinches = this._drawCrustPinches(svg, t);
       const fillingDots = this._drawFillingDots(svg, t);
       requestAnimationFrame(() => {
         circle.style.transition = 'stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1)';
@@ -578,7 +569,7 @@
         circle.setAttribute('stroke-dashoffset', '0');
         centerDot.setAttribute('opacity', '0.5');
       });
-      return { circle, centerDot, sliceMarks, pinches, fillingDots };
+      return { circle, centerDot, sliceMarks, fillingDots };
     },
     clientToValue(cx, cy, t) {
       const p = clientToSvgPoint(cx, cy);
@@ -974,13 +965,23 @@
     return String(s).replace(/[<>&"]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;' }[c]));
   }
 
-  async function showLeaderboard() {
+  let currentLbSeason = 2;
+
+  async function showLeaderboard(season) {
     if (!tg || !tg.initData) { alert('Открой через бота'); return; }
+    currentLbSeason = season || currentLbSeason || 2;
+
+    // Синхронизуем активную вкладку
+    document.querySelectorAll('.season-tab').forEach(el => {
+      el.classList.toggle('active', Number(el.getAttribute('data-season')) === currentLbSeason);
+    });
+
     $('lb-list').innerHTML = '<div class="lb-loading">Загружаю...</div>';
     $('lb-me').classList.add('hidden');
     $('lb-modal').classList.remove('hidden');
     try {
-      const resp = await fetch('/api/eyeball/leaderboard?initData=' + encodeURIComponent(tg.initData));
+      const url = `/api/eyeball/leaderboard?season=${currentLbSeason}&initData=${encodeURIComponent(tg.initData)}`;
+      const resp = await fetch(url);
       const data = await resp.json();
 
       renderPersonalStats(data.me, data.aggregates);
@@ -1122,7 +1123,15 @@
     newRound(true);
   });
   $('share').addEventListener('click', (e) => { e.stopPropagation(); share(); });
-  $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(); });
+  $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(2); });
+  document.querySelectorAll('.season-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const s = parseInt(tab.getAttribute('data-season'), 10) || 2;
+      if (s === currentLbSeason) return;
+      showLeaderboard(s);
+    });
+  });
   $('lb-close').addEventListener('click', (e) => {
     e.stopPropagation();
     $('lb-modal').classList.add('hidden');

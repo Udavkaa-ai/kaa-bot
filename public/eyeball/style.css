@@ -305,6 +305,34 @@ main {
   margin: 4px 0 14px;
 }
 
+.season-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.season-tab {
+  background: transparent;
+  border: 1px solid var(--ink-faint);
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 99px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.15s;
+}
+.season-tab.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+.season-tab:not(.active):active {
+  background: rgba(26, 26, 26, 0.06);
+}
+
 /* MODAL */
 .modal {
   position: fixed;

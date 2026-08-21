@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS quiz_answers (
   PRIMARY KEY (poll_id, user_id)
 );
 
--- Eyeball mini-app
+-- Eyeball mini-app (Сечение) — таблица текущего сезона
 CREATE TABLE IF NOT EXISTS eyeball_scores (
   chat_id BIGINT NOT NULL,
   user_id BIGINT NOT NULL,
@@ -187,3 +187,35 @@ CREATE TABLE IF NOT EXISTS eyeball_scores (
   PRIMARY KEY (chat_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_eyeball_top ON eyeball_scores (chat_id, best_streak DESC, best_accuracy DESC);
+
+-- Архив сезона 1: до внедрения "Другая точка зрения" — сохраняется как история
+CREATE TABLE IF NOT EXISTS eyeball_scores_s1 (
+  chat_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  username TEXT,
+  best_streak INTEGER DEFAULT 0,
+  best_accuracy REAL DEFAULT 0,
+  rounds INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ,
+  PRIMARY KEY (chat_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_eyeball_s1_top ON eyeball_scores_s1 (chat_id, best_streak DESC, best_accuracy DESC);
+
+-- Маркер завершённых сезонов (для идемпотентной миграции)
+CREATE TABLE IF NOT EXISTS eyeball_seasons (
+  season INTEGER PRIMARY KEY,
+  ended_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Один раз: если сезон 1 ещё не закрыт — переносим текущий eyeball_scores в архив s1
+-- и очищаем основную таблицу, чтобы сезон 2 начинался с чистого листа.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM eyeball_seasons WHERE season = 1) THEN
+    INSERT INTO eyeball_scores_s1 (chat_id, user_id, username, best_streak, best_accuracy, rounds, updated_at)
+      SELECT chat_id, user_id, username, best_streak, best_accuracy, rounds, updated_at FROM eyeball_scores
+      ON CONFLICT (chat_id, user_id) DO NOTHING;
+    TRUNCATE eyeball_scores;
+    INSERT INTO eyeball_seasons (season) VALUES (1);
+  END IF;
+END $$;
