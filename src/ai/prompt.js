@@ -95,7 +95,7 @@ function buildSystemPrompt({
     const rows = eyeballTop.map((r, i) => {
       const name = r.username || ('id' + r.user_id);
       const acc = Number(r.best_accuracy).toFixed(1);
-      return `${i + 1}. ${name} — серия ${r.best_streak}, лучшая точность ${acc}%`;
+      return `${i + 1}. ${name} — серия ${r.best_streak}, лучшая точность ${acc}%, раундов ${r.rounds}`;
     });
     const parts = [
       `Игра "Сечение" — тренировка глазомера в мини-приложении бота (команда /sec).`,
