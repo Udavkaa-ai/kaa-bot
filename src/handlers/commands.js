@@ -143,7 +143,7 @@ function buildHelp() {
     '/giveaway <приз> [время|до N] [winners=K] — розыгрыш',
     '/quiz [тема] — викторина с вариантами ответа',
     '/leaderboard — топ викторины в этом чате',
-    '/sec — Сечение, игра на глазомер. /sec top — топ чата',
+    '/sec — Сечение, игра на глазомер. /sec top — топ чата. /sec remind 20:00 — ежедневный автопост топа',
     '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',
     '/transcribe on|off — авто-расшифровка голосовых в чат (только админ чата)',
     '/trigger <слова> — задать как меня звать в этом чате (только админ)',
@@ -355,6 +355,10 @@ async function handleEyeball(bot, msg, args) {
   const chatId = msg.chat.id;
   const sub = (args[0] || '').toLowerCase();
 
+  if (sub === 'remind' || sub === 'напоминание' || sub === 'напомни') {
+    return handleEyeballRemind(bot, msg, args.slice(1));
+  }
+
   if (sub === 'top' || sub === 'топ') {
     const top = await eyeballRepo.topByStreak(chatId, 10);
     if (top.length === 0) {
@@ -395,6 +399,89 @@ async function handleEyeball(bot, msg, args) {
         ]],
       },
     });
+  return true;
+}
+
+// Следующее срабатывание HH:MM МСК: возвращает Date (в UTC)
+function nextMoscowFireAt(hh, mm) {
+  const now = new Date();
+  const target = new Date(now);
+  // Москва — UTC+3, без летнего времени
+  target.setUTCHours(hh - 3, mm, 0, 0);
+  if (target <= now) target.setUTCDate(target.getUTCDate() + 1);
+  return target;
+}
+
+function formatMoscowHM(date) {
+  const t = new Date(date);
+  const hh = ((t.getUTCHours() + 3) % 24).toString().padStart(2, '0');
+  const mm = t.getUTCMinutes().toString().padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+async function handleEyeballRemind(bot, msg, args) {
+  const chatId = msg.chat.id;
+  const userId = msg.from?.id;
+  const isPrivate = msg.chat.type === 'private';
+
+  // В группах — только админ чата может ставить/снимать
+  if (!isPrivate && !(await isChatAdmin(bot, chatId, userId))) {
+    await sendSafe(bot, chatId, 'Настраивать напоминание может только админ чата.',
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  const arg = (args[0] || '').toLowerCase().trim();
+
+  // Показать текущий статус
+  if (!arg || arg === 'status' || arg === 'статус') {
+    const existing = await statsRepo.getLeaderReminder(chatId);
+    if (existing) {
+      await sendSafe(bot, chatId,
+        `Каждый день в ${formatMoscowHM(existing.fire_at)} МСК буду постить топ Сечения.\nВыключить: /sec remind off`,
+        { reply_to_message_id: msg.message_id });
+    } else {
+      await sendSafe(bot, chatId,
+        `Автопостов топа Сечения сейчас нет.\nВключить: /sec remind 20:00`,
+        { reply_to_message_id: msg.message_id });
+    }
+    return true;
+  }
+
+  // Выключить
+  if (/^(off|выкл|нет|no|0|stop|стоп)$/.test(arg)) {
+    await statsRepo.removeByChatAndKind(chatId, 'eyeball_top');
+    await sendSafe(bot, chatId, 'Автопост топа Сечения выключил.',
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  // Парсим HH:MM
+  const m = arg.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) {
+    await sendSafe(bot, chatId,
+      'Формат: /sec remind 20:00 (МСК) — буду каждый день в это время постить топ.\nВыключить: /sec remind off',
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+  const hh = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  if (hh > 23 || mm > 59) {
+    await sendSafe(bot, chatId, 'Час 0-23, минута 0-59.',
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  const fireAt = nextMoscowFireAt(hh, mm);
+  // Заменяем любое существующее
+  await statsRepo.removeByChatAndKind(chatId, 'eyeball_top');
+  await statsRepo.addLeaderReminder(chatId, fireAt);
+
+  const hhStr = hh.toString().padStart(2, '0');
+  const mmStr = mm.toString().padStart(2, '0');
+  await sendSafe(bot, chatId,
+    `Каждый день в ${hhStr}:${mmStr} МСК буду сюда постить топ Сечения.\nПервый пост — ${fireAt <= new Date(Date.now() + 60000) ? 'сейчас' : 'в ближайшую ' + hhStr + ':' + mmStr}.\nВыключить: /sec remind off`,
+    { reply_to_message_id: msg.message_id });
   return true;
 }
 

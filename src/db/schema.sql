@@ -110,6 +110,9 @@ CREATE TABLE IF NOT EXISTS reminders (
   text TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_reminders_fire ON reminders (fire_at);
+-- Тип напоминания и признак повторения (для ежедневных постов топа Сечения)
+ALTER TABLE reminders ADD COLUMN IF NOT EXISTS kind TEXT DEFAULT 'text';
+ALTER TABLE reminders ADD COLUMN IF NOT EXISTS recurring TEXT;
 
 CREATE TABLE IF NOT EXISTS chat_users (
   chat_id BIGINT NOT NULL,

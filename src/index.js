@@ -6,6 +6,7 @@ const archive = require('./memory/archive');
 const chatsRepo = require('./db/repo/chats');
 const statsRepo = require('./db/repo/stats');
 const messagesRepo = require('./db/repo/messages');
+const eyeballRepo = require('./db/repo/eyeball');
 const claude = require('./providers/claude');
 const giveaway = require('./handlers/giveaway');
 const quiz = require('./handlers/quiz');
@@ -80,19 +81,44 @@ async function main() {
     giveaway.tickExpired(bot).catch(err => console.error('[GW TICK]', err.message));
   }, 30 * 1000);
 
-  // Cron: напоминания каждую минуту
+  // Cron: напоминания каждую минуту.
+  // Поддерживает два типа: 'text' (обычное) и 'eyeball_top' (пост топа Сечения).
+  // Если recurring='daily' — сдвигаем fire_at на +24ч, иначе удаляем.
   setInterval(async () => {
     try {
       const pending = await statsRepo.getPendingReminders();
       for (const r of pending) {
         try {
-          await bot.sendMessage(r.chat_id, `⏰ Напоминание: ${r.text}`);
+          if (r.kind === 'eyeball_top') {
+            const top = await eyeballRepo.topByStreak(r.chat_id, 5, 2);
+            if (top.length === 0) {
+              await bot.sendMessage(r.chat_id, '👁 Топ Сечения пустой — никто ещё не играл. /sec чтобы начать.').catch(() => {});
+            } else {
+              const medals = ['🥇', '🥈', '🥉'];
+              const lines = top.map((row, i) => {
+                const m = medals[i] || `${i + 1}.`;
+                const name = row.username || 'id' + row.user_id;
+                return `${m} ${name} — серия ${row.best_streak}, точность ${Number(row.best_accuracy).toFixed(1)}%`;
+              });
+              await bot.sendMessage(r.chat_id, `👁 Топ "Сечения" сейчас:\n\n${lines.join('\n')}\n\nИграть: /sec`);
+            }
+          } else {
+            await bot.sendMessage(r.chat_id, `⏰ Напоминание: ${r.text}`);
+          }
         } catch (err) {
           console.error('[REMINDER]', err.message);
         }
+        // Повторяющиеся сдвигаем на следующий день, одноразовые удалим ниже
+        if (r.recurring === 'daily') {
+          const next = new Date(r.fire_at);
+          next.setUTCDate(next.getUTCDate() + 1);
+          await statsRepo.bumpRecurring(r.id, next).catch(err =>
+            console.error('[REMINDER BUMP]', err.message));
+        }
       }
-      if (pending.length > 0) {
-        await statsRepo.removeReminders(pending.map(r => r.id));
+      const toDelete = pending.filter(r => r.recurring !== 'daily').map(r => r.id);
+      if (toDelete.length > 0) {
+        await statsRepo.removeReminders(toDelete);
       }
     } catch (err) {
       console.error('[REMINDER LOOP]', err.message);

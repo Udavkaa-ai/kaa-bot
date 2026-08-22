@@ -49,7 +49,7 @@ async function addReminder(chatId, userId, username, fireAt, text) {
 
 async function getPendingReminders() {
   const r = await query(
-    `SELECT id, chat_id, user_id, username, fire_at, text
+    `SELECT id, chat_id, user_id, username, fire_at, text, kind, recurring
      FROM reminders WHERE fire_at <= now()`
   );
   return r.rows;
@@ -60,6 +60,32 @@ async function removeReminders(ids) {
   await query(`DELETE FROM reminders WHERE id = ANY($1)`, [ids]);
 }
 
+async function addLeaderReminder(chatId, fireAt) {
+  await query(
+    `INSERT INTO reminders (chat_id, kind, recurring, fire_at, text)
+     VALUES ($1, 'eyeball_top', 'daily', $2, '')`,
+    [chatId, fireAt]
+  );
+}
+
+async function bumpRecurring(id, nextFireAt) {
+  await query(`UPDATE reminders SET fire_at = $1 WHERE id = $2`, [nextFireAt, id]);
+}
+
+async function removeByChatAndKind(chatId, kind) {
+  await query(`DELETE FROM reminders WHERE chat_id = $1 AND kind = $2`, [chatId, kind]);
+}
+
+async function getLeaderReminder(chatId) {
+  const r = await query(
+    `SELECT id, fire_at FROM reminders
+     WHERE chat_id = $1 AND kind = 'eyeball_top'
+     ORDER BY fire_at ASC LIMIT 1`,
+    [chatId]
+  );
+  return r.rows[0] || null;
+}
+
 module.exports = {
   increment,
   getToday,
@@ -68,4 +94,8 @@ module.exports = {
   addReminder,
   getPendingReminders,
   removeReminders,
+  addLeaderReminder,
+  bumpRecurring,
+  removeByChatAndKind,
+  getLeaderReminder,
 };
