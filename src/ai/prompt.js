@@ -38,6 +38,8 @@ function buildSystemPrompt({
   searchContext,
   isPrivate,
   isGroup,
+  eyeballTop,
+  eyeballMe,
 }) {
   const sections = [];
 
@@ -88,7 +90,33 @@ function buildSystemPrompt({
     sections.push(`=== ВЕБ-ПОИСК ===\n${searchContext}\n\nИспользуй эту информацию для ответа. Не копируй дословно — пересказывай в своём стиле.`);
   }
 
+  // 8. Лидерборд игры "Сечение" (только если кто-то играл)
+  if (eyeballTop && eyeballTop.length > 0) {
+    const rows = eyeballTop.map((r, i) => {
+      const name = r.username || ('id' + r.user_id);
+      const acc = Number(r.best_accuracy).toFixed(1);
+      return `${i + 1}. ${name} — серия ${r.best_streak}, лучшая точность ${acc}%`;
+    });
+    const parts = [
+      `Игра "Сечение" — тренировка глазомера в мини-приложении бота (команда /sec).`,
+      `Топ этого чата (сезон 2):`,
+      rows.join('\n'),
+    ];
+    if (eyeballMe && eyeballMe.rounds > 0) {
+      const acc = Number(eyeballMe.best_accuracy).toFixed(1);
+      parts.push(`Собеседник (${userName}) в этом топе: место #${eyeballMe.rank}, серия ${eyeballMe.best_streak}, лучшая точность ${acc}%, всего раундов ${eyeballMe.rounds}.`);
+    } else if (userId(userProfile)) {
+      parts.push(`Собеседник (${userName}) в "Сечении" ещё не играл.`);
+    }
+    parts.push(`Если тебя спрашивают про топ, места, лидеров, чью-то серию — отвечай по этим данным. Если не про Сечение — не упоминай.`);
+    sections.push(`=== СЕЧЕНИЕ (топ чата) ===\n${parts.join('\n')}`);
+  }
+
   return sections.join('\n\n');
+}
+
+function userId(profile) {
+  return profile && profile.user_id;
 }
 
 module.exports = { buildSystemPrompt };

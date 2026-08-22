@@ -2,6 +2,7 @@ const claude = require('../providers/claude');
 const usersRepo = require('../db/repo/users');
 const chatsRepo = require('../db/repo/chats');
 const messagesRepo = require('../db/repo/messages');
+const eyeballRepo = require('../db/repo/eyeball');
 const { resolvePersona } = require('./persona');
 const semantic = require('../memory/semantic');
 const search = require('../providers/search');
@@ -25,6 +26,8 @@ async function gatherContext(msg, userText) {
     semanticMemories,
     history,
     searchContext,
+    eyeballTop,
+    eyeballMe,
   ] = await Promise.all([
     resolvePersona(userId, chatId, userText),
     usersRepo.getProfile(chatId, userId),
@@ -34,6 +37,9 @@ async function gatherContext(msg, userText) {
     semantic.recall({ chatId, userId, queryText: userText }),
     messagesRepo.getHistory(chatId),
     search.trySearch(userText),
+    // Топ и место собеседника в игре "Сечение" (текущий сезон)
+    eyeballRepo.topByStreak(chatId, 10, 2).catch(() => []),
+    userId ? eyeballRepo.getUserStats(chatId, userId, 2).catch(() => null) : null,
   ]);
 
   const system = buildSystemPrompt({
@@ -48,6 +54,8 @@ async function gatherContext(msg, userText) {
     searchContext,
     isPrivate,
     isGroup,
+    eyeballTop,
+    eyeballMe,
   });
 
   return { persona, justAssigned, system, history, searchContext, userProfile };
