@@ -30,10 +30,15 @@ async function addRound(chatId, userId, accuracy) {
   );
 }
 
-// Текущий сезон: топ содержит и best_streak, и avg_last_100. Сортировка: серия → средняя → лучшая.
-// Старые сезоны: старая таблица, avg_last_100 = 0 (тогда не считали).
-async function topByStreak(chatId, limit = 10, season = CURRENT_SEASON) {
+// Текущий сезон: топ содержит и best_streak, и avg_last_100.
+// metric = 'streak' → сортировка серия DESC, средняя DESC
+// metric = 'avg'    → сортировка средняя DESC, серия DESC
+// Старые сезоны: старая таблица, avg_last_100 = 0 (тогда не считали), всегда по серии.
+async function topByStreak(chatId, limit = 10, season = CURRENT_SEASON, metric = 'streak') {
   if (season === CURRENT_SEASON) {
+    const orderBy = metric === 'avg'
+      ? 'avg_last_100 DESC, s.best_streak DESC, s.best_accuracy DESC'
+      : 's.best_streak DESC, avg_last_100 DESC, s.best_accuracy DESC';
     const r = await query(
       `SELECT s.user_id, s.username, s.best_streak, s.best_accuracy::float AS best_accuracy, s.rounds,
         COALESCE((
@@ -45,7 +50,7 @@ async function topByStreak(chatId, limit = 10, season = CURRENT_SEASON) {
         ), 0)::float AS avg_last_100
       FROM eyeball_scores s
       WHERE s.chat_id = $1
-      ORDER BY s.best_streak DESC, avg_last_100 DESC, s.best_accuracy DESC
+      ORDER BY ${orderBy}
       LIMIT $2`,
       [chatId, limit]
     );

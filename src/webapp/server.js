@@ -95,13 +95,15 @@ function start() {
       // ?season=1|2 → архивы, иначе → текущий сезон (3)
       const seasonParam = parseInt(req.query.season, 10);
       const season = (seasonParam === 1 || seasonParam === 2) ? seasonParam : eyeballRepo.CURRENT_SEASON;
+      const metric = req.query.metric === 'avg' ? 'avg' : 'streak';
       const [top, me, agg] = await Promise.all([
-        eyeballRepo.topByStreak(req.tgChatId, 10, season),
+        eyeballRepo.topByStreak(req.tgChatId, 10, season, metric),
         eyeballRepo.getUserStats(req.tgChatId, req.tgUser.id, season),
         eyeballRepo.getChatAggregates(req.tgChatId, season),
       ]);
       res.json({
         season,
+        metric,
         top: top.map(r => ({
           user_id: String(r.user_id),
           username: r.username || ('id' + r.user_id),

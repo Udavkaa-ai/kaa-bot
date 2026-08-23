@@ -1072,23 +1072,33 @@
   }
 
   let currentLbSeason = 3;
+  let currentLbMetric = 'streak';  // 'streak' | 'avg'
 
-  async function showLeaderboard(season) {
+  async function showLeaderboard(season, metric) {
     if (!tg || !tg.initData) { alert('Открой через бота'); return; }
-    // Пока модалка открыта — таймер не тикает, чтобы юзер спокойно посмотрел топ
     if (state.awaiting) stopTimer();
     currentLbSeason = season || currentLbSeason || 3;
+    if (metric) currentLbMetric = metric;
 
-    // Синхронизуем активную вкладку
+    // Синхронизуем активные вкладки
     document.querySelectorAll('.season-tab').forEach(el => {
       el.classList.toggle('active', Number(el.getAttribute('data-season')) === currentLbSeason);
     });
+    document.querySelectorAll('.metric-tab').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('data-metric') === currentLbMetric);
+    });
+    // Метрический тумблер имеет смысл только для сезона 3 (там есть средняя)
+    const metricTabs = $('metric-tabs');
+    if (metricTabs) {
+      if (currentLbSeason === 3) metricTabs.classList.remove('hidden');
+      else metricTabs.classList.add('hidden');
+    }
 
     $('lb-list').innerHTML = '<div class="lb-loading">Загружаю...</div>';
     $('lb-me').classList.add('hidden');
     $('lb-modal').classList.remove('hidden');
     try {
-      const url = `/api/eyeball/leaderboard?season=${currentLbSeason}&initData=${encodeURIComponent(tg.initData)}`;
+      const url = `/api/eyeball/leaderboard?season=${currentLbSeason}&metric=${currentLbMetric}&initData=${encodeURIComponent(tg.initData)}`;
       const resp = await fetch(url);
       const data = await resp.json();
 
@@ -1100,13 +1110,24 @@
       } else {
         const medals = ['1', '2', '3'];
         const meId = tg.initDataUnsafe && tg.initDataUnsafe.user && String(tg.initDataUnsafe.user.id);
+        const isCurrentSeason = data.season === 3;
         list.innerHTML = data.top.map((r, i) => {
           const m = medals[i] || (i + 1);
           const mine = meId && r.user_id === meId ? ' mine' : '';
           const avg = Number(r.avg_last_100 || 0);
-          const scoreText = avg > 0
-            ? `серия ${r.best_streak} · сред ${avg.toFixed(1)}%`
-            : `серия ${r.best_streak} · лучшая ${Number(r.best_accuracy).toFixed(1)}%`;
+          let scoreText;
+          if (!isCurrentSeason) {
+            // Старые сезоны — только по серии + лучшая
+            scoreText = `серия ${r.best_streak} · лучшая ${Number(r.best_accuracy).toFixed(1)}%`;
+          } else if (currentLbMetric === 'avg') {
+            scoreText = avg > 0
+              ? `<b>сред ${avg.toFixed(1)}%</b> · серия ${r.best_streak}`
+              : `серия ${r.best_streak}`;
+          } else {
+            scoreText = avg > 0
+              ? `<b>серия ${r.best_streak}</b> · сред ${avg.toFixed(1)}%`
+              : `<b>серия ${r.best_streak}</b>`;
+          }
           return `<div class="lb-row${mine}">
             <span class="lb-pos">${m}</span>
             <span class="lb-name">${escapeHtml(r.username)}</span>
@@ -1236,13 +1257,21 @@
     newRound(true);
   });
   $('share').addEventListener('click', (e) => { e.stopPropagation(); share(); });
-  $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(3); });
+  $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(3, 'streak'); });
   document.querySelectorAll('.season-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       e.stopPropagation();
-      const s = parseInt(tab.getAttribute('data-season'), 10) || 2;
+      const s = parseInt(tab.getAttribute('data-season'), 10) || 3;
       if (s === currentLbSeason) return;
-      showLeaderboard(s);
+      showLeaderboard(s, currentLbMetric);
+    });
+  });
+  document.querySelectorAll('.metric-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const m = tab.getAttribute('data-metric') || 'streak';
+      if (m === currentLbMetric) return;
+      showLeaderboard(currentLbSeason, m);
     });
   });
   $('lb-close').addEventListener('click', (e) => {

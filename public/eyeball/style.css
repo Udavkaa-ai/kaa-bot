@@ -360,6 +360,32 @@ main {
   background: rgba(26, 26, 26, 0.06);
 }
 
+.metric-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 0 14px;
+}
+.metric-tabs.hidden { display: none; }
+.metric-tab {
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-bottom: 1.5px solid transparent;
+  transition: all 0.15s;
+}
+.metric-tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
 /* MODAL */
 .modal {
   position: fixed;
