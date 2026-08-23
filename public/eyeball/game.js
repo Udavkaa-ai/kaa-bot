@@ -13,8 +13,8 @@
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const HIT_THRESHOLD_PCT = 5;
-  const ROUND_TIME_MS = 5000;         // Сезон 3: 5 секунд на ход
-  const HURRY_THRESHOLD_MS = 1500;    // за 1.5с до конца — красная подсветка
+  const ROUND_TIME_MS = 7000;         // Сезон 3: 7 секунд на ход
+  const HURRY_THRESHOLD_MS = 2000;    // за 2с до конца — красная подсветка
   const FRACTIONS = [
     [1,2], [1,3], [2,3], [1,4], [3,4],
     [1,5], [2,5], [3,5], [4,5],

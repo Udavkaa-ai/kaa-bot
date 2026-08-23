@@ -146,7 +146,7 @@ main {
 }
 .timer-fill.running {
   opacity: 0.55;
-  transition: transform 5s linear, background 0.3s ease-out;
+  transition: transform 7s linear, background 0.3s ease-out;
   transform: scaleX(0);
 }
 .timer-fill.hurry {
