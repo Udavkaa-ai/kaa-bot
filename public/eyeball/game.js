@@ -342,9 +342,29 @@
         stroke: '#1a1a1a', 'stroke-width': '1.2', opacity: '0',
         'stroke-linecap': 'round',
       });
+      // Калибровочные насечки: показывают между какими Y-точками считается 0% и 100%.
+      // Специально не совпадают с самим рисунком бутылки — это метки шкалы, не часть тары.
+      const tickGap = 6;   // расстояние от стенки до начала насечки
+      const tickLen = 10;  // длина насечки
+      const mkTick = (y, side) => {
+        const x1 = side === 'left' ? t.bx - tickGap - tickLen : t.bx + t.bw + tickGap;
+        const x2 = side === 'left' ? t.bx - tickGap : t.bx + t.bw + tickGap + tickLen;
+        return makeSvgEl('line', {
+          x1, x2, y1: y, y2: y,
+          stroke: '#1a1a1a', 'stroke-width': '2', 'stroke-linecap': 'round', opacity: '0',
+        });
+      };
+      const ticks = [
+        mkTick(t.waterTop,    'left'),
+        mkTick(t.waterTop,    'right'),
+        mkTick(t.waterBottom, 'left'),
+        mkTick(t.waterBottom, 'right'),
+      ];
+
       svg.appendChild(body);
       svg.appendChild(cap);
       svg.appendChild(highlight);
+      ticks.forEach(el => svg.appendChild(el));
       requestAnimationFrame(() => {
         body.style.transition = 'stroke-dashoffset 0.8s cubic-bezier(0.22,1,0.36,1)';
         cap.style.transition = 'opacity 0.35s ease-out 0.55s';
@@ -352,8 +372,12 @@
         body.setAttribute('stroke-dashoffset', '0');
         cap.setAttribute('opacity', '1');
         highlight.setAttribute('opacity', '0.18');
+        ticks.forEach(el => {
+          el.style.transition = 'opacity 0.4s ease-out 0.6s';
+          el.setAttribute('opacity', '0.7');
+        });
       });
-      return { body, cap, highlight };
+      return { body, cap, highlight, ticks };
     },
     clientToValue(cx, cy, t) {
       const p = clientToSvgPoint(cx, cy);
@@ -366,8 +390,8 @@
       const bottomY = t.waterBottom + 40; // clip обрежет
       const left = t.bx - 30;
       const right = t.bx + t.bw + 30;
-      // ~2.5 полуволны, амплитуда ~6px — читается как «волна»
-      const amp = 6;
+      // ~2.5 полуволны, амплитуда ~3px — тонкая волна
+      const amp = 3;
       const period = (right - left) / 2.5;
       let d = `M ${left} ${topY + amp}`; // старт чуть ниже средней линии
       const step = 6;
