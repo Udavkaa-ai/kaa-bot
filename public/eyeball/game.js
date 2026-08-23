@@ -720,8 +720,10 @@
     if (fill) {
       fill.classList.remove('running');
       fill.classList.remove('hurry');
-      fill.style.transform = 'scaleX(1)';
+      // Убираем inline-стили, чтобы класс .running точно перекрыл CSS
+      fill.style.transform = '';
       fill.style.opacity = '';
+      // Форсируем reflow чтобы transition стартанул с scaleX(1) → scaleX(0)
       void fill.offsetWidth;
       fill.classList.add('running');
     }
@@ -738,6 +740,8 @@
     if (fill) {
       fill.classList.remove('running');
       fill.classList.remove('hurry');
+      // Сбрасываем через inline чтобы полоска сразу пропала (без обратной анимации)
+      fill.style.transform = 'scaleX(0)';
       fill.style.opacity = '0';
     }
   }
