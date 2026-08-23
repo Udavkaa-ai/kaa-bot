@@ -141,7 +141,7 @@ main {
   width: 100%;
   background: var(--ink);
   opacity: 0;
-  transform-origin: left;
+  transform-origin: center;
   transform: scaleX(1);
 }
 .timer-fill.running {
