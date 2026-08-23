@@ -126,6 +126,33 @@ main {
   padding-top: 4vh;
   text-align: center;
 }
+
+.timer-track {
+  width: 55%;
+  max-width: 260px;
+  height: 2px;
+  margin: 12px auto 0;
+  background: rgba(26, 26, 26, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--ink);
+  opacity: 0;
+  transform-origin: left;
+  transform: scaleX(1);
+}
+.timer-fill.running {
+  opacity: 0.55;
+  transition: transform 5s linear, background 0.3s ease-out;
+  transform: scaleX(0);
+}
+.timer-fill.hurry {
+  background: var(--coral);
+  opacity: 0.8;
+}
 .task {
   font-size: clamp(26px, 7vw, 38px);
   font-weight: 200;

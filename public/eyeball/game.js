@@ -13,6 +13,8 @@
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const HIT_THRESHOLD_PCT = 5;
+  const ROUND_TIME_MS = 5000;         // Сезон 3: 5 секунд на ход
+  const HURRY_THRESHOLD_MS = 1500;    // за 1.5с до конца — красная подсветка
   const FRACTIONS = [
     [1,2], [1,3], [2,3], [1,4], [3,4],
     [1,5], [2,5], [3,5], [4,5],
@@ -39,6 +41,7 @@
     rounds: 0,
     awaiting: false,
     showingResult: false,
+    lastRoundAccuracy: null, // для отправки на бэкенд
   };
 
   // ---- Audio ----
@@ -703,6 +706,77 @@
 
     state.awaiting = true;
     state.showingResult = false;
+
+    startTimer();
+  }
+
+  // ---- Таймер (5 сек на ход, сезон 3) ----
+  let timerTimeoutId = null;
+  let timerHurryId = null;
+
+  function startTimer() {
+    stopTimer();
+    const fill = $('timer-fill');
+    if (fill) {
+      fill.classList.remove('running');
+      fill.classList.remove('hurry');
+      fill.style.transform = 'scaleX(1)';
+      fill.style.opacity = '';
+      void fill.offsetWidth;
+      fill.classList.add('running');
+    }
+    timerTimeoutId = setTimeout(onTimeout, ROUND_TIME_MS);
+    timerHurryId = setTimeout(() => {
+      if (fill && fill.classList.contains('running')) fill.classList.add('hurry');
+    }, ROUND_TIME_MS - HURRY_THRESHOLD_MS);
+  }
+
+  function stopTimer() {
+    if (timerTimeoutId) { clearTimeout(timerTimeoutId); timerTimeoutId = null; }
+    if (timerHurryId) { clearTimeout(timerHurryId); timerHurryId = null; }
+    const fill = $('timer-fill');
+    if (fill) {
+      fill.classList.remove('running');
+      fill.classList.remove('hurry');
+      fill.style.opacity = '0';
+    }
+  }
+
+  function onTimeout() {
+    if (!state.awaiting || state.showingResult) return;
+    if (aimState) {
+      // Юзер тянул точку — фиксируем на текущей позиции
+      commitAim();
+    } else {
+      // Не начал прицеливаться — засчитываем как промах с 0%
+      missRound();
+    }
+  }
+
+  function missRound() {
+    stopTimer();
+    state.rounds++;
+    state.avgSum += 0;
+    state.streak = 0;
+    state.lastRoundAccuracy = 0;
+
+    // Не рисуем ложный маркер — просто оставляем idle, добавляем «истёк» текст
+    updateStatsUI(false);
+    $('accuracy').innerHTML = `<span class="acc-num coral">0%</span>`;
+    $('status').textContent = 'время вышло';
+    $('result').classList.remove('hidden');
+    $('hint').classList.add('hidden');
+    $('share').classList.remove('hidden');
+    $('next-hint').classList.remove('hidden');
+
+    playAccuracyChord(0);
+    if (tg && tg.HapticFeedback) {
+      try { tg.HapticFeedback.notificationOccurred('error'); } catch (_) {}
+    }
+
+    state.awaiting = false;
+    state.showingResult = true;
+    queueFinishSync();
   }
 
   function buildTrack() {
@@ -735,6 +809,7 @@
     const value = aimState.value;
     clearAimRefs();
     aimState = null;
+    stopTimer();
     evaluate(value);
   }
   function clearAimRefs() {
@@ -753,6 +828,7 @@
   }
 
   function evaluate(userValue) {
+    stopTimer();
     const target01 = state.target / 100;
     const userPct = userValue * 100;
     const error = Math.abs(userPct - state.target);
@@ -761,6 +837,7 @@
     state.rounds++;
     state.avgSum += accuracy;
     state.best = state.best === null ? accuracy : Math.max(state.best, accuracy);
+    state.lastRoundAccuracy = accuracy;
     const prevStreak = state.streak;
     if (error <= HIT_THRESHOLD_PCT) state.streak++;
     else state.streak = 0;
@@ -921,6 +998,7 @@
           initData: tg.initData,
           streak: state.streak,
           bestAccuracy: state.best || 0,
+          roundAccuracy: state.lastRoundAccuracy != null ? state.lastRoundAccuracy : 0,
           addRounds: 1,
         }),
       });
@@ -965,11 +1043,13 @@
     return String(s).replace(/[<>&"]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;' }[c]));
   }
 
-  let currentLbSeason = 2;
+  let currentLbSeason = 3;
 
   async function showLeaderboard(season) {
     if (!tg || !tg.initData) { alert('Открой через бота'); return; }
-    currentLbSeason = season || currentLbSeason || 2;
+    // Пока модалка открыта — таймер не тикает, чтобы юзер спокойно посмотрел топ
+    if (state.awaiting) stopTimer();
+    currentLbSeason = season || currentLbSeason || 3;
 
     // Синхронизуем активную вкладку
     document.querySelectorAll('.season-tab').forEach(el => {
@@ -995,10 +1075,14 @@
         list.innerHTML = data.top.map((r, i) => {
           const m = medals[i] || (i + 1);
           const mine = meId && r.user_id === meId ? ' mine' : '';
+          const avg = Number(r.avg_last_100 || 0);
+          const scoreText = avg > 0
+            ? `серия ${r.best_streak} · сред ${avg.toFixed(1)}%`
+            : `серия ${r.best_streak} · лучшая ${Number(r.best_accuracy).toFixed(1)}%`;
           return `<div class="lb-row${mine}">
             <span class="lb-pos">${m}</span>
             <span class="lb-name">${escapeHtml(r.username)}</span>
-            <span class="lb-score">серия ${r.best_streak} · ${Number(r.best_accuracy).toFixed(1)}%</span>
+            <span class="lb-score">${scoreText}</span>
           </div>`;
         }).join('');
       }
@@ -1012,8 +1096,9 @@
       $('lb-me').classList.add('hidden');
       return;
     }
-    $('me-best').textContent = me.best_accuracy.toFixed(1) + '%';
     $('me-streak').textContent = me.best_streak;
+    const avg = Number(me.avg_last_100 || 0);
+    $('me-avg').textContent = avg > 0 ? avg.toFixed(1) + '%' : '—';
     $('me-rounds').textContent = me.rounds;
     $('me-rank').textContent = '#' + me.rank;
     const compareEl = $('lb-me-compare');
@@ -1123,7 +1208,7 @@
     newRound(true);
   });
   $('share').addEventListener('click', (e) => { e.stopPropagation(); share(); });
-  $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(2); });
+  $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(3); });
   document.querySelectorAll('.season-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1135,6 +1220,8 @@
   $('lb-close').addEventListener('click', (e) => {
     e.stopPropagation();
     $('lb-modal').classList.add('hidden');
+    // Возвращаемся в игру — рестарт таймера если раунд ещё активен
+    if (state.awaiting) startTimer();
   });
 
   let resizeTimer = null;

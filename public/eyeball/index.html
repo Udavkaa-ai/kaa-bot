@@ -24,6 +24,7 @@
   <main>
     <div class="task-wrap">
       <div class="task" id="task">&nbsp;</div>
+      <div class="timer-track" aria-hidden="true"><div class="timer-fill" id="timer-fill"></div></div>
     </div>
 
     <div class="line-zone" id="line-zone">
@@ -52,16 +53,17 @@
       <h3>Топ чата</h3>
 
       <div class="season-tabs">
-        <button class="season-tab active" data-season="2" type="button">2 сезон</button>
+        <button class="season-tab active" data-season="3" type="button">3 сезон</button>
+        <button class="season-tab" data-season="2" type="button">2 сезон</button>
         <button class="season-tab" data-season="1" type="button">1 сезон</button>
       </div>
 
       <div class="lb-me hidden" id="lb-me">
         <div class="lb-me-row">
-          <div class="lb-me-stat"><div class="lb-me-lbl">лучшая</div><div class="lb-me-val" id="me-best">—</div></div>
           <div class="lb-me-stat"><div class="lb-me-lbl">серия</div><div class="lb-me-val" id="me-streak">—</div></div>
-          <div class="lb-me-stat"><div class="lb-me-lbl">раундов</div><div class="lb-me-val" id="me-rounds">—</div></div>
+          <div class="lb-me-stat" id="me-avg-wrap"><div class="lb-me-lbl">средняя</div><div class="lb-me-val" id="me-avg">—</div></div>
           <div class="lb-me-stat"><div class="lb-me-lbl">место</div><div class="lb-me-val" id="me-rank">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">раундов</div><div class="lb-me-val" id="me-rounds">—</div></div>
         </div>
         <div class="lb-me-compare" id="lb-me-compare"></div>
       </div>

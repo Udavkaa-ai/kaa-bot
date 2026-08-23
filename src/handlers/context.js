@@ -38,8 +38,8 @@ async function gatherContext(msg, userText) {
     messagesRepo.getHistory(chatId),
     search.trySearch(userText),
     // Топ и место собеседника в игре "Сечение" (текущий сезон)
-    eyeballRepo.topByStreak(chatId, 10, 2).catch(() => []),
-    userId ? eyeballRepo.getUserStats(chatId, userId, 2).catch(() => null) : null,
+    eyeballRepo.topByStreak(chatId, 10, eyeballRepo.CURRENT_SEASON).catch(() => []),
+    userId ? eyeballRepo.getUserStats(chatId, userId, eyeballRepo.CURRENT_SEASON).catch(() => null) : null,
   ]);
 
   const system = buildSystemPrompt({

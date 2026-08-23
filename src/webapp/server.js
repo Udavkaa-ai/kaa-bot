@@ -77,6 +77,11 @@ function start() {
       await eyeballRepo.upsertScore(req.tgChatId, u.id, userDisplay(u, false), {
         streak, bestAccuracy, addRounds,
       });
+      // Точность отдельного раунда — для скользящей средней последних 100
+      if (req.body.roundAccuracy !== undefined && req.body.roundAccuracy !== null) {
+        const roundAcc = clampFloat(req.body.roundAccuracy, 0, 100);
+        await eyeballRepo.addRound(req.tgChatId, u.id, roundAcc);
+      }
       res.json({ ok: true });
     } catch (err) {
       console.error('[EYEBALL FINISH]', err.message);
@@ -87,9 +92,9 @@ function start() {
   app.get('/api/eyeball/leaderboard', authMiddleware, async (req, res) => {
     try {
       if (!req.tgChatId) return res.status(400).json({ error: 'no_chat' });
-      // ?season=1 → архив, иначе → текущий сезон (2)
+      // ?season=1|2 → архивы, иначе → текущий сезон (3)
       const seasonParam = parseInt(req.query.season, 10);
-      const season = seasonParam === 1 ? 1 : 2;
+      const season = (seasonParam === 1 || seasonParam === 2) ? seasonParam : eyeballRepo.CURRENT_SEASON;
       const [top, me, agg] = await Promise.all([
         eyeballRepo.topByStreak(req.tgChatId, 10, season),
         eyeballRepo.getUserStats(req.tgChatId, req.tgUser.id, season),
@@ -102,11 +107,13 @@ function start() {
           username: r.username || ('id' + r.user_id),
           best_streak: r.best_streak,
           best_accuracy: Number(r.best_accuracy),
+          avg_last_100: Number(r.avg_last_100 || 0),
           rounds: r.rounds,
         })),
         me: me ? {
           best_streak: me.best_streak,
           best_accuracy: Number(me.best_accuracy),
+          avg_last_100: Number(me.avg_last_100 || 0),
           rounds: me.rounds,
           rank: Number(me.rank),
         } : null,

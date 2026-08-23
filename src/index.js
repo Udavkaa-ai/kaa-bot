@@ -90,7 +90,7 @@ async function main() {
       for (const r of pending) {
         try {
           if (r.kind === 'eyeball_top') {
-            const top = await eyeballRepo.topByStreak(r.chat_id, 5, 2);
+            const top = await eyeballRepo.topByStreak(r.chat_id, 5, eyeballRepo.CURRENT_SEASON);
             if (top.length === 0) {
               await bot.sendMessage(r.chat_id, '👁 Топ Сечения пустой — никто ещё не играл. /sec чтобы начать.').catch(() => {});
             } else {
@@ -98,7 +98,9 @@ async function main() {
               const lines = top.map((row, i) => {
                 const m = medals[i] || `${i + 1}.`;
                 const name = row.username || 'id' + row.user_id;
-                return `${m} ${name} — серия ${row.best_streak}, точность ${Number(row.best_accuracy).toFixed(1)}%`;
+                const avg = Number(row.avg_last_100 || 0);
+                const avgStr = avg > 0 ? `, сред ${avg.toFixed(1)}%` : '';
+                return `${m} ${name} — серия ${row.best_streak}${avgStr}`;
               });
               await bot.sendMessage(r.chat_id, `👁 Топ "Сечения" сейчас:\n\n${lines.join('\n')}\n\nИграть: /sec`);
             }
