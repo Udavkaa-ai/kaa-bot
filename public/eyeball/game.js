@@ -744,10 +744,8 @@
     if (fill) {
       fill.classList.remove('running');
       fill.classList.remove('hurry');
-      // Убираем inline-стили, чтобы класс .running точно перекрыл CSS
       fill.style.transform = '';
       fill.style.opacity = '';
-      // Форсируем reflow чтобы transition стартанул с scaleX(1) → scaleX(0)
       void fill.offsetWidth;
       fill.classList.add('running');
     }
@@ -755,6 +753,8 @@
     timerHurryId = setTimeout(() => {
       if (fill && fill.classList.contains('running')) fill.classList.add('hurry');
     }, ROUND_TIME_MS - HURRY_THRESHOLD_MS);
+    // Блокируем все action-кнопки, пока идёт таймер
+    document.body.classList.add('round-active');
   }
 
   function stopTimer() {
@@ -764,10 +764,10 @@
     if (fill) {
       fill.classList.remove('running');
       fill.classList.remove('hurry');
-      // Сбрасываем через inline чтобы полоска сразу пропала (без обратной анимации)
       fill.style.transform = 'scaleX(0)';
       fill.style.opacity = '0';
     }
+    document.body.classList.remove('round-active');
   }
 
   function onTimeout() {
@@ -1076,7 +1076,8 @@
 
   async function showLeaderboard(season, metric) {
     if (!tg || !tg.initData) { alert('Открой через бота'); return; }
-    if (state.awaiting) stopTimer();
+    // Кнопка «Топ» вообще не должна быть кликабельна во время раунда — но на всякий случай.
+    if (state.awaiting) return;
     currentLbSeason = season || currentLbSeason || 3;
     if (metric) currentLbMetric = metric;
 
@@ -1242,11 +1243,13 @@
 
   $('reset').addEventListener('click', (e) => {
     e.stopPropagation();
+    if (state.awaiting) return; // на всякий случай — CSS уже блокирует
     if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('light'); } catch (_) {}
     resetSession();
   });
   $('switch-mode').addEventListener('click', (e) => {
     e.stopPropagation();
+    if (state.awaiting) return;
     if (tg && tg.HapticFeedback) try { tg.HapticFeedback.impactOccurred('medium'); } catch (_) {}
     // Смена режима "прерывает" текущую задачу → серия сгорает.
     // Без этого можно спамить кнопку, отсеивая сложные задачи, пока не выпадет простая.
@@ -1277,8 +1280,6 @@
   $('lb-close').addEventListener('click', (e) => {
     e.stopPropagation();
     $('lb-modal').classList.add('hidden');
-    // Возвращаемся в игру — рестарт таймера если раунд ещё активен
-    if (state.awaiting) startTimer();
   });
 
   let resizeTimer = null;
