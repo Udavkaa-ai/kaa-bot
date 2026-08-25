@@ -272,13 +272,12 @@ main {
   color: var(--ink-soft);
 }
 
-/* Пока идёт таймер (раунд активен) — все action-кнопки и reset неактивны.
-   Заблокировать нужно чтобы нельзя было спамить "Топ" или reset
-   и получать новый таймер на ту же задачу. */
-body.round-active .actions .btn,
-body.round-active .reset-btn {
-  pointer-events: none;
+/* Заблокированные кнопки (пока идёт таймер раунда) — визуально глушим */
+.btn:disabled,
+.reset-btn:disabled {
   opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .next-hint {

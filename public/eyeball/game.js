@@ -755,6 +755,7 @@
     }, ROUND_TIME_MS - HURRY_THRESHOLD_MS);
     // Блокируем все action-кнопки, пока идёт таймер
     document.body.classList.add('round-active');
+    setActionsDisabled(true);
   }
 
   function stopTimer() {
@@ -768,6 +769,14 @@
       fill.style.opacity = '0';
     }
     document.body.classList.remove('round-active');
+    setActionsDisabled(false);
+  }
+
+  function setActionsDisabled(disabled) {
+    ['switch-mode', 'share', 'leaderboard-btn', 'reset'].forEach(id => {
+      const el = $(id);
+      if (el) el.disabled = !!disabled;
+    });
   }
 
   function onTimeout() {
