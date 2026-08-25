@@ -775,7 +775,14 @@
   function setActionsDisabled(disabled) {
     ['switch-mode', 'share', 'leaderboard-btn', 'reset'].forEach(id => {
       const el = $(id);
-      if (el) el.disabled = !!disabled;
+      if (!el) return;
+      el.disabled = !!disabled;
+      el.classList.toggle('is-locked', !!disabled);
+      if (disabled) {
+        el.setAttribute('aria-disabled', 'true');
+      } else {
+        el.removeAttribute('aria-disabled');
+      }
     });
   }
 
@@ -1268,8 +1275,16 @@
     }
     newRound(true);
   });
-  $('share').addEventListener('click', (e) => { e.stopPropagation(); share(); });
-  $('leaderboard-btn').addEventListener('click', (e) => { e.stopPropagation(); showLeaderboard(3, 'streak'); });
+  $('share').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (state.awaiting) return;
+    share();
+  });
+  $('leaderboard-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (state.awaiting) return;
+    showLeaderboard(3, 'streak');
+  });
   document.querySelectorAll('.season-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       e.stopPropagation();
