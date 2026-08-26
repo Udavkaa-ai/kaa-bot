@@ -138,15 +138,26 @@ function start() {
       if (!req.tgChatId) return res.status(400).json({ error: 'no_chat' });
       if (!botRef) return res.status(503).json({ error: 'bot_not_ready' });
       const u = req.tgUser;
-      const streak = clampInt(req.body.streak, 0, 99999);
-      const accuracy = clampFloat(req.body.bestAccuracy, 0, 100);
-      const rounds = clampInt(req.body.rounds, 0, 99999);
+      // Берём АКТУАЛЬНУЮ статистику игрока из БД (текущий сезон), а не то что прислал клиент
+      const stats = await eyeballRepo.getUserStats(req.tgChatId, u.id, eyeballRepo.CURRENT_SEASON);
+      if (!stats || !stats.rounds) {
+        return res.status(400).json({ error: 'no_stats' });
+      }
       const name = userDisplay(u, true);
-      const text =
-        `Сечение · ${name}\n` +
-        `🔥 серия ${streak}\n` +
-        `🎯 лучшее ${accuracy.toFixed(1)}%\n` +
-        `🎲 раундов ${rounds}`;
+      const streak = stats.best_streak || 0;
+      const bestAcc = Number(stats.best_accuracy || 0);
+      const avg = Number(stats.avg_last_100 || 0);
+      const rounds = stats.rounds || 0;
+      const rank = Number(stats.rank || 0);
+      const lines = [
+        `Сечение · ${name}`,
+        `🏆 место в чате: #${rank}`,
+        `🔥 лучшая серия: ${streak}`,
+      ];
+      if (avg > 0) lines.push(`📈 средняя (за 100): ${avg.toFixed(1)}%`);
+      lines.push(`🎯 лучшая точность: ${bestAcc.toFixed(1)}%`);
+      lines.push(`🎲 раундов сыграно: ${rounds}`);
+      const text = lines.join('\n');
       await botRef.sendMessage(req.tgChatId, text, { disable_notification: true });
       res.json({ ok: true });
     } catch (err) {

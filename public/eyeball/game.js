@@ -1056,15 +1056,15 @@
     const old = btn.textContent;
     btn.textContent = 'Отправляю...';
     try {
+      // Сначала дожимаем последний раунд в БД, чтобы шаринг взял свежую статистику
+      if (pendingFinish) {
+        if (finishTimer) { clearTimeout(finishTimer); finishTimer = null; }
+        await syncFinish();
+      }
       const resp = await fetch('/api/eyeball/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          initData: tg.initData,
-          streak: state.streak,
-          bestAccuracy: state.best || 0,
-          rounds: state.rounds,
-        }),
+        body: JSON.stringify({ initData: tg.initData }),
       });
       const data = await resp.json();
       if (data && data.ok) {
