@@ -272,14 +272,16 @@ main {
   color: var(--ink-soft);
 }
 
-/* Заблокированные кнопки (пока идёт таймер раунда) — визуально глушим и блокируем клики */
+/* Заблокированные кнопки (пока идёт таймер раунда) — визуально глушим.
+   pointer-events НАМЕРЕННО оставлены — иначе тап провалится сквозь кнопку
+   в игровое поле и сорвёт прицеливание. Кнопка ловит тап на себя,
+   а нативный disabled + JS-guard в клик-хендлере не дают действию сработать. */
 .btn:disabled,
 .reset-btn:disabled,
 .btn.is-locked,
 .reset-btn.is-locked {
   opacity: 0.25 !important;
   cursor: not-allowed !important;
-  pointer-events: none !important;
 }
 
 .next-hint {
