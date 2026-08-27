@@ -37,7 +37,7 @@ async function handleCommand(bot, msg) {
       return true;
 
     case '/persona':
-      await sendPersonaMenu(bot, chatId, msg.message_id);
+      await sendPersonaMenu(bot, chatId, msg.message_id, msg.from?.id);
       return true;
 
     case '/mute':

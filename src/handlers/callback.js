@@ -1,5 +1,6 @@
 const usersRepo = require('../db/repo/users');
 const { getPersonaById, getRandomPersona } = require('../ai/personas');
+const { buildPersonaKeyboard } = require('./persona');
 const { moscowToday } = require('../utils/time');
 const giveaway = require('./giveaway');
 
@@ -31,9 +32,11 @@ async function handleCallback(bot, query) {
 
   await usersRepo.setUserPersona(userId, chatId, personaId, moscowToday());
 
+  // Перекрашиваем клавиатуру: выбранная персона теперь зелёная с галкой.
+  // Меню остаётся живым — другие участники чата тоже могут выбрать себе персону.
   try {
     await bot.editMessageReplyMarkup(
-      { inline_keyboard: [] },
+      { inline_keyboard: buildPersonaKeyboard(personaId) },
       { chat_id: chatId, message_id: query.message.message_id }
     );
   } catch (_) {}
