@@ -107,7 +107,7 @@ function buildSystemContent(systemText) {
   ];
 }
 
-async function ask({ system, history, userText, opts = {} }) {
+function buildAskMessages({ system, history, userText }) {
   const historyMsgs = (history || []).map(m => {
     if (m.role === 'user') {
       const prefix = m.username || m.name || 'Пользователь';
@@ -126,7 +126,62 @@ async function ask({ system, history, userText, opts = {} }) {
       messages.push({ role: 'user', content: userText });
     }
   }
-  return callWithFallback(messages, opts);
+  return messages;
+}
+
+async function ask({ system, history, userText, opts = {} }) {
+  return callWithFallback(buildAskMessages({ system, history, userText }), opts);
+}
+
+async function streamOnce(model, messages, opts, onProgress) {
+  const keyIdx = pickKey();
+  const client = makeClient(keyIdx);
+  try {
+    const stream = await client.chat.completions.create({
+      model,
+      messages,
+      temperature: opts.temperature ?? 0.85,
+      max_tokens: opts.maxTokens ?? 1200,
+      stream: true,
+    });
+    let full = '';
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta?.content || '';
+      if (delta) {
+        full += delta;
+        try { onProgress(full); } catch (_) {}
+      }
+    }
+    stats.increment('openrouter', model).catch(() => {});
+    return { text: full || null, model };
+  } catch (err) {
+    if (isQuotaError(err)) {
+      console.warn(`[CLAUDE] Key #${keyIdx} исчерпан на ${model} (stream)`);
+      exhaustedKeys.add(keyIdx);
+    }
+    throw err;
+  }
+}
+
+// Стриминговый вариант ask: onProgress получает накопленный текст по мере генерации.
+async function askStream({ system, history, userText, opts = {} }, onProgress) {
+  const messages = buildAskMessages({ system, history, userText });
+  const tryOrder = [config.claudeModel, ...config.fallbackModels];
+  let lastErr = null;
+  for (const model of tryOrder) {
+    for (let attempt = 0; attempt < config.openrouterKeys.length; attempt++) {
+      try {
+        return await streamOnce(model, messages, opts, onProgress);
+      } catch (err) {
+        lastErr = err;
+        if (!isQuotaError(err)) {
+          console.warn(`[CLAUDE] ${model} stream failed: ${err.message}`);
+          break;
+        }
+      }
+    }
+  }
+  throw lastErr || new Error('All models failed (stream)');
 }
 
 async function askWithImages({ system, userText, images = [], opts = {} }) {
@@ -161,4 +216,4 @@ async function askJson({ system, userText, opts = {} }) {
   }
 }
 
-module.exports = { ask, askWithImages, askJson, callWithFallback };
+module.exports = { ask, askStream, askWithImages, askJson, callWithFallback };

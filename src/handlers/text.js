@@ -1,11 +1,43 @@
 const messagesRepo = require('../db/repo/messages');
-const { gatherContext, generateReply } = require('./context');
+const { gatherContext, generateReply, generateReplyStream } = require('./context');
 const { withTyping } = require('../utils/typing');
 const { sendSafe } = require('../utils/telegram');
 const { humorReply } = require('../ai/errorHumor');
 const { withPersonaTag } = require('../utils/personaTag');
+const rawApi = require('../utils/rawApi');
 const profile = require('../memory/profile');
 const semantic = require('../memory/semantic');
+
+const DRAFT_INTERVAL_MS = 700; // не спамим драфтами чаще чем раз в 700мс
+
+// Стриминг ответа в личке: sendMessageDraft показывает "печатающийся" текст
+// (Bot API 10.x), финальное сообщение отправляется обычным способом.
+async function generateWithDrafts(bot, chatId, draftId, ctx) {
+  let lastSent = 0;
+  let draftsBroken = false;
+  // Мгновенный "Thinking..." плейсхолдер
+  rawApi.call('sendMessageDraft', { chat_id: chatId, draft_id: draftId, text: '' })
+    .catch(() => { draftsBroken = true; });
+
+  const onProgress = (full) => {
+    if (draftsBroken) return;
+    const now = Date.now();
+    if (now - lastSent < DRAFT_INTERVAL_MS) return;
+    lastSent = now;
+    rawApi.call('sendMessageDraft', {
+      chat_id: chatId,
+      draft_id: draftId,
+      text: full.slice(0, 4000),
+    }).catch(() => { draftsBroken = true; });
+  };
+
+  try {
+    return await generateReplyStream({ system: ctx.system, history: ctx.history }, onProgress);
+  } catch (err) {
+    console.warn(`[TEXT] stream failed (${err.message}), фолбэк на обычный запрос`);
+    return generateReply({ system: ctx.system, history: ctx.history });
+  }
+}
 
 const batchCounters = new Map();
 const topicCounters = new Map();
@@ -31,8 +63,11 @@ async function handleText(bot, msg, opts = {}) {
     if (ctx.searchContext) {
       console.log(`[SEARCH] chat=${chatId} нашли результаты`);
     }
+    const isPrivate = msg.chat.type === 'private';
     result = await withTyping(bot, chatId, () =>
-      generateReply({ system: ctx.system, history: ctx.history })
+      isPrivate
+        ? generateWithDrafts(bot, chatId, msg.message_id, ctx)
+        : generateReply({ system: ctx.system, history: ctx.history })
     );
   } catch (err) {
     console.error(`[TEXT] chat=${chatId}: ${err.message}`);

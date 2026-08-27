@@ -34,4 +34,21 @@ async function sendSafe(bot, chatId, text, opts = {}) {
   return firstId;
 }
 
-module.exports = { splitMessage, sendSafe };
+// Служебное уведомление лично юзеру: в группах — эфемерное сообщение
+// (видит только он, чат не засоряется), в личке или при ошибке — обычный reply.
+async function noticeUser(bot, msg, text) {
+  const chatId = msg.chat.id;
+  const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
+  if (isGroup && msg.from?.id) {
+    try {
+      const rawApi = require('./rawApi');
+      await rawApi.sendEphemeral(chatId, msg.from.id, text);
+      return;
+    } catch (err) {
+      // Сервер не поддержал / нет прав — падаем в обычный reply
+    }
+  }
+  await sendSafe(bot, chatId, text, { reply_to_message_id: msg.message_id });
+}
+
+module.exports = { splitMessage, sendSafe, noticeUser };

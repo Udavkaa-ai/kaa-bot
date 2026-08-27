@@ -103,6 +103,27 @@ async function main() {
                 return `${m} ${name} — серия ${row.best_streak}${avgStr}`;
               });
               await bot.sendMessage(r.chat_id, `👁 Топ "Сечения" сейчас:\n\n${lines.join('\n')}\n\nИграть: /sec`);
+
+              // Плашка "Глазомер #1" на профиле лидера в чате (setChatMemberTag,
+              // Bot API 10.x; нужны админ-права у бота — если их нет, тихо скипаем)
+              try {
+                const rawApi = require('./utils/rawApi');
+                const settingsRepo = require('./db/repo/settings');
+                const leaderId = Number(top[0].user_id);
+                const tagKey = `eyeball_tag_${r.chat_id}`;
+                const prev = await settingsRepo.get(tagKey);
+                const prevId = prev ? parseInt(prev, 10) : null;
+                if (prevId !== leaderId) {
+                  if (prevId) {
+                    await rawApi.call('setChatMemberTag', { chat_id: r.chat_id, user_id: prevId, tag: '' }).catch(() => {});
+                  }
+                  await rawApi.call('setChatMemberTag', { chat_id: r.chat_id, user_id: leaderId, tag: 'Глазомер #1' });
+                  await settingsRepo.set(tagKey, String(leaderId));
+                  console.log(`[EYEBALL TAG] chat=${r.chat_id} лидер ${leaderId} получил плашку`);
+                }
+              } catch (err) {
+                console.warn('[EYEBALL TAG]', err.message);
+              }
             }
           } else {
             await bot.sendMessage(r.chat_id, `⏰ Напоминание: ${r.text}`);

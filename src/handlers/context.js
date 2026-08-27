@@ -61,18 +61,29 @@ async function gatherContext(msg, userText) {
   return { persona, justAssigned, system, history, searchContext, userProfile };
 }
 
-async function generateReply({ system, history }) {
-  const safeHistory = (history || []).map(m => ({
+function safeHistory(history) {
+  return (history || []).map(m => ({
     role: m.role,
     text: m.text || '',
     username: m.role === 'user' ? (m.username || 'юзер') : null,
   }));
+}
 
+async function generateReply({ system, history }) {
   return claude.ask({
     system,
-    history: safeHistory,
+    history: safeHistory(history),
     opts: { temperature: 0.85, maxTokens: 1000 },
   });
 }
 
-module.exports = { gatherContext, generateReply };
+// Стриминговая версия: onProgress получает накопленный текст ответа.
+async function generateReplyStream({ system, history }, onProgress) {
+  return claude.askStream({
+    system,
+    history: safeHistory(history),
+    opts: { temperature: 0.85, maxTokens: 1000 },
+  }, onProgress);
+}
+
+module.exports = { gatherContext, generateReply, generateReplyStream };

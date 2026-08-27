@@ -1,7 +1,7 @@
 const claude = require('../providers/claude');
 const quizRepo = require('../db/repo/quiz');
 const chatsRepo = require('../db/repo/chats');
-const { sendSafe } = require('../utils/telegram');
+const { sendSafe, noticeUser } = require('../utils/telegram');
 
 // Кулдаун на /quiz — не чаще раза в 30с в одном чате
 const quizCooldown = new Map();
@@ -51,7 +51,7 @@ async function handleQuizCommand(bot, msg, argsText) {
   const last = quizCooldown.get(chatId);
   if (last && Date.now() - last < COOLDOWN_MS) {
     const left = Math.ceil((COOLDOWN_MS - (Date.now() - last)) / 1000);
-    await sendSafe(bot, chatId, `Подожди ${left} сек до следующего вопроса.`, { reply_to_message_id: msg.message_id });
+    await noticeUser(bot, msg, `Подожди ${left} сек до следующего вопроса.`);
     return;
   }
   quizCooldown.set(chatId, Date.now());

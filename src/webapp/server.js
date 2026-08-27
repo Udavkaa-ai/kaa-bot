@@ -158,7 +158,10 @@ function start() {
       lines.push(`🎯 лучшая точность: ${bestAcc.toFixed(1)}%`);
       lines.push(`🎲 раундов сыграно: ${rounds}`);
       const text = lines.join('\n');
-      await botRef.sendMessage(req.tgChatId, text, { disable_notification: true });
+      const sendOpts = { disable_notification: true };
+      // В личке добавляем эффект 🎉 (message_effect_id работает только в private)
+      if (req.tgChatId > 0) sendOpts.message_effect_id = '5046509860389126442';
+      await botRef.sendMessage(req.tgChatId, text, sendOpts);
       res.json({ ok: true });
     } catch (err) {
       console.error('[EYEBALL SHARE]', err.message);

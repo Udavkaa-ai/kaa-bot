@@ -6,7 +6,7 @@ const statsRepo = require('../db/repo/stats');
 const claude = require('../providers/claude');
 const pollinations = require('../providers/pollinations');
 const { sendPersonaMenu } = require('./persona');
-const { sendSafe } = require('../utils/telegram');
+const { sendSafe, noticeUser } = require('../utils/telegram');
 const { withTyping } = require('../utils/typing');
 const { humorReply } = require('../ai/errorHumor');
 const giveaway = require('./giveaway');
@@ -39,6 +39,10 @@ async function handleCommand(bot, msg) {
     case '/persona':
       await sendPersonaMenu(bot, chatId, msg.message_id, msg.from?.id);
       return true;
+
+    case '/personaemoji':
+      if (!isAdmin(msg)) return true;
+      return handlePersonaEmoji(bot, msg, args);
 
     case '/mute':
       const muted = await chatsRepo.toggleMute(chatId, msg.message_thread_id);
@@ -148,6 +152,7 @@ function buildHelp() {
     '/transcribe on|off — авто-расшифровка голосовых в чат (только админ чата)',
     '/trigger <слова> — задать как меня звать в этом чате (только админ)',
     '/triggers — показать текущие триггеры',
+    '/personaemoji — премиум-эмодзи как иконки кнопок персон (только владелец)',
     config.imagesEnabled ? '/draw <описание> — нарисую' : null,
     '',
     modules.length ? 'Активно:\n' + modules.join('\n') : null,
@@ -304,7 +309,7 @@ async function handleTrigger(bot, msg, args) {
   const isPrivate = msg.chat.type === 'private';
 
   if (!isPrivate && !(await isChatAdmin(bot, chatId, userId))) {
-    await sendSafe(bot, chatId, 'Триггеры может менять только админ чата.', { reply_to_message_id: msg.message_id });
+    await noticeUser(bot, msg, 'Триггеры может менять только админ чата.');
     return true;
   }
 
@@ -426,8 +431,7 @@ async function handleEyeballRemind(bot, msg, args) {
 
   // В группах — только админ чата может ставить/снимать
   if (!isPrivate && !(await isChatAdmin(bot, chatId, userId))) {
-    await sendSafe(bot, chatId, 'Настраивать напоминание может только админ чата.',
-      { reply_to_message_id: msg.message_id });
+    await noticeUser(bot, msg, 'Настраивать напоминание может только админ чата.');
     return true;
   }
 
@@ -485,14 +489,52 @@ async function handleEyeballRemind(bot, msg, args) {
   return true;
 }
 
+// /personaemoji — владелец бота отправляет команду с кастомными (премиум)
+// эмодзи в тексте, по одному на персону в порядке списка PERSONAS.
+// Эти эмодзи становятся иконками кнопок в /persona (icon_custom_emoji_id,
+// Bot API 10.3; работает т.к. у владельца бота есть Telegram Premium).
+async function handlePersonaEmoji(bot, msg, args) {
+  const settingsRepo = require('../db/repo/settings');
+  const { PERSONAS } = require('../ai/personas');
+  const chatId = msg.chat.id;
+  const arg = args.join(' ').trim();
+
+  if (/^(reset|сброс)$/i.test(arg)) {
+    await settingsRepo.set('persona_emoji_map', null);
+    await sendSafe(bot, chatId, 'Иконки кнопок персон сброшены.', { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  const entities = (msg.entities || []).filter(e => e.type === 'custom_emoji');
+  if (entities.length === 0) {
+    await sendSafe(bot, chatId,
+      `Пришли команду с премиум-эмодзи в тексте — по одному на персону, по порядку:\n` +
+      PERSONAS.map((p, i) => `${i + 1}. ${p.name}`).join('\n') +
+      `\n\nПример: /personaemoji 🤠📈🎓💋🎖🧸🩺🎤🕵️👵 (но премиум-версии)\nСброс: /personaemoji reset`,
+      { reply_to_message_id: msg.message_id });
+    return true;
+  }
+
+  const map = {};
+  PERSONAS.forEach((p, i) => {
+    if (entities[i]) map[p.id] = entities[i].custom_emoji_id;
+  });
+  await settingsRepo.setJson('persona_emoji_map', map);
+
+  const assigned = PERSONAS.filter(p => map[p.id]).map(p => p.name);
+  await sendSafe(bot, chatId,
+    `Иконки сохранены для: ${assigned.join(', ')}${assigned.length < PERSONAS.length ? `\n(остальным ${PERSONAS.length - assigned.length} — не хватило эмодзи, у них останется обычный)` : ''}\nПроверь: /persona`,
+    { reply_to_message_id: msg.message_id });
+  return true;
+}
+
 async function handleTranscribe(bot, msg, args) {
   const chatId = msg.chat.id;
   const userId = msg.from?.id;
   const isPrivate = msg.chat.type === 'private';
 
   if (!isPrivate && !(await isChatAdmin(bot, chatId, userId))) {
-    await sendSafe(bot, chatId, 'Переключать может только админ чата.',
-      { reply_to_message_id: msg.message_id });
+    await noticeUser(bot, msg, 'Переключать может только админ чата.');
     return true;
   }
 

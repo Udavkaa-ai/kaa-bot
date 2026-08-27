@@ -233,6 +233,13 @@ CREATE TABLE IF NOT EXISTS eyeball_seasons (
   ended_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Ключ-значение настройки бота (карта кастомных эмодзи персон, теги лидеров и т.п.)
+CREATE TABLE IF NOT EXISTS bot_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Закрытие сезона 1: переносим текущий eyeball_scores в архив s1 и truncate.
 DO $$
 BEGIN

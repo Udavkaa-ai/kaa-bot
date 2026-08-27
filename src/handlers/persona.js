@@ -31,17 +31,31 @@ async function resolvePersona(userId, chatId, msgText) {
   return { persona: random, justAssigned: true };
 }
 
+// Карта кастомных эмодзи-иконок (настраивается владельцем через /personaemoji)
+async function getPersonaIconMap() {
+  try {
+    const settingsRepo = require('../db/repo/settings');
+    return await settingsRepo.getJson('persona_emoji_map');
+  } catch (_) {
+    return null;
+  }
+}
+
 // Инлайн-клавиатура выбора персон. activeId — id текущей персоны кликера,
 // её кнопка красится зелёным (style, Bot API 10.3) и помечается галкой.
-function buildPersonaKeyboard(activeId) {
+// iconMap — {personaId: custom_emoji_id}: премиум-иконка перед текстом кнопки.
+function buildPersonaKeyboard(activeId, iconMap = null) {
   const makeBtn = (p) => {
-    const emoji = PERSONA_EMOJI[p.id] || '';
     const isActive = p.id === activeId;
+    const customIcon = iconMap && iconMap[p.id];
+    // Если есть кастомная иконка — юникод-эмодзи из текста убираем, чтобы не дублировалось
+    const emoji = customIcon ? '' : (PERSONA_EMOJI[p.id] || '');
     const btn = {
       text: `${emoji} ${p.name}${isActive ? ' ✓' : ''}`.trim(),
       callback_data: `persona:${p.id}`,
     };
     // Неизвестные поля старая либа просто пробрасывает в JSON — безопасно.
+    if (customIcon) btn.icon_custom_emoji_id = customIcon;
     if (isActive) btn.style = 'success';
     return btn;
   };
@@ -70,7 +84,8 @@ async function sendPersonaMenu(bot, chatId, replyToMessageId, userId) {
     } catch (_) {}
   }
 
-  const buttons = buildPersonaKeyboard(activeId);
+  const iconMap = await getPersonaIconMap();
+  const buttons = buildPersonaKeyboard(activeId, iconMap);
 
   // Описания — в раскрывающейся цитате, чтобы кнопки остались короткими
   const descLines = PERSONAS
@@ -80,6 +95,24 @@ async function sendPersonaMenu(bot, chatId, replyToMessageId, userId) {
     'Выбери с кем поговорить сегодня:\n' +
     `<blockquote expandable>${descLines}</blockquote>`;
 
+  // В группах меню видно только тому, кто его вызвал (эфемерное сообщение,
+  // Bot API 10.x) — не засоряем чат. Фолбэк на обычное сообщение.
+  if (chatId < 0 && userId) {
+    try {
+      const rawApi = require('../utils/rawApi');
+      await rawApi.call('sendMessage', {
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        ephemeral_message_parameters: { receiver_user_id: userId },
+        reply_markup: { inline_keyboard: buttons },
+      });
+      return;
+    } catch (err) {
+      console.warn('[PERSONA] ephemeral menu failed, fallback:', err.message);
+    }
+  }
+
   await bot.sendMessage(chatId, text, {
     parse_mode: 'HTML',
     reply_to_message_id: replyToMessageId,
@@ -87,4 +120,4 @@ async function sendPersonaMenu(bot, chatId, replyToMessageId, userId) {
   });
 }
 
-module.exports = { resolvePersona, sendPersonaMenu, buildPersonaKeyboard };
+module.exports = { resolvePersona, sendPersonaMenu, buildPersonaKeyboard, getPersonaIconMap };
