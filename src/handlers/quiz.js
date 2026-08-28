@@ -193,9 +193,10 @@ async function handleQuizCommand(bot, msg, argsText) {
 async function handlePollAnswer(bot, pollAnswer) {
   const pollId = pollAnswer.poll_id;
   const userId = pollAnswer.user?.id;
+  // Без @ — иначе каждый показ топа тегает всех участников уведомлениями
   const username = pollAnswer.user?.username
-    ? `@${pollAnswer.user.username}`
-    : pollAnswer.user?.first_name || `id${userId}`;
+    || pollAnswer.user?.first_name
+    || `id${userId}`;
   const chosen = pollAnswer.option_ids?.[0];
 
   if (!pollId || !userId || chosen === undefined) return;
@@ -223,7 +224,9 @@ async function handleLeaderboard(bot, msg) {
   const lines = ['🏆 Топ викторины'];
   rows.forEach((r, i) => {
     const prefix = medals[i] || `${i + 1}.`;
-    lines.push(`${prefix} ${r.username || `id${r.user_id}`} — ${r.correct}/${r.total} (${r.pct}%)`);
+    // Срезаем @ у старых записей, чтобы не тегать людей при каждом показе топа
+    const name = (r.username || `id${r.user_id}`).replace(/^@/, '');
+    lines.push(`${prefix} ${name} — ${r.correct}/${r.total} (${r.pct}%)`);
   });
   await sendSafe(bot, chatId, lines.join('\n'), { reply_to_message_id: msg.message_id });
 }

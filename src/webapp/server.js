@@ -143,7 +143,8 @@ function start() {
       if (!stats || !stats.rounds) {
         return res.status(400).json({ error: 'no_stats' });
       }
-      const name = userDisplay(u, true);
+      // Без @-упоминания — чтобы шаринг не тегал автора уведомлением у всех
+      const name = userDisplay(u, false);
       const streak = stats.best_streak || 0;
       const bestAcc = Number(stats.best_accuracy || 0);
       const avg = Number(stats.avg_last_100 || 0);
