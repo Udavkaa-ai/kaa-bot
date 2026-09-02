@@ -103,6 +103,7 @@ const config = {
   // Mini-app (eyeball game)
   webappPort: parseInt(process.env.PORT, 10) || 3000,
   eyeballAppShortName: process.env.EYEBALL_APP || 'eyeball',
+  quizAppShortName: process.env.QUIZ_APP || 'quiz',
   botUsername: null,
 };
 

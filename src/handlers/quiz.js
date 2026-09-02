@@ -203,6 +203,25 @@ async function handleQuizCommand(bot, msg, argsText) {
   const chatId = msg.chat.id;
   const raw = (argsText || '').trim();
 
+  // /quiz app — открыть мини-приложение (тренировка и соревнования)
+  if (/^(app|апп|арена|arena)$/i.test(raw)) {
+    if (!config.botUsername) {
+      try { config.botUsername = (await bot.getMe()).username; } catch (_) {}
+    }
+    if (!config.botUsername) {
+      await sendSafe(bot, chatId, 'Не получилось узнать имя бота.', { reply_to_message_id: msg.message_id });
+      return;
+    }
+    const url = `https://t.me/${config.botUsername}/${config.quizAppShortName}?startapp=${chatId}`;
+    await bot.sendMessage(chatId,
+      'Эрудит — викторина на время.\nТренировка в одиночку или соревнование на 2–5 человек. Результаты соревнований идут в /leaderboard.',
+      {
+        reply_to_message_id: msg.message_id,
+        reply_markup: { inline_keyboard: [[{ text: 'Открыть', url, style: 'primary' }]] },
+      });
+    return;
+  }
+
   // /quiz stop — остановить серию (только запустивший или владелец бота)
   if (/^(stop|стоп)$/i.test(raw)) {
     const s = activeSeries.get(chatId);
@@ -317,4 +336,4 @@ async function handleLeaderboard(bot, msg) {
   await sendSafe(bot, chatId, lines.join('\n'), { reply_to_message_id: msg.message_id });
 }
 
-module.exports = { handleQuizCommand, handlePollAnswer, handleLeaderboard };
+module.exports = { handleQuizCommand, handlePollAnswer, handleLeaderboard, generateVerifiedQuestion };

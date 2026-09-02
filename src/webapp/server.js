@@ -2,10 +2,17 @@ const express = require('express');
 const path = require('path');
 const config = require('../config');
 const eyeballRepo = require('../db/repo/eyeball');
+const quizRepo = require('../db/repo/quiz');
+const arena = require('./quizArena');
+const { generateVerifiedQuestion } = require('../handlers/quiz');
 const { verifyInitData } = require('./auth');
 
 let botRef = null;
-function setBot(bot) { botRef = bot; }
+function setBot(bot) {
+  botRef = bot;
+  // Итоги соревнований Эрудита бот постит в чат
+  arena.setPoster((chatId, text) => bot.sendMessage(chatId, text));
+}
 
 function authMiddleware(req, res, next) {
   const initData = (req.body && req.body.initData) || req.query.initData;
@@ -46,7 +53,7 @@ function start() {
   app.use(express.json({ limit: '32kb' }));
   app.disable('x-powered-by');
 
-  app.use('/eyeball', express.static(path.join(__dirname, '..', '..', 'public', 'eyeball'), {
+  const staticOpts = {
     extensions: ['html'],
     index: 'index.html',
     setHeaders(res, filePath) {
@@ -60,10 +67,14 @@ function start() {
         res.setHeader('Cache-Control', 'public, max-age=604800');
       }
     },
-  }));
+  };
+  const pub = path.join(__dirname, '..', '..', 'public');
+  app.use('/eyeball', express.static(path.join(pub, 'eyeball'), staticOpts));
+  app.use('/quiz', express.static(path.join(pub, 'quiz'), staticOpts));
 
   app.get('/', (req, res) => res.redirect(302, '/eyeball/'));
   app.get('/eyeball', (req, res) => res.redirect(302, '/eyeball/'));
+  app.get('/quiz', (req, res) => res.redirect(302, '/quiz/'));
 
   app.get('/healthz', (req, res) => res.type('text/plain').send('ok'));
 
@@ -168,6 +179,67 @@ function start() {
       console.error('[EYEBALL SHARE]', err.message);
       res.status(500).json({ error: 'send_failed' });
     }
+  });
+
+  // ===== Эрудит (викторина): тренировка + соревнования =====
+
+  // Тренировка: вопрос по запросу, с ответом и объяснением (соло — списывать не у кого)
+  const soloBusy = new Set();
+  app.post('/api/quiz/solo/question', authMiddleware, async (req, res) => {
+    const key = `${req.tgChatId}:${req.tgUser.id}`;
+    if (soloBusy.has(key)) return res.status(429).json({ error: 'Подожди, вопрос уже готовится' });
+    soloBusy.add(key);
+    try {
+      const topic = String(req.body.topic || '').slice(0, 60).trim() || null;
+      const avoidClient = Array.isArray(req.body.avoid) ? req.body.avoid.map(String).slice(0, 40) : [];
+      let recent = [];
+      try { recent = await quizRepo.getRecentQuestions(req.tgChatId, 30); } catch (_) {}
+      const q = await generateVerifiedQuestion(topic, [...new Set([...avoidClient, ...recent])]);
+      if (!q) return res.status(503).json({ error: 'Не получилось подготовить вопрос' });
+      res.json({ question: q });
+    } catch (err) {
+      console.error('[QUIZ SOLO]', err.message);
+      res.status(500).json({ error: 'server' });
+    } finally {
+      soloBusy.delete(key);
+    }
+  });
+
+  const arenaUser = (req) => ({ id: req.tgUser.id, name: userDisplay(req.tgUser, false) });
+  const arenaReply = (res, chatId, userId) => res.json(arena.getState(chatId, userId) || { exists: false });
+  const arenaFail = (res, err) => res.status(400).json({ error: err.message });
+
+  app.get('/api/quiz/arena/state', authMiddleware, (req, res) => {
+    arenaReply(res, req.tgChatId, req.tgUser.id);
+  });
+  app.post('/api/quiz/arena/create', authMiddleware, (req, res) => {
+    try {
+      const topic = String(req.body.topic || '').slice(0, 60).trim();
+      const count = parseInt(req.body.count, 10) || 10;
+      arena.createRoom(req.tgChatId, arenaUser(req), topic, count);
+      arenaReply(res, req.tgChatId, req.tgUser.id);
+    } catch (err) { arenaFail(res, err); }
+  });
+  app.post('/api/quiz/arena/join', authMiddleware, (req, res) => {
+    try { arena.join(req.tgChatId, arenaUser(req)); arenaReply(res, req.tgChatId, req.tgUser.id); }
+    catch (err) { arenaFail(res, err); }
+  });
+  app.post('/api/quiz/arena/leave', authMiddleware, (req, res) => {
+    try { arena.leave(req.tgChatId, req.tgUser.id); arenaReply(res, req.tgChatId, req.tgUser.id); }
+    catch (err) { arenaFail(res, err); }
+  });
+  app.post('/api/quiz/arena/start', authMiddleware, (req, res) => {
+    try { arena.start(req.tgChatId, req.tgUser.id); arenaReply(res, req.tgChatId, req.tgUser.id); }
+    catch (err) { arenaFail(res, err); }
+  });
+  app.post('/api/quiz/arena/answer', authMiddleware, (req, res) => {
+    try {
+      const qIndex = parseInt(req.body.qIndex, 10);
+      const option = parseInt(req.body.option, 10);
+      if (!(option >= 0 && option <= 3)) throw new Error('bad option');
+      arena.answer(req.tgChatId, req.tgUser.id, qIndex, option);
+      arenaReply(res, req.tgChatId, req.tgUser.id);
+    } catch (err) { arenaFail(res, err); }
   });
 
   app.use((req, res) => res.status(404).json({ error: 'not_found' }));

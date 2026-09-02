@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Эрудит</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">ЭРУДИТ</div>
+    <div class="sub" id="sub">викторина на время</div>
+  </header>
+
+  <main>
+    <!-- Главный экран -->
+    <section id="s-home" class="screen">
+      <div class="note hidden" id="home-note"></div>
+      <div class="cards">
+        <button class="card" id="btn-solo" type="button">
+          <div class="card-title">Тренировка</div>
+          <div class="card-desc">один, без ставок — просто проверить себя</div>
+        </button>
+        <button class="card" id="btn-arena" type="button">
+          <div class="card-title">Соревнование</div>
+          <div class="card-desc">2–5 игроков, на время, итоги в топ чата</div>
+        </button>
+      </div>
+    </section>
+
+    <!-- Настройка (тема + количество) -->
+    <section id="s-setup" class="screen hidden">
+      <div class="setup-title" id="setup-title">Тренировка</div>
+      <input class="topic-input" id="topic" type="text" placeholder="тема — или оставь пустым" maxlength="60" autocomplete="off">
+      <div class="count-row" id="count-row">
+        <button class="count-btn" data-count="5" type="button">5</button>
+        <button class="count-btn active" data-count="10" type="button">10</button>
+        <button class="count-btn" data-count="15" type="button">15</button>
+      </div>
+      <div class="count-label">вопросов · 15 секунд на каждый</div>
+      <button class="btn-primary" id="btn-go" type="button">Начать</button>
+      <button class="btn-text" id="btn-back-home" type="button">назад</button>
+    </section>
+
+    <!-- Лобби соревнования -->
+    <section id="s-lobby" class="screen hidden">
+      <div class="lobby-topic" id="lobby-topic"></div>
+      <div class="lobby-prep" id="lobby-prep"></div>
+      <div class="players" id="lobby-players"></div>
+      <div class="lobby-actions">
+        <button class="btn-primary hidden" id="btn-join" type="button">Присоединиться</button>
+        <button class="btn-primary hidden" id="btn-start" type="button">Старт</button>
+      </div>
+      <div class="lobby-note" id="lobby-note"></div>
+      <button class="btn-text" id="btn-leave" type="button">выйти</button>
+    </section>
+
+    <!-- Игра -->
+    <section id="s-game" class="screen hidden">
+      <div class="game-top">
+        <span id="g-progress">1/10</span>
+        <span id="g-score">0</span>
+      </div>
+      <div class="timer-track"><div class="timer-fill" id="timer-fill"></div></div>
+      <div class="question" id="g-question"></div>
+      <div class="options" id="g-options"></div>
+      <div class="review hidden" id="g-review">
+        <div class="review-status" id="g-status"></div>
+        <div class="review-expl" id="g-expl"></div>
+        <div class="review-board" id="g-board"></div>
+        <button class="btn-text hidden" id="btn-next" type="button">дальше</button>
+      </div>
+      <div class="wait hidden" id="g-wait">готовлю вопрос…</div>
+    </section>
+
+    <!-- Итоги -->
+    <section id="s-results" class="screen hidden">
+      <div class="results-title" id="r-title">Итоги</div>
+      <div class="results-list" id="r-list"></div>
+      <button class="btn-primary" id="btn-again" type="button">Ещё раз</button>
+      <button class="btn-text" id="btn-home2" type="button">в меню</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
