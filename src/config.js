@@ -53,13 +53,15 @@ const config = {
   openrouterKeys,
   claudeModel: process.env.CLAUDE_MODEL || 'google/gemini-3.5-flash-lite',
   fallbackModels: (process.env.FALLBACK_MODELS ||
-    'google/gemini-2.5-flash,anthropic/claude-sonnet-4.6,meta-llama/llama-3.3-70b-instruct:free')
+    'google/gemini-2.5-flash,deepseek/deepseek-chat,meta-llama/llama-3.3-70b-instruct:free')
     .split(',').map(s => s.trim()).filter(Boolean),
 
-  // Викторина: факты генерим и проверяем сильной моделью, а не дешёвой основной.
-  // Вопрос стоит ~500 токенов, так что цена копеечная, а чушь исчезает.
-  quizModel: process.env.QUIZ_MODEL || 'anthropic/claude-sonnet-4.6',
-  quizVerifyModel: process.env.QUIZ_VERIFY_MODEL || 'anthropic/claude-sonnet-4.6',
+  // Викторина: факты генерим и проверяем DeepSeek'ом (дёшево и точно).
+  // Список через запятую — берётся первый доступный id (OpenRouter переименовывает версии).
+  quizModels: (process.env.QUIZ_MODEL || 'deepseek/deepseek-v3.2,deepseek/deepseek-chat-v3.1,deepseek/deepseek-chat')
+    .split(',').map(s => s.trim()).filter(Boolean),
+  quizVerifyModels: (process.env.QUIZ_VERIFY_MODEL || 'deepseek/deepseek-v3.2,deepseek/deepseek-chat-v3.1,deepseek/deepseek-chat')
+    .split(',').map(s => s.trim()).filter(Boolean),
 
   // Gemini
   geminiKeys,

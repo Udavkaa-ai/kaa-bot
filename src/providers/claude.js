@@ -82,12 +82,11 @@ async function callOnce(model, messages, opts = {}) {
 }
 
 async function callWithFallback(messages, opts = {}) {
-  // opts.model — предпочтительная модель для этого вызова (например, сильная для викторины);
-  // если она упала — обычная цепочка фолбэков.
+  // opts.model — предпочтительная модель (строка) или список кандидатов (массив)
+  // для этого вызова; если все упали — обычная цепочка фолбэков.
+  const preferred = Array.isArray(opts.model) ? opts.model : (opts.model ? [opts.model] : []);
   const baseOrder = [config.claudeModel, ...config.fallbackModels];
-  const tryOrder = opts.model
-    ? [opts.model, ...baseOrder.filter(m => m !== opts.model)]
-    : baseOrder;
+  const tryOrder = [...new Set([...preferred, ...baseOrder])];
   let lastErr = null;
 
   for (const model of tryOrder) {

@@ -57,7 +57,7 @@ async function generateQuestion(topicHint, avoidQuestions = [], feedback = null)
   const result = await claude.askJson({
     system,
     userText,
-    opts: { temperature: 0.7, maxTokens: 500, model: config.quizModel },
+    opts: { temperature: 0.7, maxTokens: 500, model: config.quizModels },
   });
 
   if (!result) return null;
@@ -98,7 +98,7 @@ reason: одна фраза, по-русски, ≤120 символов. Не б
   const result = await claude.askJson({
     system,
     userText,
-    opts: { temperature: 0, maxTokens: 200, model: config.quizVerifyModel },
+    opts: { temperature: 0, maxTokens: 200, model: config.quizVerifyModels },
   });
   if (!result || typeof result.ok !== 'boolean') {
     // Проверка не отработала — не блокируем, но помечаем

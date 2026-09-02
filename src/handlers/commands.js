@@ -287,7 +287,7 @@ async function handleDiag(bot, msg) {
     lines.push(`БД: ОШИБКА — ${err.message.slice(0, 150)}`);
   }
 
-  const models = [...new Set([config.claudeModel, ...config.fallbackModels, config.quizModel, config.quizVerifyModel])];
+  const models = [...new Set([config.claudeModel, ...config.fallbackModels, ...config.quizModels, ...config.quizVerifyModels])];
   for (const m of models) {
     const r = await claude.probeModel(m);
     lines.push(r.ok
