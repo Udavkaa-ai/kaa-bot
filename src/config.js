@@ -53,7 +53,7 @@ const config = {
   openrouterKeys,
   claudeModel: process.env.CLAUDE_MODEL || 'google/gemini-3.5-flash-lite',
   fallbackModels: (process.env.FALLBACK_MODELS ||
-    'google/gemini-2.5-flash,deepseek/deepseek-v4-flash-0731,meta-llama/llama-3.3-70b-instruct:free')
+    'google/gemini-2.5-flash,deepseek/deepseek-v4-flash-0731,meta-llama/llama-3.3-70b-instruct')
     .split(',').map(s => s.trim()).filter(Boolean),
 
   // Викторина: факты генерим и проверяем DeepSeek'ом (дёшево и точно).

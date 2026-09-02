@@ -52,7 +52,8 @@ function isQuotaError(err) {
   // пробуем следующий ключ, а не следующую модель (у неё будет та же беда)
   if (err.status === 429 || err.status === 402) return true;
   const msg = err.message || '';
-  return /rate.?limit|quota|RESOURCE_EXHAUSTED|insufficient.?(balance|credits)|payment required/i.test(msg);
+  // "Key limit exceeded (daily limit)" — OpenRouter отдаёт как 403: это лимит ключа, не модели
+  return /rate.?limit|quota|RESOURCE_EXHAUSTED|insufficient.?(balance|credits)|payment required|key limit exceeded|daily limit/i.test(msg);
 }
 
 async function callOnce(model, messages, opts = {}) {
