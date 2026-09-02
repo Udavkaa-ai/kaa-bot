@@ -66,8 +66,47 @@
 
   // ---- экраны ----
   const screens = ['s-home', 's-setup', 's-lobby', 's-game', 's-results'];
+  let currentScreen = 's-home';
+
+  // Нативная кнопка «назад» Telegram: на главном экране скрыта (крестик закрывает
+  // приложение), на остальных — ведёт на предыдущий экран, а не выкидывает из мини-аппа.
+  function syncBackButton() {
+    if (!tg || !tg.BackButton) return;
+    const modalOpen = !$('lb-modal').classList.contains('hidden');
+    if (modalOpen || currentScreen !== 's-home') tg.BackButton.show();
+    else tg.BackButton.hide();
+  }
+  function handleBack() {
+    haptic('tap');
+    if (!$('lb-modal').classList.contains('hidden')) {
+      $('lb-modal').classList.add('hidden');
+      syncBackButton();
+      return;
+    }
+    switch (currentScreen) {
+      case 's-game':
+        stopTimer();
+        arenaStopPolling();
+        if (mode === 'solo') solo.next = null;
+        homeStart();
+        break;
+      case 's-lobby':
+      case 's-results':
+        arenaStopPolling();
+        homeStart();
+        break;
+      default:
+        homeStart();
+    }
+  }
+  if (tg && tg.BackButton) {
+    try { tg.BackButton.onClick(handleBack); } catch (_) {}
+  }
+
   function show(id) {
+    currentScreen = id;
     screens.forEach(s => $(s).classList.toggle('hidden', s !== id));
+    syncBackButton();
     $('sub').textContent = {
       's-home': 'викторина на время',
       's-setup': mode === 'solo' ? 'тренировка' : 'соревнование',
@@ -505,6 +544,7 @@
     $('lb-list').innerHTML = '<div class="lb-loading">Загружаю...</div>';
     $('lb-me').classList.add('hidden');
     $('lb-modal').classList.remove('hidden');
+    syncBackButton();
     try {
       const data = await apiGet('/api/quiz/leaderboard');
       const me = data.me;
@@ -536,7 +576,7 @@
   }
   $('btn-lb-home').addEventListener('click', showLeaderboard);
   $('btn-lb-results').addEventListener('click', showLeaderboard);
-  $('lb-close').addEventListener('click', () => $('lb-modal').classList.add('hidden'));
+  $('lb-close').addEventListener('click', () => { $('lb-modal').classList.add('hidden'); syncBackButton(); });
 
   // ---- события ----
   $('btn-solo').addEventListener('click', () => {

@@ -1114,6 +1114,8 @@
     $('lb-list').innerHTML = '<div class="lb-loading">Загружаю...</div>';
     $('lb-me').classList.add('hidden');
     $('lb-modal').classList.remove('hidden');
+    // Нативная стрелка «назад» в шапке Telegram закрывает модалку, а не приложение
+    if (tg.BackButton) try { tg.BackButton.show(); } catch (_) {}
     try {
       const url = `/api/eyeball/leaderboard?season=${currentLbSeason}&metric=${currentLbMetric}&initData=${encodeURIComponent(tg.initData)}`;
       const resp = await fetch(url);
@@ -1301,10 +1303,17 @@
       showLeaderboard(currentLbSeason, m);
     });
   });
+  function closeLeaderboard() {
+    $('lb-modal').classList.add('hidden');
+    if (tg && tg.BackButton) try { tg.BackButton.hide(); } catch (_) {}
+  }
   $('lb-close').addEventListener('click', (e) => {
     e.stopPropagation();
-    $('lb-modal').classList.add('hidden');
+    closeLeaderboard();
   });
+  if (tg && tg.BackButton) {
+    try { tg.BackButton.onClick(closeLeaderboard); } catch (_) {}
+  }
 
   let resizeTimer = null;
   window.addEventListener('resize', () => {
