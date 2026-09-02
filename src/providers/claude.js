@@ -48,9 +48,11 @@ function makeClient(keyIdx) {
 
 function isQuotaError(err) {
   if (!err) return false;
-  if (err.status === 429) return true;
+  // 429 — rate limit, 402 — кончились кредиты OpenRouter: в обоих случаях
+  // пробуем следующий ключ, а не следующую модель (у неё будет та же беда)
+  if (err.status === 429 || err.status === 402) return true;
   const msg = err.message || '';
-  return /rate.?limit|quota|RESOURCE_EXHAUSTED|insufficient.?balance/i.test(msg);
+  return /rate.?limit|quota|RESOURCE_EXHAUSTED|insufficient.?(balance|credits)|payment required/i.test(msg);
 }
 
 async function callOnce(model, messages, opts = {}) {
