@@ -55,6 +55,9 @@ const config = {
   fallbackModels: (process.env.FALLBACK_MODELS ||
     'google/gemini-2.5-flash,deepseek/deepseek-v4-flash-0731,meta-llama/llama-3.3-70b-instruct')
     .split(',').map(s => s.trim()).filter(Boolean),
+  // 'off' — просить OpenRouter отключать reasoning у «думающих» моделей (DeepSeek V4 и т.п.),
+  // чтобы их размышления не съедали max_tokens. Любое другое значение — не трогать.
+  openrouterReasoning: (process.env.OPENROUTER_REASONING || 'auto').toLowerCase(),
 
   // Викторина: факты генерим и проверяем DeepSeek'ом (дёшево и точно).
   // Список через запятую — берётся первый доступный id (OpenRouter переименовывает версии).

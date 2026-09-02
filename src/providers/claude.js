@@ -56,6 +56,23 @@ function isQuotaError(err) {
   return /rate.?limit|quota|RESOURCE_EXHAUSTED|insufficient.?(balance|credits)|payment required|key limit exceeded|daily limit/i.test(msg);
 }
 
+// OpenRouter: у «думающих» моделей (DeepSeek V4 и т.п.) reasoning-токены съедают
+// max_tokens, и content приходит пустым. При OPENROUTER_REASONING=off просим
+// модель не думать; гибридные модели это понимают, остальные игнорируют.
+function reasoningParams() {
+  return config.openrouterReasoning === 'off' ? { reasoning: { enabled: false } } : {};
+}
+
+// Пустой ответ — это ошибка модели (идём к следующей), а не «null» наверх:
+// объясняем, почему пусто, чтобы /diag и логи показывали причину.
+function emptyReplyReason(choice) {
+  const finish = choice?.finish_reason || '?';
+  const reasoned = !!(choice?.message?.reasoning || choice?.message?.reasoning_content);
+  if (finish === 'length' && reasoned) return 'пустой ответ: бюджет max_tokens ушёл на reasoning (задай OPENROUTER_REASONING=off)';
+  if (finish === 'length') return 'пустой ответ: max_tokens исчерпан до первого символа';
+  return `пустой ответ (finish_reason=${finish}${reasoned ? ', есть reasoning' : ''})`;
+}
+
 async function callOnce(model, messages, opts = {}) {
   const keyIdx = pickKey();
   const client = makeClient(keyIdx);
@@ -66,13 +83,13 @@ async function callOnce(model, messages, opts = {}) {
       temperature: opts.temperature ?? 0.85,
       max_tokens: opts.maxTokens ?? 1200,
       ...(opts.responseFormat ? { response_format: opts.responseFormat } : {}),
+      ...reasoningParams(),
     });
     stats.increment('openrouter', model).catch(() => {});
-    return {
-      text: resp.choices?.[0]?.message?.content || null,
-      model,
-      raw: resp,
-    };
+    const choice = resp.choices?.[0];
+    const text = choice?.message?.content || null;
+    if (!text) throw new Error(emptyReplyReason(choice));
+    return { text, model, raw: resp };
   } catch (err) {
     if (isQuotaError(err)) {
       console.warn(`[CLAUDE] Key #${keyIdx} исчерпан на ${model}`);
@@ -150,17 +167,22 @@ async function streamOnce(model, messages, opts, onProgress) {
       temperature: opts.temperature ?? 0.85,
       max_tokens: opts.maxTokens ?? 1200,
       stream: true,
+      ...reasoningParams(),
     });
     let full = '';
+    let lastChoice = null;
     for await (const chunk of stream) {
-      const delta = chunk.choices?.[0]?.delta?.content || '';
+      const choice = chunk.choices?.[0];
+      if (choice) lastChoice = choice;
+      const delta = choice?.delta?.content || '';
       if (delta) {
         full += delta;
         try { onProgress(full); } catch (_) {}
       }
     }
     stats.increment('openrouter', model).catch(() => {});
-    return { text: full || null, model };
+    if (!full) throw new Error(emptyReplyReason({ finish_reason: lastChoice?.finish_reason, message: lastChoice?.delta }));
+    return { text: full, model };
   } catch (err) {
     if (isQuotaError(err)) {
       console.warn(`[CLAUDE] Key #${keyIdx} исчерпан на ${model} (stream)`);
@@ -228,7 +250,9 @@ async function askJson({ system, userText, opts = {} }) {
 async function probeModel(model) {
   const t0 = Date.now();
   try {
-    const r = await callOnce(model, [{ role: 'user', content: 'Ответь одним словом: ок' }], { temperature: 0, maxTokens: 5 });
+    // maxTokens не 5, а с запасом: «думающим» моделям нужно место под reasoning,
+    // иначе диагностика покажет пустой ответ там, где бот работает нормально.
+    const r = await callOnce(model, [{ role: 'user', content: 'Ответь одним словом: ок' }], { temperature: 0, maxTokens: 120 });
     return { ok: true, text: (r.text || '').trim().slice(0, 30), ms: Date.now() - t0 };
   } catch (err) {
     const status = err.status ? `HTTP ${err.status}` : '';
