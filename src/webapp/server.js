@@ -208,12 +208,15 @@ function start() {
   // Чатовый топ викторины — те же данные, что у /leaderboard в чате
   app.get('/api/quiz/leaderboard', authMiddleware, async (req, res) => {
     try {
+      // ?season=1 → архив, иначе текущий сезон
+      const season = parseInt(req.query.season, 10) === 1 ? 1 : quizRepo.CURRENT_SEASON;
       const [top, me, agg] = await Promise.all([
-        quizRepo.getLeaderboard(req.tgChatId, 10),
-        quizRepo.getUserStanding(req.tgChatId, req.tgUser.id),
-        quizRepo.getAggregates(req.tgChatId),
+        quizRepo.getLeaderboard(req.tgChatId, 10, season),
+        quizRepo.getUserStanding(req.tgChatId, req.tgUser.id, season),
+        quizRepo.getAggregates(req.tgChatId, season),
       ]);
       res.json({
+        season,
         top: top.map(r => ({
           user_id: String(r.user_id),
           name: String(r.username || ('id' + r.user_id)).replace(/^@/, ''),

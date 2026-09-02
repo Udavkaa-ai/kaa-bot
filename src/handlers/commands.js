@@ -83,7 +83,7 @@ async function handleCommand(bot, msg) {
 
     case '/leaderboard':
     case '/топ':
-      await quiz.handleLeaderboard(bot, msg);
+      await quiz.handleLeaderboard(bot, msg, args);
       return true;
 
     case '/sec':

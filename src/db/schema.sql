@@ -178,6 +178,31 @@ CREATE TABLE IF NOT EXISTS quiz_answers (
   PRIMARY KEY (poll_id, user_id)
 );
 
+-- Викторина: архив сезона 1 и маркер закрытых сезонов
+CREATE TABLE IF NOT EXISTS quiz_scores_s1 (
+  chat_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  username TEXT,
+  correct INTEGER DEFAULT 0,
+  total INTEGER DEFAULT 0,
+  PRIMARY KEY (chat_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS quiz_seasons (
+  season INTEGER PRIMARY KEY,
+  ended_at TIMESTAMPTZ DEFAULT now()
+);
+-- Один раз: закрываем сезон 1 — переносим quiz_scores в архив и обнуляем основную таблицу
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM quiz_seasons WHERE season = 1) THEN
+    INSERT INTO quiz_scores_s1 (chat_id, user_id, username, correct, total)
+      SELECT chat_id, user_id, username, correct, total FROM quiz_scores
+      ON CONFLICT (chat_id, user_id) DO NOTHING;
+    TRUNCATE quiz_scores;
+    INSERT INTO quiz_seasons (season) VALUES (1);
+  END IF;
+END $$;
+
 -- Eyeball mini-app (Сечение) — таблица текущего сезона
 CREATE TABLE IF NOT EXISTS eyeball_scores (
   chat_id BIGINT NOT NULL,

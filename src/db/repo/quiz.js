@@ -1,5 +1,11 @@
 const { query } = require('../pool');
 
+// Сезоны викторины: текущий пишется в quiz_scores, закрытые — в архивах quiz_scores_sN
+const CURRENT_SEASON = 2;
+function tableFor(season) {
+  return season === 1 ? 'quiz_scores_s1' : 'quiz_scores';
+}
+
 async function saveQuiz({ pollId, chatId, messageId, question, correctOption, topic }) {
   await query(
     `INSERT INTO quizzes (poll_id, chat_id, message_id, question, correct_option, topic)
@@ -35,11 +41,11 @@ async function bumpScore(chatId, userId, username, isCorrect) {
   );
 }
 
-async function getLeaderboard(chatId, limit = 10) {
+async function getLeaderboard(chatId, limit = 10, season = CURRENT_SEASON) {
   const r = await query(
     `SELECT user_id, username, correct, total,
             CASE WHEN total > 0 THEN ROUND(correct::numeric * 100 / total, 0)::int ELSE 0 END AS pct
-     FROM quiz_scores
+     FROM ${tableFor(season)}
      WHERE chat_id = $1 AND total > 0
      ORDER BY correct DESC, pct DESC
      LIMIT $2`,
@@ -49,14 +55,14 @@ async function getLeaderboard(chatId, limit = 10) {
 }
 
 // Место юзера в чатовом топе (та же сортировка, что и в getLeaderboard)
-async function getUserStanding(chatId, userId) {
+async function getUserStanding(chatId, userId, season = CURRENT_SEASON) {
   const r = await query(
     `WITH ranked AS (
        SELECT user_id, username, correct, total,
               CASE WHEN total > 0 THEN ROUND(correct::numeric * 100 / total, 0)::int ELSE 0 END AS pct,
               RANK() OVER (ORDER BY correct DESC,
                 CASE WHEN total > 0 THEN correct::numeric / total ELSE 0 END DESC) AS rank
-       FROM quiz_scores WHERE chat_id = $1 AND total > 0
+       FROM ${tableFor(season)} WHERE chat_id = $1 AND total > 0
      )
      SELECT * FROM ranked WHERE user_id = $2`,
     [chatId, userId]
@@ -64,13 +70,13 @@ async function getUserStanding(chatId, userId) {
   return r.rows[0] || null;
 }
 
-async function getAggregates(chatId) {
+async function getAggregates(chatId, season = CURRENT_SEASON) {
   const r = await query(
     `SELECT COUNT(*)::int AS players,
             COALESCE(MAX(correct), 0)::int AS max_correct,
             COALESCE(AVG(CASE WHEN total > 0 THEN correct::numeric * 100 / total END), 0)::float AS avg_pct,
             COALESCE(MAX(CASE WHEN total > 0 THEN correct::numeric * 100 / total END), 0)::float AS max_pct
-     FROM quiz_scores WHERE chat_id = $1 AND total > 0`,
+     FROM ${tableFor(season)} WHERE chat_id = $1 AND total > 0`,
     [chatId]
   );
   return r.rows[0] || { players: 0, max_correct: 0, avg_pct: 0, max_pct: 0 };
@@ -94,6 +100,7 @@ async function getUserScore(chatId, userId) {
 }
 
 module.exports = {
+  CURRENT_SEASON,
   saveQuiz,
   getQuiz,
   recordAnswer,

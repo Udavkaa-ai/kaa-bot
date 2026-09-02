@@ -318,21 +318,26 @@ async function handlePollAnswer(bot, pollAnswer) {
   console.log(`[QUIZ] pollId=${pollId} user=${username} ${isCorrect ? 'OK' : 'miss'}`);
 }
 
-async function handleLeaderboard(bot, msg) {
+async function handleLeaderboard(bot, msg, args = []) {
   const chatId = msg.chat.id;
-  const rows = await quizRepo.getLeaderboard(chatId, 10);
+  // /leaderboard 1 — архив первого сезона
+  const season = String(args[0] || '') === '1' ? 1 : quizRepo.CURRENT_SEASON;
+  const rows = await quizRepo.getLeaderboard(chatId, 10, season);
   if (rows.length === 0) {
-    await sendSafe(bot, chatId, 'Пока никто не отвечал. Начни с /quiz', { reply_to_message_id: msg.message_id });
+    await sendSafe(bot, chatId,
+      season === 1 ? 'В первом сезоне в этом чате никто не играл.' : 'Пока никто не отвечал в этом сезоне. Начни с /quiz',
+      { reply_to_message_id: msg.message_id });
     return;
   }
   const medals = ['🥇', '🥈', '🥉'];
-  const lines = ['🏆 Топ викторины'];
+  const lines = [season === 1 ? '🏆 Топ викторины · 1 сезон (архив)' : `🏆 Топ викторины · ${season} сезон`];
   rows.forEach((r, i) => {
     const prefix = medals[i] || `${i + 1}.`;
     // Срезаем @ у старых записей, чтобы не тегать людей при каждом показе топа
     const name = (r.username || `id${r.user_id}`).replace(/^@/, '');
     lines.push(`${prefix} ${name} — ${r.correct}/${r.total} (${r.pct}%)`);
   });
+  if (season !== 1) lines.push('', 'Архив 1 сезона: /leaderboard 1');
   await sendSafe(bot, chatId, lines.join('\n'), { reply_to_message_id: msg.message_id });
 }
 

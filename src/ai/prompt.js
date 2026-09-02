@@ -131,7 +131,7 @@ function buildSystemPrompt({
         const name = String(r.username || ('id' + r.user_id)).replace(/^@/, '');
         return `${i + 1}. ${name} — верных ${r.correct} из ${r.total} (${r.pct}%)`;
       });
-      parts.push(`Топ чата (сортировка по числу верных, потом по точности):`);
+      parts.push(`Топ чата, сезон 2 (сезон 1 закрыт и хранится в архиве — его можно посмотреть командой /leaderboard 1). Сортировка по числу верных, потом по точности:`);
       parts.push(rows.join('\n'));
       if (quizAgg && quizAgg.players > 0) {
         parts.push(`Всего игроков: ${quizAgg.players}, средняя точность по чату ${Number(quizAgg.avg_pct).toFixed(0)}%.`);

@@ -539,14 +539,20 @@
     return lines;
   }
 
-  async function showLeaderboard() {
+  let currentLbSeason = 2;
+
+  async function showLeaderboard(season) {
     haptic('tap');
+    if (season === 1 || season === 2) currentLbSeason = season;
+    document.querySelectorAll('.season-tab').forEach(el => {
+      el.classList.toggle('active', Number(el.getAttribute('data-season')) === currentLbSeason);
+    });
     $('lb-list').innerHTML = '<div class="lb-loading">Загружаю...</div>';
     $('lb-me').classList.add('hidden');
     $('lb-modal').classList.remove('hidden');
     syncBackButton();
     try {
-      const data = await apiGet('/api/quiz/leaderboard');
+      const data = await apiGet(`/api/quiz/leaderboard?season=${currentLbSeason}`);
       const me = data.me;
       if (me && me.total > 0) {
         $('me-correct').textContent = me.correct;
@@ -559,7 +565,7 @@
       }
       const list = $('lb-list');
       if (!data.top || data.top.length === 0) {
-        list.innerHTML = '<div class="lb-empty">Пока никто не отвечал</div>';
+        list.innerHTML = `<div class="lb-empty">${currentLbSeason === 1 ? 'В первом сезоне здесь никто не играл' : 'Пока никто не отвечал'}</div>`;
       } else {
         list.innerHTML = data.top.map((r, i) => {
           const mine = myId && r.user_id === String(myId) ? ' mine' : '';
@@ -574,8 +580,14 @@
       $('lb-list').innerHTML = '<div class="lb-empty">Ошибка загрузки</div>';
     }
   }
-  $('btn-lb-home').addEventListener('click', showLeaderboard);
-  $('btn-lb-results').addEventListener('click', showLeaderboard);
+  $('btn-lb-home').addEventListener('click', () => showLeaderboard(2));
+  $('btn-lb-results').addEventListener('click', () => showLeaderboard(2));
+  document.querySelectorAll('.season-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const s = parseInt(tab.getAttribute('data-season'), 10) || 2;
+      if (s !== currentLbSeason) showLeaderboard(s);
+    });
+  });
   $('lb-close').addEventListener('click', () => { $('lb-modal').classList.add('hidden'); syncBackButton(); });
 
   // ---- события ----
