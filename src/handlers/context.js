@@ -3,6 +3,10 @@ const usersRepo = require('../db/repo/users');
 const chatsRepo = require('../db/repo/chats');
 const messagesRepo = require('../db/repo/messages');
 const eyeballRepo = require('../db/repo/eyeball');
+const quizRepo = require('../db/repo/quiz');
+
+// Топ Эрудита подтягиваем только когда о нём спрашивают — экономим промпт
+const QUIZ_TRIGGER = /квиз|эрудит|викторин|самый умный|самая умная|умнее|умнейш|лидерборд|кто лидер|кто в топе/i;
 const { resolvePersona } = require('./persona');
 const semantic = require('../memory/semantic');
 const search = require('../providers/search');
@@ -28,6 +32,9 @@ async function gatherContext(msg, userText) {
     searchContext,
     eyeballTop,
     eyeballMe,
+    quizTop,
+    quizMe,
+    quizAgg,
   ] = await Promise.all([
     resolvePersona(userId, chatId, userText),
     usersRepo.getProfile(chatId, userId),
@@ -40,6 +47,10 @@ async function gatherContext(msg, userText) {
     // Топ и место собеседника в игре "Сечение" (текущий сезон)
     eyeballRepo.topByStreak(chatId, 10, eyeballRepo.CURRENT_SEASON).catch(() => []),
     userId ? eyeballRepo.getUserStats(chatId, userId, eyeballRepo.CURRENT_SEASON).catch(() => null) : null,
+    // Топ Эрудита (викторины) — по ключевым словам в сообщении
+    QUIZ_TRIGGER.test(userText || '') ? quizRepo.getLeaderboard(chatId, 10).catch(() => []) : null,
+    QUIZ_TRIGGER.test(userText || '') && userId ? quizRepo.getUserStanding(chatId, userId).catch(() => null) : null,
+    QUIZ_TRIGGER.test(userText || '') ? quizRepo.getAggregates(chatId).catch(() => null) : null,
   ]);
 
   const system = buildSystemPrompt({
@@ -56,6 +67,9 @@ async function gatherContext(msg, userText) {
     isGroup,
     eyeballTop,
     eyeballMe,
+    quizTop,
+    quizMe,
+    quizAgg,
   });
 
   return { persona, justAssigned, system, history, searchContext, userProfile };

@@ -40,6 +40,9 @@ function buildSystemPrompt({
   isGroup,
   eyeballTop,
   eyeballMe,
+  quizTop,
+  quizMe,
+  quizAgg,
 }) {
   const sections = [];
 
@@ -114,6 +117,33 @@ function buildSystemPrompt({
     }
     parts.push(`Если тебя спрашивают про топ, места, лидеров, чью-то серию или среднюю — отвечай по этим данным. Если не про Сечение — не упоминай.`);
     sections.push(`=== СЕЧЕНИЕ (топ чата) ===\n${parts.join('\n')}`);
+  }
+
+  // 9. Топ викторины "Эрудит" — только когда о нём спросили (по ключевым словам)
+  if (quizTop) {
+    const parts = [
+      `Викторина "Эрудит": вопросы в чате (/quiz, серии /quiz <тема> <1-10>) и мини-приложение (/quiz app) с тренировкой и соревнованиями на время для 2–5 игроков. Все ответы в чате и в соревнованиях идут в общий чатовый топ; тренировки в топ не идут.`,
+    ];
+    if (quizTop.length === 0) {
+      parts.push('В этом чате пока никто не отвечал на вопросы викторины.');
+    } else {
+      const rows = quizTop.map((r, i) => {
+        const name = String(r.username || ('id' + r.user_id)).replace(/^@/, '');
+        return `${i + 1}. ${name} — верных ${r.correct} из ${r.total} (${r.pct}%)`;
+      });
+      parts.push(`Топ чата (сортировка по числу верных, потом по точности):`);
+      parts.push(rows.join('\n'));
+      if (quizAgg && quizAgg.players > 0) {
+        parts.push(`Всего игроков: ${quizAgg.players}, средняя точность по чату ${Number(quizAgg.avg_pct).toFixed(0)}%.`);
+      }
+      if (quizMe && quizMe.total > 0) {
+        parts.push(`Собеседник (${userName}): место #${quizMe.rank}, верных ${quizMe.correct} из ${quizMe.total} (${quizMe.pct}%).`);
+      } else {
+        parts.push(`Собеседник (${userName}) в викторине ещё не отвечал.`);
+      }
+    }
+    parts.push(`Если спрашивают "кто самый умный", про лидера, места или чью-то точность — отвечай по этим данным, в характере. "Самый умный" = первое место в топе. Имена пиши без @.`);
+    sections.push(`=== ЭРУДИТ (викторина, топ чата) ===\n${parts.join('\n')}`);
   }
 
   return sections.join('\n\n');
