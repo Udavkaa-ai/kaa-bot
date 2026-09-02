@@ -48,6 +48,15 @@ async function getLeaderboard(chatId, limit = 10) {
   return r.rows;
 }
 
+// Последние N вопросов чата — стоп-лист для генератора, чтобы не повторяться между сериями
+async function getRecentQuestions(chatId, limit = 40) {
+  const r = await query(
+    `SELECT question FROM quizzes WHERE chat_id = $1 ORDER BY created_at DESC LIMIT $2`,
+    [chatId, limit]
+  );
+  return r.rows.map(x => x.question).filter(Boolean);
+}
+
 async function getUserScore(chatId, userId) {
   const r = await query(
     `SELECT correct, total FROM quiz_scores WHERE chat_id = $1 AND user_id = $2`,
@@ -63,4 +72,5 @@ module.exports = {
   bumpScore,
   getLeaderboard,
   getUserScore,
+  getRecentQuestions,
 };

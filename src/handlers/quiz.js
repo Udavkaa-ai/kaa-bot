@@ -7,33 +7,57 @@ const { sendSafe, noticeUser } = require('../utils/telegram');
 const quizCooldown = new Map();
 const COOLDOWN_MS = 30 * 1000;
 
-async function generateQuestion(topicHint, avoidQuestions = []) {
-  const system = `Ты — генератор квизов. Создай ОДИН интересный вопрос с 4 вариантами ответа.
+const config = require('../config');
 
-Правила:
-- question: ≤200 символов, конкретный, проверяемый
-- options: ровно 4 варианта, каждый ≤80 символов, без префиксов (а), 1., -)
-- correct_option: индекс правильного, число 0-3
-- explanation: 1-2 предложения почему правильно, ≤180 символов
-- Сложность средняя — для взрослых эрудитов, не школьная
+// Разнообразие обеспечиваем случайным "углом" вопроса, а не высокой температурой —
+// при высокой температуре модель начинает выдумывать факты.
+const ANGLES = [
+  'дата или год события', 'конкретная личность и её достижение', 'рекорд или крайняя величина',
+  'происхождение названия или термина', 'число, количество или размер', 'место или география',
+  'кто автор / изобретатель / основатель', 'первый в истории (кто/что было первым)',
+  'терминология: что означает слово', 'причина или следствие известного события',
+];
+
+async function generateQuestion(topicHint, avoidQuestions = [], feedback = null) {
+  const angle = ANGLES[Math.floor(Math.random() * ANGLES.length)];
+  const system = `Ты — составитель викторин с репутацией педанта. Создай ОДИН вопрос с 4 вариантами ответа.
+
+ГЛАВНОЕ — ФАКТИЧЕСКАЯ ТОЧНОСТЬ:
+- Используй только устоявшиеся, широко известные, легко проверяемые факты (энциклопедический уровень)
+- Ровно один вариант верный, три остальных — ОДНОЗНАЧНО неверные, без "тоже отчасти правильно"
+- Не используй слова "единственный", "самый", "первый" если не уверен на 100% — такие вопросы часто спорные
+- Не смешивай факты (столица ≠ крупнейший город; страна на двух континентах ≠ на трёх)
+- Если сомневаешься хоть немного — выбери другой факт
+- Никаких вопросов про события после 2024 года
+
+ФОРМА:
+- question: ≤200 символов, конкретный
+- options: ровно 4, каждый ≤80 символов, без префиксов (а), 1., -), одного типа (все города / все годы / все имена)
+- correct_option: индекс верного, 0-3; ставь верный на случайную позицию
+- explanation: 1-2 предложения с самим фактом, ≤180 символов
+- Сложность средняя — для взрослых эрудитов
 - На русском
-- НЕ повторяй один и тот же тип вопросов; миксуй: история, наука, культура, кино, музыка, гео, спорт, тех
+
+Угол этого вопроса: ${angle}.
 
 Формат строго JSON:
 {"question": "...", "options": ["...", "...", "...", "..."], "correct_option": 0, "explanation": "..."}`;
 
   let userText = topicHint
     ? `Тема: ${topicHint}. Придумай вопрос в эту тему.`
-    : 'Придумай неожиданный, интересный вопрос на любую тему.';
+    : 'Придумай интересный вопрос на любую тему: история, наука, культура, кино, музыка, география, спорт, техника.';
   if (avoidQuestions.length > 0) {
     userText += `\n\nЭти вопросы УЖЕ были, не повторяй их и близкие к ним:\n` +
-      avoidQuestions.map(q => `- ${q}`).join('\n').slice(0, 1500);
+      avoidQuestions.map(q => `- ${q}`).join('\n').slice(0, 2500);
+  }
+  if (feedback) {
+    userText += `\n\nПредыдущая попытка отклонена проверкой: ${feedback}. Придумай ДРУГОЙ вопрос, без этой ошибки.`;
   }
 
   const result = await claude.askJson({
     system,
     userText,
-    opts: { temperature: 0.95, maxTokens: 500 },
+    opts: { temperature: 0.7, maxTokens: 500, model: config.quizModel },
   });
 
   if (!result) return null;
@@ -49,6 +73,70 @@ async function generateQuestion(topicHint, avoidQuestions = []) {
   };
 }
 
+// Фактчекинг: независимая проверка вопроса при температуре 0.
+// Возвращает { ok, reason }.
+async function verifyQuestion(quiz) {
+  const system = `Ты — строгий фактчекер викторин. Тебе дают вопрос, 4 варианта и отмеченный верный ответ.
+Проверь и ответь JSON: {"ok": true|false, "reason": "..."}.
+
+ok=false, если ХОТЯ БЫ ОДНО верно:
+- отмеченный ответ фактически неверен
+- какой-то другой вариант тоже можно считать верным (двусмысленность)
+- вопрос содержит ложную предпосылку (например, "столица страны на трёх континентах", если такой страны нет)
+- формулировка спорная, зависит от трактовки или устаревших данных
+- вопрос требует знаний о событиях после 2024 года
+
+ok=true только если факт общеизвестен, однозначен и ровно один вариант верен.
+reason: одна фраза, по-русски, ≤120 символов. Не будь снисходительным.`;
+
+  const userText =
+    `Вопрос: ${quiz.question}\n` +
+    quiz.options.map((o, i) => `${i}) ${o}`).join('\n') +
+    `\nОтмечен верным: ${quiz.correct_option}) ${quiz.options[quiz.correct_option]}\n` +
+    `Объяснение генератора: ${quiz.explanation || '—'}`;
+
+  const result = await claude.askJson({
+    system,
+    userText,
+    opts: { temperature: 0, maxTokens: 200, model: config.quizVerifyModel },
+  });
+  if (!result || typeof result.ok !== 'boolean') {
+    // Проверка не отработала — не блокируем, но помечаем
+    return { ok: true, reason: 'verifier unavailable' };
+  }
+  return { ok: result.ok, reason: String(result.reason || '').slice(0, 200) };
+}
+
+// Генерация с проверкой: до 3 попыток, каждая следующая получает причину отказа
+async function generateVerifiedQuestion(topicHint, avoidQuestions = []) {
+  let feedback = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    let quiz = null;
+    try {
+      quiz = await generateQuestion(topicHint, avoidQuestions, feedback);
+    } catch (err) {
+      console.warn(`[QUIZ] gen attempt ${attempt} failed:`, err.message);
+      continue;
+    }
+    if (!quiz) continue;
+
+    let check;
+    try {
+      check = await verifyQuestion(quiz);
+    } catch (err) {
+      console.warn('[QUIZ] verify failed:', err.message);
+      check = { ok: true, reason: 'verifier error' };
+    }
+    if (check.ok) {
+      if (attempt > 1) console.log(`[QUIZ] принят с попытки ${attempt}`);
+      return quiz;
+    }
+    console.warn(`[QUIZ] отклонён (попытка ${attempt}): "${quiz.question.slice(0, 80)}" — ${check.reason}`);
+    feedback = check.reason;
+  }
+  return null;
+}
+
 // Активные серии вопросов: chatId -> { total, index, topic, asked, starterId, timer }
 const activeSeries = new Map();
 const SERIES_INTERVAL_MS = 30 * 1000;
@@ -57,14 +145,12 @@ const SERIES_INTERVAL_MS = 30 * 1000;
 async function postOneQuiz(bot, chatId, topic, { replyTo = null, label = '', avoid = [] } = {}) {
   await bot.sendChatAction(chatId, 'typing').catch(() => {});
 
-  let quiz = null;
-  for (let attempt = 0; attempt < 2 && !quiz; attempt++) {
-    try {
-      quiz = await generateQuestion(topic, avoid);
-    } catch (err) {
-      console.warn('[QUIZ] gen failed:', err.message);
-    }
-  }
+  // Стоп-лист: вопросы текущей серии + последние 40 из истории чата
+  let recent = [];
+  try { recent = await quizRepo.getRecentQuestions(chatId, 40); } catch (_) {}
+  const avoidAll = [...new Set([...avoid, ...recent])];
+
+  const quiz = await generateVerifiedQuestion(topic, avoidAll);
   if (!quiz) return null;
 
   try {

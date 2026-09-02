@@ -56,6 +56,11 @@ const config = {
     'google/gemini-2.5-flash,anthropic/claude-sonnet-4.6,meta-llama/llama-3.3-70b-instruct:free')
     .split(',').map(s => s.trim()).filter(Boolean),
 
+  // Викторина: факты генерим и проверяем сильной моделью, а не дешёвой основной.
+  // Вопрос стоит ~500 токенов, так что цена копеечная, а чушь исчезает.
+  quizModel: process.env.QUIZ_MODEL || 'anthropic/claude-sonnet-4.6',
+  quizVerifyModel: process.env.QUIZ_VERIFY_MODEL || 'anthropic/claude-sonnet-4.6',
+
   // Gemini
   geminiKeys,
   // Легаси-имена gemini-1.5-* / gemini-2.0-* Google отключил — тихо апгрейдим.
