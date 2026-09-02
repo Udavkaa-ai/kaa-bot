@@ -112,6 +112,10 @@ async function handleCommand(bot, msg) {
       if (!isAdmin(msg)) return true;
       return handleStats(bot, msg);
 
+    case '/diag':
+      if (!isAdmin(msg)) return true;
+      return handleDiag(bot, msg);
+
     case '/ban':
       if (!isAdmin(msg)) return true;
       return handleBan(bot, msg, args, true);
@@ -265,6 +269,34 @@ async function handleStats(bot, msg) {
     '', 'Всего:', fmt(allTime),
   ].join('\n');
   await sendSafe(bot, chatId, text, { reply_to_message_id: msg.message_id });
+  return true;
+}
+
+// /diag — владелец: проверка БД и каждой модели из цепочки с точным текстом ошибки
+async function handleDiag(bot, msg) {
+  const chatId = msg.chat.id;
+  await bot.sendChatAction(chatId, 'typing').catch(() => {});
+  const lines = [`Диагностика · ${config.openrouterKeys.length} ключ(ей) OpenRouter`];
+
+  try {
+    const db = require('../db/pool');
+    const t0 = Date.now();
+    await db.query('SELECT 1');
+    lines.push(`БД: ok (${Date.now() - t0} мс)`);
+  } catch (err) {
+    lines.push(`БД: ОШИБКА — ${err.message.slice(0, 150)}`);
+  }
+
+  const models = [...new Set([config.claudeModel, ...config.fallbackModels, config.quizModel, config.quizVerifyModel])];
+  for (const m of models) {
+    const r = await claude.probeModel(m);
+    lines.push(r.ok
+      ? `✅ ${m} — «${r.text}» (${r.ms} мс)`
+      : `❌ ${m} — ${r.error}`);
+  }
+
+  lines.push(`Gemini: ${config.geminiKeys.length ? 'ключ есть' : 'нет ключа'} · Groq: ${config.groqKey ? 'ключ есть' : 'нет ключа'}`);
+  await sendSafe(bot, chatId, lines.join('\n'), { reply_to_message_id: msg.message_id });
   return true;
 }
 

@@ -223,4 +223,17 @@ async function askJson({ system, userText, opts = {} }) {
   }
 }
 
-module.exports = { ask, askStream, askWithImages, askJson, callWithFallback };
+// Диагностика: пингуем конкретную модель крошечным запросом и возвращаем
+// либо ответ, либо точный текст ошибки (статус + сообщение OpenRouter).
+async function probeModel(model) {
+  const t0 = Date.now();
+  try {
+    const r = await callOnce(model, [{ role: 'user', content: 'Ответь одним словом: ок' }], { temperature: 0, maxTokens: 5 });
+    return { ok: true, text: (r.text || '').trim().slice(0, 30), ms: Date.now() - t0 };
+  } catch (err) {
+    const status = err.status ? `HTTP ${err.status}` : '';
+    return { ok: false, error: `${status} ${(err.message || String(err)).slice(0, 220)}`.trim(), ms: Date.now() - t0 };
+  }
+}
+
+module.exports = { ask, askStream, askWithImages, askJson, callWithFallback, probeModel };
