@@ -53,14 +53,14 @@ const config = {
   openrouterKeys,
   claudeModel: process.env.CLAUDE_MODEL || 'google/gemini-3.5-flash-lite',
   fallbackModels: (process.env.FALLBACK_MODELS ||
-    'google/gemini-2.5-flash,deepseek/deepseek-chat,meta-llama/llama-3.3-70b-instruct:free')
+    'google/gemini-2.5-flash,deepseek/deepseek-v4-flash-0731,meta-llama/llama-3.3-70b-instruct:free')
     .split(',').map(s => s.trim()).filter(Boolean),
 
   // Викторина: факты генерим и проверяем DeepSeek'ом (дёшево и точно).
   // Список через запятую — берётся первый доступный id (OpenRouter переименовывает версии).
-  quizModels: (process.env.QUIZ_MODEL || 'deepseek/deepseek-v3.2,deepseek/deepseek-chat-v3.1,deepseek/deepseek-chat')
+  quizModels: (process.env.QUIZ_MODEL || 'deepseek/deepseek-v4-flash-0731,deepseek/deepseek-v3.2,deepseek/deepseek-chat')
     .split(',').map(s => s.trim()).filter(Boolean),
-  quizVerifyModels: (process.env.QUIZ_VERIFY_MODEL || 'deepseek/deepseek-v3.2,deepseek/deepseek-chat-v3.1,deepseek/deepseek-chat')
+  quizVerifyModels: (process.env.QUIZ_VERIFY_MODEL || 'deepseek/deepseek-v4-flash-0731,deepseek/deepseek-v3.2,deepseek/deepseek-chat')
     .split(',').map(s => s.trim()).filter(Boolean),
 
   // Gemini
