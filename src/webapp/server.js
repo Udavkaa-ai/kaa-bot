@@ -10,8 +10,8 @@ const { verifyInitData } = require('./auth');
 let botRef = null;
 function setBot(bot) {
   botRef = bot;
-  // Итоги соревнований Эрудита бот постит в чат
-  arena.setPoster((chatId, text) => bot.sendMessage(chatId, text));
+  // Эрудит: приглашения на турнир и итоги бот постит в чат
+  arena.setBot(bot);
 }
 
 function authMiddleware(req, res, next) {

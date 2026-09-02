@@ -10,10 +10,48 @@ const MIN_PLAYERS = 2;
 const ROOM_TTL_MS = 30 * 60 * 1000;
 const FINISHED_TTL_MS = 3 * 60 * 1000;
 
-const rooms = new Map(); // chatId -> room
-let poster = null;       // async (chatId, text) => void
+const config = require('../config');
 
-function setPoster(fn) { poster = fn; }
+const rooms = new Map(); // chatId -> room
+let botRef = null;       // node-telegram-bot-api instance: sendMessage / editMessageText
+
+function setBot(bot) { botRef = bot; }
+
+function appUrl(chatId) {
+  if (!config.botUsername) return null;
+  return `https://t.me/${config.botUsername}/${config.quizAppShortName}?startapp=${chatId}`;
+}
+
+// Приглашение в чат при создании комнаты (только в группах — в личке звать некого)
+async function postInvite(room, host) {
+  if (!botRef || room.chatId > 0) return;
+  const url = appUrl(room.chatId);
+  const text =
+    `🧠 Эрудит — турнир${room.topic ? ` «${room.topic}»` : ''}!\n` +
+    `Хост: ${host.name} · ${room.plannedCount} вопросов · 15 секунд на каждый\n` +
+    `Мест: ${MIN_PLAYERS}–${MAX_PLAYERS}. Жми кнопку, пока идёт набор.`;
+  try {
+    const sent = await botRef.sendMessage(room.chatId, text, {
+      reply_markup: url ? { inline_keyboard: [[{ text: 'Присоединиться', url, style: 'primary' }]] } : undefined,
+    });
+    room.inviteMessageId = sent.message_id;
+  } catch (err) {
+    console.warn('[ARENA INVITE]', err.message);
+  }
+}
+
+async function editInvite(room, text) {
+  if (!botRef || !room.inviteMessageId) return;
+  try {
+    await botRef.editMessageText(text, {
+      chat_id: room.chatId,
+      message_id: room.inviteMessageId,
+      reply_markup: { inline_keyboard: [] },
+    });
+  } catch (err) {
+    console.warn('[ARENA INVITE EDIT]', err.message);
+  }
+}
 
 function now() { return Date.now(); }
 
@@ -54,6 +92,7 @@ function createRoom(chatId, host, topic, count) {
   room.players.set(host.id, { id: host.id, name: host.name, score: 0, answers: {} });
   rooms.set(chatId, room);
   generateAll(room).catch(err => { room.genError = err.message; room.genDone = true; });
+  postInvite(room, host).catch(() => {});
   return room;
 }
 
@@ -101,6 +140,7 @@ function leave(chatId, userId) {
   if (room.players.size === 0) {
     room.cancelled = true;
     rooms.delete(chatId);
+    editInvite(room, `🧠 Эрудит — набор на турнир${room.topic ? ` «${room.topic}»` : ''} отменён.`).catch(() => {});
     return null;
   }
   if (room.hostId === userId) room.hostId = room.players.keys().next().value;
@@ -121,6 +161,10 @@ function start(chatId, userId) {
   room.phaseStartedAt = now();
   room.phaseEndsAt = room.phaseStartedAt + Q_MS;
   room.lastActivity = now();
+  const names = [...room.players.values()].map(p => p.name).join(', ');
+  editInvite(room,
+    `🧠 Эрудит — турнир${room.topic ? ` «${room.topic}»` : ''} начался!\n` +
+    `Играют: ${names}. ${room.questions.length} вопросов. Итоги будут здесь.`).catch(() => {});
   return room;
 }
 
@@ -198,7 +242,7 @@ function finish(room, t) {
   room.phase = 'finished';
   room.finishedAt = t;
   room.phaseEndsAt = null;
-  if (!room.posted && poster) {
+  if (!room.posted && botRef) {
     room.posted = true;
     const medals = ['🥇', '🥈', '🥉'];
     const list = sortedPlayers(room).map((p, i) =>
@@ -206,7 +250,7 @@ function finish(room, t) {
     const text =
       `🏆 Эрудит — соревнование${room.topic ? ` «${room.topic}»` : ''}, ${room.questions.length} вопросов\n\n` +
       list.join('\n') + `\n\nОбщий топ: /leaderboard`;
-    poster(room.chatId, text).catch(err => console.error('[ARENA POST]', err.message));
+    botRef.sendMessage(room.chatId, text).catch(err => console.error('[ARENA POST]', err.message));
   }
 }
 
@@ -269,4 +313,4 @@ setInterval(() => {
   }
 }, 60 * 1000).unref();
 
-module.exports = { setPoster, createRoom, join, leave, start, answer, getState, Q_MS };
+module.exports = { setBot, createRoom, join, leave, start, answer, getState, Q_MS };
