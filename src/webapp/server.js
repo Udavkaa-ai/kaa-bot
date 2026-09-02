@@ -205,6 +205,32 @@ function start() {
     }
   });
 
+  // Чатовый топ викторины — те же данные, что у /leaderboard в чате
+  app.get('/api/quiz/leaderboard', authMiddleware, async (req, res) => {
+    try {
+      const [top, me, agg] = await Promise.all([
+        quizRepo.getLeaderboard(req.tgChatId, 10),
+        quizRepo.getUserStanding(req.tgChatId, req.tgUser.id),
+        quizRepo.getAggregates(req.tgChatId),
+      ]);
+      res.json({
+        top: top.map(r => ({
+          user_id: String(r.user_id),
+          name: String(r.username || ('id' + r.user_id)).replace(/^@/, ''),
+          correct: r.correct, total: r.total, pct: Number(r.pct),
+        })),
+        me: me ? { correct: me.correct, total: me.total, pct: Number(me.pct), rank: Number(me.rank) } : null,
+        aggregates: {
+          players: Number(agg.players), max_correct: Number(agg.max_correct),
+          avg_pct: Number(agg.avg_pct), max_pct: Number(agg.max_pct),
+        },
+      });
+    } catch (err) {
+      console.error('[QUIZ LB]', err.message);
+      res.status(500).json({ error: 'server' });
+    }
+  });
+
   const arenaUser = (req) => ({ id: req.tgUser.id, name: userDisplay(req.tgUser, false) });
   const arenaReply = (res, chatId, userId) => res.json(arena.getState(chatId, userId) || { exists: false });
   const arenaFail = (res, err) => res.status(400).json({ error: err.message });

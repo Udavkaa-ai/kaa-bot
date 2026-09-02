@@ -321,6 +321,74 @@ main {
 .result-score { font-variant-numeric: tabular-nums; font-weight: 500; }
 .result-sub { font-size: 11px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .result-row.winner .result-pos { color: var(--amber); }
+.results-links { display: flex; justify-content: center; gap: 18px; }
+.results-links .btn-text { margin: 14px 0 0; }
+
+/* ---------- Топ чата (модалка, как в Сечении) ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(245, 243, 239, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  z-index: 100;
+  animation: fadeIn 0.2s ease-out;
+}
+.modal-content {
+  background: var(--bg);
+  border: 1px solid var(--ink-faint);
+  border-radius: 18px;
+  padding: 22px;
+  width: 100%;
+  max-width: 360px;
+  max-height: 82vh;
+  overflow-y: auto;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.08);
+}
+.modal-content h3 {
+  font-size: 13px;
+  letter-spacing: 6px;
+  text-align: center;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+.modal-content .btn-primary { margin-top: 8px; }
+.lb-me {
+  background: rgba(26, 26, 26, 0.04);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.lb-me-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+.lb-me-stat { text-align: center; }
+.lb-me-lbl { font-size: 9px; letter-spacing: 1.5px; color: var(--ink-soft); margin-bottom: 3px; text-transform: uppercase; }
+.lb-me-val { font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.lb-me-compare { display: flex; flex-direction: column; gap: 4px; }
+.lb-me-compare .cmp { font-size: 12px; color: var(--ink-soft); text-align: center; letter-spacing: 0.5px; }
+.lb-me-compare .cmp .frac { color: var(--ink); font-weight: 600; }
+.lb-divider { height: 1px; background: var(--ink-faint); margin: 4px 0 14px; }
+.lb-list { margin-bottom: 14px; }
+.lb-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--ink-faint);
+  font-size: 13px;
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-row.mine { background: rgba(16, 185, 129, 0.08); border-radius: 8px; border-bottom-color: transparent; padding-left: 8px; padding-right: 8px; }
+.lb-row.mine .lb-name::after { content: ' · ты'; color: var(--mint); font-size: 10px; letter-spacing: 1px; }
+.lb-pos { width: 26px; color: var(--ink-soft); font-weight: 500; font-variant-numeric: tabular-nums; }
+.lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-score { color: var(--ink-soft); font-size: 11px; font-variant-numeric: tabular-nums; }
+.lb-score b { color: var(--ink); font-weight: 600; }
+.lb-empty, .lb-loading { text-align: center; color: var(--ink-soft); padding: 24px 0; font-size: 13px; letter-spacing: 1px; }
+
 .solo-summary {
   text-align: center;
   padding: 10px 0 20px;

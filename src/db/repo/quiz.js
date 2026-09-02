@@ -48,6 +48,34 @@ async function getLeaderboard(chatId, limit = 10) {
   return r.rows;
 }
 
+// Место юзера в чатовом топе (та же сортировка, что и в getLeaderboard)
+async function getUserStanding(chatId, userId) {
+  const r = await query(
+    `WITH ranked AS (
+       SELECT user_id, username, correct, total,
+              CASE WHEN total > 0 THEN ROUND(correct::numeric * 100 / total, 0)::int ELSE 0 END AS pct,
+              RANK() OVER (ORDER BY correct DESC,
+                CASE WHEN total > 0 THEN correct::numeric / total ELSE 0 END DESC) AS rank
+       FROM quiz_scores WHERE chat_id = $1 AND total > 0
+     )
+     SELECT * FROM ranked WHERE user_id = $2`,
+    [chatId, userId]
+  );
+  return r.rows[0] || null;
+}
+
+async function getAggregates(chatId) {
+  const r = await query(
+    `SELECT COUNT(*)::int AS players,
+            COALESCE(MAX(correct), 0)::int AS max_correct,
+            COALESCE(AVG(CASE WHEN total > 0 THEN correct::numeric * 100 / total END), 0)::float AS avg_pct,
+            COALESCE(MAX(CASE WHEN total > 0 THEN correct::numeric * 100 / total END), 0)::float AS max_pct
+     FROM quiz_scores WHERE chat_id = $1 AND total > 0`,
+    [chatId]
+  );
+  return r.rows[0] || { players: 0, max_correct: 0, avg_pct: 0, max_pct: 0 };
+}
+
 // Последние N вопросов чата — стоп-лист для генератора, чтобы не повторяться между сериями
 async function getRecentQuestions(chatId, limit = 40) {
   const r = await query(
@@ -72,5 +100,7 @@ module.exports = {
   bumpScore,
   getLeaderboard,
   getUserScore,
+  getUserStanding,
+  getAggregates,
   getRecentQuestions,
 };

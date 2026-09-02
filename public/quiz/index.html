@@ -27,6 +27,7 @@
           <div class="card-desc">2–5 игроков, на время, итоги в топ чата</div>
         </button>
       </div>
+      <button class="btn-text" id="btn-lb-home" type="button">топ чата</button>
     </section>
 
     <!-- Настройка (тема + количество) -->
@@ -79,9 +80,31 @@
       <div class="results-title" id="r-title">Итоги</div>
       <div class="results-list" id="r-list"></div>
       <button class="btn-primary" id="btn-again" type="button">Ещё раз</button>
-      <button class="btn-text" id="btn-home2" type="button">в меню</button>
+      <div class="results-links">
+        <button class="btn-text" id="btn-lb-results" type="button">топ чата</button>
+        <button class="btn-text" id="btn-home2" type="button">в меню</button>
+      </div>
     </section>
   </main>
+
+  <!-- Топ чата -->
+  <div id="lb-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Топ чата</h3>
+      <div class="lb-me hidden" id="lb-me">
+        <div class="lb-me-row">
+          <div class="lb-me-stat"><div class="lb-me-lbl">верных</div><div class="lb-me-val" id="me-correct">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">точность</div><div class="lb-me-val" id="me-pct">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">место</div><div class="lb-me-val" id="me-rank">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">ответов</div><div class="lb-me-val" id="me-total">—</div></div>
+        </div>
+        <div class="lb-me-compare" id="lb-me-compare"></div>
+      </div>
+      <div class="lb-divider"></div>
+      <div id="lb-list" class="lb-list"></div>
+      <button id="lb-close" class="btn-primary" type="button">Закрыть</button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

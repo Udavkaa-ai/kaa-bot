@@ -460,6 +460,84 @@
     }, 3000);
   }
 
+  // =====================================================
+  // ТОП ЧАТА
+  // =====================================================
+  function simpleFraction(value, maxDenom = 9) {
+    if (!isFinite(value) || value <= 0) return null;
+    if (value >= 0.995) return { n: 1, d: 1 };
+    let best = null, bestErr = Infinity;
+    for (let d = 2; d <= maxDenom; d++) {
+      const n = Math.round(value * d);
+      if (n < 1 || n >= d) continue;
+      const err = Math.abs(value - n / d);
+      if (err < bestErr) { bestErr = err; best = { n, d }; }
+    }
+    return best;
+  }
+
+  function buildComparisons(me, agg) {
+    const lines = [];
+    if (!me || !agg) return lines;
+    if (agg.max_correct > 0) {
+      if (me.correct >= agg.max_correct) lines.push('Ты — лидер чата 👑');
+      else {
+        const f = simpleFraction(me.correct / agg.max_correct);
+        if (f && !(f.n === 1 && f.d === 1)) lines.push(`Ты на <span class="frac">${f.n}/${f.d}</span> от лидера по верным`);
+      }
+    }
+    if (agg.players >= 2 && agg.avg_pct > 0) {
+      const delta = me.pct - agg.avg_pct;
+      if (delta > 0.5) {
+        const ratio = delta / agg.avg_pct;
+        if (ratio >= 0.95) lines.push('Ты <span class="frac">вдвое</span> точнее среднего');
+        else { const f = simpleFraction(ratio); if (f) lines.push(`Ты на <span class="frac">${f.n}/${f.d}</span> точнее среднего`); }
+      } else if (delta < -0.5) {
+        const f = simpleFraction(Math.min(0.95, -delta / agg.avg_pct));
+        if (f) lines.push(`До средней точности: ещё <span class="frac">${f.n}/${f.d}</span>`);
+      }
+    }
+    return lines;
+  }
+
+  async function showLeaderboard() {
+    haptic('tap');
+    $('lb-list').innerHTML = '<div class="lb-loading">Загружаю...</div>';
+    $('lb-me').classList.add('hidden');
+    $('lb-modal').classList.remove('hidden');
+    try {
+      const data = await apiGet('/api/quiz/leaderboard');
+      const me = data.me;
+      if (me && me.total > 0) {
+        $('me-correct').textContent = me.correct;
+        $('me-pct').textContent = me.pct + '%';
+        $('me-rank').textContent = '#' + me.rank;
+        $('me-total').textContent = me.total;
+        const lines = buildComparisons(me, data.aggregates);
+        $('lb-me-compare').innerHTML = lines.map(t => `<div class="cmp">${t}</div>`).join('');
+        $('lb-me').classList.remove('hidden');
+      }
+      const list = $('lb-list');
+      if (!data.top || data.top.length === 0) {
+        list.innerHTML = '<div class="lb-empty">Пока никто не отвечал</div>';
+      } else {
+        list.innerHTML = data.top.map((r, i) => {
+          const mine = myId && r.user_id === String(myId) ? ' mine' : '';
+          return `<div class="lb-row${mine}">
+            <span class="lb-pos">${i + 1}</span>
+            <span class="lb-name">${escapeHtml(r.name)}</span>
+            <span class="lb-score"><b>${r.correct}</b>/${r.total} · ${r.pct}%</span>
+          </div>`;
+        }).join('');
+      }
+    } catch (err) {
+      $('lb-list').innerHTML = '<div class="lb-empty">Ошибка загрузки</div>';
+    }
+  }
+  $('btn-lb-home').addEventListener('click', showLeaderboard);
+  $('btn-lb-results').addEventListener('click', showLeaderboard);
+  $('lb-close').addEventListener('click', () => $('lb-modal').classList.add('hidden'));
+
   // ---- события ----
   $('btn-solo').addEventListener('click', () => {
     mode = 'solo';
