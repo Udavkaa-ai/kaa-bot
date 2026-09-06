@@ -90,6 +90,10 @@ async function handleCommand(bot, msg) {
     case '/сечение':
       return handleEyeball(bot, msg, args);
 
+    case '/contour':
+    case '/контур':
+      return handleContour(bot, msg);
+
     case '/article':
     case '/статья':
       await article.handleArticleCommand(bot, msg, args.join(' '));
@@ -153,6 +157,7 @@ function buildHelp() {
     '/quiz app — Эрудит: мини-приложение, тренировка и соревнования на время (2–5 игроков)',
     '/leaderboard — топ викторины в этом чате',
     '/sec — Сечение, игра на глазомер. /sec top — топ чата. /sec remind 20:00 — ежедневный автопост топа',
+    '/contour — Контур: угадай страну по очертанию или проведи границу между соседями',
     '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',
     '/transcribe on|off — авто-расшифровка голосовых в чат (только админ чата)',
     '/trigger <слова> — задать как меня звать в этом чате (только админ)',
@@ -436,6 +441,26 @@ async function handleEyeball(bot, msg, args) {
           { text: 'Открыть', url },
         ]],
       },
+    });
+  return true;
+}
+
+// Мини-игра «Контур»: кнопка в мини-апп с привязкой к чату (топ ведётся по чату)
+async function handleContour(bot, msg) {
+  const chatId = msg.chat.id;
+  if (!config.botUsername) {
+    try { config.botUsername = (await bot.getMe()).username; } catch (_) {}
+  }
+  if (!config.botUsername) {
+    await sendSafe(bot, chatId, 'Не получилось узнать имя бота.', { reply_to_message_id: msg.message_id });
+    return true;
+  }
+  const url = `https://t.me/${config.botUsername}/${config.contourAppShortName}?startapp=${chatId}`;
+  await bot.sendMessage(chatId,
+    'Контур — география на глаз.\n«Страна»: угадай страну по очертанию, 30 секунд на каждую. «Граница»: две соседние страны без общей линии — проведи её пальцем как можно ближе к настоящей. Лучшие результаты — в топ чата.',
+    {
+      reply_to_message_id: msg.message_id,
+      reply_markup: { inline_keyboard: [[{ text: 'Открыть', url }]] },
     });
   return true;
 }

@@ -1,8 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const zlib = require('zlib');
 const config = require('../config');
 const eyeballRepo = require('../db/repo/eyeball');
 const quizRepo = require('../db/repo/quiz');
+const contourRepo = require('../db/repo/contour');
 const arena = require('./quizArena');
 const { generateVerifiedQuestion } = require('../handlers/quiz');
 const { verifyInitData } = require('./auth');
@@ -69,12 +72,36 @@ function start() {
     },
   };
   const pub = path.join(__dirname, '..', '..', 'public');
+
+  // Карта для «Контура» — 400+ КБ JSON, отдаём сжатой (один раз жмём при старте).
+  // Клиент ходит с ?v=N, поэтому кешировать можно долго.
+  let contourGz = null, contourRaw = null;
+  try {
+    contourRaw = fs.readFileSync(path.join(pub, 'contour', 'data.json'));
+    contourGz = zlib.gzipSync(contourRaw, { level: 9 });
+  } catch (err) {
+    console.warn('[WEB] public/contour/data.json не найден — «Контур» не заработает:', err.message);
+  }
+  app.get('/contour/data.json', (req, res) => {
+    if (!contourRaw) return res.status(404).json({ error: 'not_found' });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=604800');
+    res.setHeader('Vary', 'Accept-Encoding');
+    if (contourGz && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+      res.setHeader('Content-Encoding', 'gzip');
+      return res.end(contourGz);
+    }
+    res.end(contourRaw);
+  });
+
   app.use('/eyeball', express.static(path.join(pub, 'eyeball'), staticOpts));
   app.use('/quiz', express.static(path.join(pub, 'quiz'), staticOpts));
+  app.use('/contour', express.static(path.join(pub, 'contour'), staticOpts));
 
   app.get('/', (req, res) => res.redirect(302, '/eyeball/'));
   app.get('/eyeball', (req, res) => res.redirect(302, '/eyeball/'));
   app.get('/quiz', (req, res) => res.redirect(302, '/quiz/'));
+  app.get('/contour', (req, res) => res.redirect(302, '/contour/'));
 
   app.get('/healthz', (req, res) => res.type('text/plain').send('ok'));
 
@@ -269,6 +296,53 @@ function start() {
       arena.answer(req.tgChatId, req.tgUser.id, qIndex, option);
       arenaReply(res, req.tgChatId, req.tgUser.id);
     } catch (err) { arenaFail(res, err); }
+  });
+
+  // ===== Контур (страны по очертанию / границы) =====
+
+  app.post('/api/contour/finish', authMiddleware, async (req, res) => {
+    try {
+      const u = req.tgUser;
+      const name = userDisplay(u, false);
+      const rounds = clampInt(req.body.rounds, 1, 100);
+      if (req.body.mode === 'border') {
+        const avg = clampInt(req.body.score, 0, 100);
+        const sum = clampInt(req.body.sum, 0, 100 * rounds);
+        await contourRepo.recordBorderGame(req.tgChatId, u.id, name, { avg, sum, rounds });
+      } else {
+        const score = clampInt(req.body.score, 0, 30 * rounds);
+        const correct = clampInt(req.body.correct, 0, rounds);
+        await contourRepo.recordGuessGame(req.tgChatId, u.id, name, { score, correct, rounds });
+      }
+      res.json({ ok: true });
+    } catch (err) {
+      console.error('[CONTOUR FINISH]', err.message);
+      res.status(500).json({ error: 'server' });
+    }
+  });
+
+  app.get('/api/contour/leaderboard', authMiddleware, async (req, res) => {
+    try {
+      const metric = req.query.metric === 'border' ? 'border' : 'guess';
+      const [top, me, agg] = await Promise.all([
+        contourRepo.getTop(req.tgChatId, metric, 10),
+        contourRepo.getStanding(req.tgChatId, req.tgUser.id, metric),
+        contourRepo.getAggregates(req.tgChatId, metric),
+      ]);
+      res.json({
+        metric,
+        top: top.map(r => ({
+          user_id: String(r.user_id),
+          name: String(r.username || ('id' + r.user_id)).replace(/^@/, ''),
+          best: Number(r.best), games: Number(r.games),
+        })),
+        me: me ? { best: Number(me.best), games: Number(me.games), rank: Number(me.rank) } : null,
+        aggregates: { players: Number(agg.players), max_best: Number(agg.max_best) },
+      });
+    } catch (err) {
+      console.error('[CONTOUR LB]', err.message);
+      res.status(500).json({ error: 'server' });
+    }
   });
 
   app.use((req, res) => res.status(404).json({ error: 'not_found' }));

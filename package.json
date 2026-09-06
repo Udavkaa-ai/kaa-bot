@@ -20,5 +20,10 @@
     "pg": "^8.13.1",
     "pgvector": "^0.2.0"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "topojson-client": "^3.1.0",
+    "topojson-server": "^3.0.1",
+    "topojson-simplify": "^3.0.3"
+  }
 }

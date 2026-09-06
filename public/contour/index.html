@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Контур</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">КОНТУР</div>
+    <div class="sub" id="sub">география на глаз</div>
+  </header>
+
+  <main>
+    <!-- Главный экран -->
+    <section id="s-home" class="screen">
+      <div class="note" id="home-note">загружаю карту…</div>
+      <div class="cards">
+        <button class="card" id="btn-guess" type="button" disabled>
+          <div class="card-title">Страна</div>
+          <div class="card-desc">угадай страну по очертанию · 10 стран · 30 секунд на каждую</div>
+        </button>
+        <button class="card" id="btn-border" type="button" disabled>
+          <div class="card-title">Граница</div>
+          <div class="card-desc">две соседние страны — проведи границу между ними · 5 пар</div>
+        </button>
+      </div>
+      <button class="btn-text" id="btn-lb-home" type="button">топ чата</button>
+    </section>
+
+    <!-- Игра -->
+    <section id="s-game" class="screen hidden">
+      <div class="game-top">
+        <span id="g-progress">1/10</span>
+        <span id="g-score">0</span>
+      </div>
+      <div class="timer-track" id="timer-track"><div class="timer-fill" id="timer-fill"></div></div>
+
+      <div class="map-wrap" id="map-wrap">
+        <canvas id="map"></canvas>
+        <div class="map-hint hidden" id="map-hint">проведи границу пальцем</div>
+      </div>
+
+      <!-- Режим «Страна» -->
+      <div class="guess-panel" id="guess-panel">
+        <input class="guess-input" id="guess-input" type="text" placeholder="какая это страна?" maxlength="40"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+        <div class="chips" id="chips"></div>
+        <button class="btn-text" id="btn-skip" type="button">не знаю</button>
+      </div>
+
+      <!-- Режим «Граница» -->
+      <div class="border-panel hidden" id="border-panel">
+        <div class="pair-names" id="pair-names"></div>
+        <button class="btn-primary" id="btn-check" type="button" disabled>Проверить</button>
+        <button class="btn-text" id="btn-redraw" type="button">заново</button>
+      </div>
+
+      <!-- Разбор раунда -->
+      <div class="review hidden" id="g-review">
+        <div class="review-status" id="g-status"></div>
+        <div class="review-expl" id="g-expl"></div>
+        <button class="btn-text" id="btn-next" type="button">дальше</button>
+      </div>
+    </section>
+
+    <!-- Итоги -->
+    <section id="s-results" class="screen hidden">
+      <div class="results-title" id="r-title">Итоги</div>
+      <div class="solo-summary">
+        <div class="solo-big" id="r-big">0</div>
+        <div class="solo-small" id="r-small"></div>
+      </div>
+      <div class="results-list" id="r-list"></div>
+      <button class="btn-primary" id="btn-again" type="button">Ещё раз</button>
+      <div class="results-links">
+        <button class="btn-text" id="btn-lb-results" type="button">топ чата</button>
+        <button class="btn-text" id="btn-home2" type="button">в меню</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Топ чата -->
+  <div id="lb-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Топ чата</h3>
+      <div class="season-tabs">
+        <button class="season-tab active" data-metric="guess" type="button">страна</button>
+        <button class="season-tab" data-metric="border" type="button">граница</button>
+      </div>
+      <div class="lb-me hidden" id="lb-me">
+        <div class="lb-me-row">
+          <div class="lb-me-stat"><div class="lb-me-lbl">лучший</div><div class="lb-me-val" id="me-best">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">место</div><div class="lb-me-val" id="me-rank">—</div></div>
+          <div class="lb-me-stat"><div class="lb-me-lbl">игр</div><div class="lb-me-val" id="me-games">—</div></div>
+        </div>
+        <div class="lb-me-compare" id="lb-me-compare"></div>
+      </div>
+      <div class="lb-divider"></div>
+      <div id="lb-list" class="lb-list"></div>
+      <button id="lb-close" class="btn-primary" type="button">Закрыть</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

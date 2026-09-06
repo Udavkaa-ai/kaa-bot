@@ -289,3 +289,22 @@ BEGIN
     INSERT INTO eyeball_seasons (season) VALUES (2);
   END IF;
 END $$;
+
+-- Мини-игра «Контур» (угадай страну по очертанию / проведи границу) — лучшие результаты по чату
+CREATE TABLE IF NOT EXISTS contour_scores (
+  chat_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  username TEXT,
+  best_guess INTEGER DEFAULT 0,     -- лучший результат игры «Страна» (сумма очков за 10 стран, макс 300)
+  guess_games INTEGER DEFAULT 0,
+  guess_correct INTEGER DEFAULT 0,  -- угадано стран за всё время
+  guess_rounds INTEGER DEFAULT 0,   -- показано стран за всё время
+  best_border INTEGER DEFAULT 0,    -- лучшая средняя точность игры «Граница» (0–100)
+  border_games INTEGER DEFAULT 0,
+  border_sum INTEGER DEFAULT 0,     -- сумма баллов за все границы (для средней)
+  border_rounds INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (chat_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_contour_guess ON contour_scores (chat_id, best_guess DESC);
+CREATE INDEX IF NOT EXISTS idx_contour_border ON contour_scores (chat_id, best_border DESC);
