@@ -4,9 +4,22 @@ const chatsRepo = require('../db/repo/chats');
 const messagesRepo = require('../db/repo/messages');
 const eyeballRepo = require('../db/repo/eyeball');
 const quizRepo = require('../db/repo/quiz');
+const contourRepo = require('../db/repo/contour');
 
 // Топ Эрудита подтягиваем только когда о нём спрашивают — экономим промпт
 const QUIZ_TRIGGER = /квиз|эрудит|викторин|самый умный|самая умная|умнее|умнейш|лидерборд|кто лидер|кто в топе/i;
+// Топ Контура (география) — по словам «контур», «страна», «граница» и их формам
+const CONTOUR_TRIGGER = /контур|стран[аыеуо]|границ|географ|картограф|очертани/i;
+
+async function contourContext(chatId, userId) {
+  const [guessTop, borderTop, guessMe, borderMe] = await Promise.all([
+    contourRepo.getTop(chatId, 'guess', 10).catch(() => []),
+    contourRepo.getTop(chatId, 'border', 10).catch(() => []),
+    userId ? contourRepo.getStanding(chatId, userId, 'guess').catch(() => null) : null,
+    userId ? contourRepo.getStanding(chatId, userId, 'border').catch(() => null) : null,
+  ]);
+  return { guessTop, borderTop, guessMe, borderMe };
+}
 const { resolvePersona } = require('./persona');
 const semantic = require('../memory/semantic');
 const search = require('../providers/search');
@@ -35,6 +48,7 @@ async function gatherContext(msg, userText) {
     quizTop,
     quizMe,
     quizAgg,
+    contour,
   ] = await Promise.all([
     resolvePersona(userId, chatId, userText),
     usersRepo.getProfile(chatId, userId),
@@ -51,6 +65,8 @@ async function gatherContext(msg, userText) {
     QUIZ_TRIGGER.test(userText || '') ? quizRepo.getLeaderboard(chatId, 10).catch(() => []) : null,
     QUIZ_TRIGGER.test(userText || '') && userId ? quizRepo.getUserStanding(chatId, userId).catch(() => null) : null,
     QUIZ_TRIGGER.test(userText || '') ? quizRepo.getAggregates(chatId).catch(() => null) : null,
+    // Топ Контура — по ключевым словам в сообщении
+    CONTOUR_TRIGGER.test(userText || '') ? contourContext(chatId, userId) : null,
   ]);
 
   const system = buildSystemPrompt({
@@ -70,6 +86,7 @@ async function gatherContext(msg, userText) {
     quizTop,
     quizMe,
     quizAgg,
+    contour,
   });
 
   return { persona, justAssigned, system, history, searchContext, userProfile };

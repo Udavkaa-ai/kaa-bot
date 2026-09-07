@@ -94,6 +94,10 @@ async function handleCommand(bot, msg) {
     case '/контур':
       return handleContour(bot, msg);
 
+    case '/games':
+    case '/игры':
+      return handleGames(bot, msg);
+
     case '/article':
     case '/статья':
       await article.handleArticleCommand(bot, msg, args.join(' '));
@@ -158,6 +162,7 @@ function buildHelp() {
     '/leaderboard — топ викторины в этом чате',
     '/sec — Сечение, игра на глазомер. /sec top — топ чата. /sec remind 20:00 — ежедневный автопост топа',
     '/contour — Контур: угадай страну по очертанию или проведи границу между соседями',
+    '/games — одно сообщение обо всех играх: что за игра, как открыть, в чём смысл',
     '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',
     '/transcribe on|off — авто-расшифровка голосовых в чат (только админ чата)',
     '/trigger <слова> — задать как меня звать в этом чате (только админ)',
@@ -462,6 +467,39 @@ async function handleContour(bot, msg) {
       reply_to_message_id: msg.message_id,
       reply_markup: { inline_keyboard: [[{ text: 'Открыть', url }]] },
     });
+  return true;
+}
+
+// Сводка по всем играм — одним сообщением, с кнопками в мини-аппы.
+// Постится по команде; закрепить в чате — уже руками.
+async function handleGames(bot, msg) {
+  const chatId = msg.chat.id;
+  if (!config.botUsername) {
+    try { config.botUsername = (await bot.getMe()).username; } catch (_) {}
+  }
+  const appUrl = (short) => `https://t.me/${config.botUsername}/${short}?startapp=${chatId}`;
+  const text = [
+    '🎮 Игры в этом чате',
+    '',
+    '🎯 Сечение — /sec',
+    'Тренировка глазомера: отмерь долю на линии, налей бутылку до нужного уровня, отрежь кусок пирога. 7 секунд на ход, попадание с точностью до 5% продлевает серию. Топ чата — /sec top.',
+    '',
+    '🧠 Эрудит — /quiz и /quiz app',
+    'Викторина с проверенными фактами. В чате: /quiz <тема> <1–10> — серия вопросов раз в 30 секунд. В приложении: тренировка в одиночку или соревнование на время для 2–5 человек, итоги идут в общий топ — /leaderboard.',
+    '',
+    '🗺 Контур — /contour',
+    'География на глаз. «Страна»: угадай страну по очертанию границ, 30 секунд на каждую. «Граница»: две соседние страны без общей линии — проведи её пальцем как можно ближе к настоящей. Лучшие результаты — в топ чата внутри приложения.',
+    '',
+    'Про любой топ можно спросить и меня: кто лидер, кто самый умный, у кого лучший глазомер.',
+  ].join('\n');
+  const keyboard = config.botUsername ? {
+    inline_keyboard: [[
+      { text: '🎯 Сечение', url: appUrl(config.eyeballAppShortName) },
+      { text: '🧠 Эрудит', url: appUrl(config.quizAppShortName) },
+      { text: '🗺 Контур', url: appUrl(config.contourAppShortName) },
+    ]],
+  } : undefined;
+  await bot.sendMessage(chatId, text, { reply_markup: keyboard, disable_notification: true });
   return true;
 }
 
