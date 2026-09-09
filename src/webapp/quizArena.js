@@ -103,7 +103,7 @@ async function generateAll(room) {
     if (room.cancelled) return;
     const avoid = [...recent, ...room.questions.map(q => q.question)];
     let q = null;
-    try { q = await generateVerifiedQuestion(room.topic, avoid); } catch (err) {
+    try { q = await generateVerifiedQuestion(room.topic, avoid, room.chatId); } catch (err) {
       console.warn('[ARENA] gen failed:', err.message);
     }
     if (!q) continue;

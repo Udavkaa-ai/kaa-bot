@@ -221,7 +221,7 @@ function start() {
       const avoidClient = Array.isArray(req.body.avoid) ? req.body.avoid.map(String).slice(0, 40) : [];
       let recent = [];
       try { recent = await quizRepo.getRecentQuestions(req.tgChatId, 150); } catch (_) {}
-      const q = await generateVerifiedQuestion(topic, [...new Set([...avoidClient, ...recent])]);
+      const q = await generateVerifiedQuestion(topic, [...new Set([...avoidClient, ...recent])], req.tgChatId);
       if (!q) return res.status(503).json({ error: 'Не получилось подготовить вопрос' });
       // Тренировочные вопросы тоже пишем в историю чата — чтобы они не всплывали потом в чате и на арене
       quizRepo.saveQuiz({
