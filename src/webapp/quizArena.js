@@ -98,7 +98,7 @@ function createRoom(chatId, host, topic, count) {
 
 async function generateAll(room) {
   let recent = [];
-  try { recent = await quizRepo.getRecentQuestions(room.chatId, 40); } catch (_) {}
+  try { recent = await quizRepo.getRecentQuestions(room.chatId, 150); } catch (_) {}
   for (let i = 0; i < room.plannedCount; i++) {
     if (room.cancelled) return;
     const avoid = [...recent, ...room.questions.map(q => q.question)];

@@ -220,9 +220,15 @@ function start() {
       const topic = String(req.body.topic || '').slice(0, 60).trim() || null;
       const avoidClient = Array.isArray(req.body.avoid) ? req.body.avoid.map(String).slice(0, 40) : [];
       let recent = [];
-      try { recent = await quizRepo.getRecentQuestions(req.tgChatId, 30); } catch (_) {}
+      try { recent = await quizRepo.getRecentQuestions(req.tgChatId, 150); } catch (_) {}
       const q = await generateVerifiedQuestion(topic, [...new Set([...avoidClient, ...recent])]);
       if (!q) return res.status(503).json({ error: 'Не получилось подготовить вопрос' });
+      // Тренировочные вопросы тоже пишем в историю чата — чтобы они не всплывали потом в чате и на арене
+      quizRepo.saveQuiz({
+        pollId: `solo:${req.tgChatId}:${req.tgUser.id}:${Date.now()}`,
+        chatId: req.tgChatId, messageId: null,
+        question: q.question, correctOption: q.correct_option, topic,
+      }).catch(() => {});
       res.json({ question: q });
     } catch (err) {
       console.error('[QUIZ SOLO]', err.message);
