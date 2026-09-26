@@ -9,6 +9,7 @@
   if (tg) {
     tg.ready();
     tg.expand();
+    try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (_) {}
     try {
       const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
       tg.setHeaderColor(paper); tg.setBackgroundColor(paper);
@@ -20,6 +21,7 @@
     try {
       if (k === 'ok') tg.HapticFeedback.notificationOccurred('success');
       else if (k === 'bad') tg.HapticFeedback.notificationOccurred('error');
+      else if (k === 'sel') tg.HapticFeedback.selectionChanged();
       else tg.HapticFeedback.impactOccurred('light');
     } catch (_) {}
   };
@@ -404,6 +406,20 @@
         }
       }
       if (sel) parts.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="route-selected"/>`);
+      if (!alt && !sv.opened && s.unlocked.construction && (sv.progress > 0 || sv.crews > 0)) {
+        const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        const dx = b[0] - a[0], dy = b[1] - a[1], Ln = Math.hypot(dx, dy) || 1;
+        let nx = -dy / Ln, ny = dx / Ln;
+        if (nx > 0) { nx = -nx; ny = -ny; } // подписи станций справа — проценты слева
+        parts.push(`<text x="${m[0] + nx * 17}" y="${m[1] + ny * 17 + 4}" text-anchor="end" class="seg-pct">${Math.round(sv.progress)}%</text>`);
+      }
+      if (sv.opened && !alt) {
+        const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        const dx = b[0] - a[0], dy = b[1] - a[1], Ln = Math.hypot(dx, dy) || 1;
+        let nx = -dy / Ln, ny = dx / Ln;
+        if (nx > 0) { nx = -nx; ny = -ny; }
+        parts.push(`<text x="${m[0] + nx * 15}" y="${m[1] + ny * 15 + 4}" text-anchor="end" class="seg-pct done">✓</text>`);
+      }
       if (sv.crews > 0 && !sv.opened) {
         const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
         parts.push(`<g class="crew-badge"><circle cx="${m[0]}" cy="${m[1]}" r="8.5"/><text x="${m[0]}" y="${m[1] + 3.5}" text-anchor="middle">${sv.crews}</text></g>`);
@@ -465,7 +481,7 @@
       if (v.freeCrews > 0 && unopened) {
         parts.push(`<div class="report-note bad">Без дела ${v.freeCrews} ${pluralCrews(v.freeCrews)}: жалованье идёт, работа стоит. Выберите участок и добавьте людей.</div>`);
       }
-      // Участки по дирекциям
+      // Линейная схема дороги по дирекциям: станции и перегоны, перегон закрашен на % готовности
       const groups = {};
       for (const seg of c.map.segments) {
         if (!v.segments[seg.id].active) continue;
@@ -475,16 +491,10 @@
       const gName = { north: 'Северная дирекция · Мельников', south: 'Южная дирекция · Крафт', main: 'Участки' };
       for (const [g, list] of Object.entries(groups)) {
         const crews = list.reduce((a, x) => a + v.segments[x.id].crews, 0);
-        parts.push(`<div class="sect"><div class="sect-title">${gName[g]} · ${crews} ${pluralCrews(crews)}</div>`);
-        for (const seg of list) {
-          const sv = v.segments[seg.id];
-          parts.push(`<button class="seg-row${sv.opened ? ' opened' : ''}" data-seg="${seg.id}" type="button">
-            <span>${esc(segName(seg))}${sv.opened ? ' · открыт' : ''}</span>
-            <span class="crews">${sv.opened ? '' : sv.crews ? `${sv.crews} арт. · ` : ''}${Math.round(sv.progress)}%</span>
-            <span class="bar${sv.opened ? ' done' : ''}"><i style="width:${sv.progress}%"></i></span>
-          </button>`);
-        }
-        parts.push(`</div>`);
+        parts.push(`<div class="sect"><div class="sect-title">${gName[g]} · ${crews} ${pluralCrews(crews)}</div><div class="scheme">`);
+        parts.push(stationRow(list[0].from));
+        for (const seg of list) { parts.push(schemeRow(seg)); parts.push(stationRow(seg.to)); }
+        parts.push(`</div></div>`);
       }
       parts.push(crewsSection());
     }
@@ -492,14 +502,81 @@
     parts.push(financeSection());
     el.innerHTML = parts.join('');
     el.querySelectorAll('[data-seg]').forEach(b => b.addEventListener('click', () => selectSeg(b.dataset.seg)));
+    bindSliders(el);
     bindCommon();
+  }
+
+  function stationRow(nodeId) {
+    const n = C().nodesById[nodeId];
+    return `<div class="st-row"><span class="rail"><i class="st-dot${n.kind === 'capital' ? ' capital' : ''}"></i></span>
+      <span class="st-name">${esc(n.name.replace(/\s*\(.+\)/, ''))}</span></div>`;
+  }
+
+  // Сколько процентов участка даст сезон при n артелях (по текущему темпу и настрою)
+  function seasonGain(seg, n) {
+    const sv = S.view.segments[seg.id];
+    const perCrew = C().balance.crews.workPerCrewPerSeason * sv.seasonMult * S.state.morale / 100;
+    const left = sv.work - sv.workDone;
+    return sv.work ? Math.min(left, n * perCrew) / sv.work * 100 : 0;
+  }
+
+  function schemeRow(seg) {
+    const sv = S.view.segments[seg.id];
+    const terr = Object.entries(seg.terrain).sort((a, b) => b[1] - a[1]).map(([t]) => TERRAIN_RU[t]).join(', ');
+    const feats = (seg.features || []).map(f => C().map.features[f].kind === 'bridge' ? '⌒' : '⟋').join('');
+    const gain = sv.opened ? 0 : seasonGain(seg, sv.crews);
+    return `<div class="sg-row${sv.opened ? ' opened' : ''}">
+      <span class="rail"><span class="rail-track${sv.opened ? ' done' : ''}">
+        <i class="proj" data-proj="${seg.id}" style="height:${Math.min(100, sv.progress + gain)}%"></i>
+        <i class="fill" style="height:${sv.progress}%"></i>
+      </span></span>
+      <div class="sg-body">
+        <button class="sg-head" data-seg="${seg.id}" type="button">
+          <span class="sg-meta">${sv.lengthKm} км · ${terr}${feats ? ` · ${feats}` : ''} ›</span>
+          <span class="sg-pct">${sv.opened ? 'открыт' : `${Math.round(sv.progress)}%`}</span>
+        </button>
+        ${sv.opened ? '' : sliderHtml(seg)}
+      </div>
+    </div>`;
+  }
+
+  function sliderHtml(seg) {
+    const sv = S.view.segments[seg.id];
+    const gain = seasonGain(seg, sv.crews);
+    return `<div class="sg-slider">
+      <input type="range" min="0" max="${sv.maxCrews}" step="1" value="${sv.crews}" data-slider="${seg.id}" aria-label="Артели на участке ${esc(segName(seg))}">
+      <span class="sg-crews"><b data-crews="${seg.id}">${sv.crews}</b> арт.<small data-gain="${seg.id}">${sv.crews ? `+${Math.round(gain)}% за сезон` : 'нет людей'}</small></span>
+    </div>`;
+  }
+
+  // Бегунки: пока тянешь — только подписи и прогноз на схеме; при отпускании — отправка
+  function bindSliders(el) {
+    el.querySelectorAll('[data-slider]').forEach(inp => {
+      const id = inp.dataset.slider;
+      const seg = C().segById[id];
+      let last = +inp.value;
+      inp.addEventListener('input', () => {
+        const sv = S.view.segments[id];
+        const cap = Math.min(sv.maxCrews, sv.crews + S.view.freeCrews);
+        let n = +inp.value;
+        if (n > cap) { n = cap; inp.value = String(cap); }
+        if (n !== last) { last = n; haptic('sel'); }
+        const gain = seasonGain(seg, n);
+        el.querySelectorAll(`[data-crews="${id}"]`).forEach(x => { x.textContent = n; });
+        el.querySelectorAll(`[data-gain="${id}"]`).forEach(x => { x.textContent = n ? `+${Math.round(gain)}% за сезон` : 'нет людей'; });
+        el.querySelectorAll(`[data-proj="${id}"]`).forEach(x => { x.style.height = `${Math.min(100, sv.progress + gain)}%`; });
+        const free = S.view.freeCrews + sv.crews - n;
+        el.querySelectorAll('[data-free]').forEach(x => { x.textContent = free; });
+      });
+      inp.addEventListener('change', () => setCrewsLocal(id, +inp.value));
+    });
   }
 
   function crewsSection() {
     const s = S.state, v = S.view, b = C().balance;
     const pay = b.crews.pay;
     return `<div class="sect"><div class="sect-title">Артели</div>
-      <div class="kv"><span>Всего / свободно</span><span>${s.crewsTotal} / ${v.freeCrews}</span></div>
+      <div class="kv"><span>Всего / свободно</span><span>${s.crewsTotal} / <span data-free>${v.freeCrews}</span></span></div>
       <div class="kv"><span>Жалованье за сезон</span><span>${money(v.payPerSeason)}</span></div>
       <div class="stepper">
         <button class="mini" data-hire="1" ${v.hireLeft < 1 ? 'disabled' : ''}>+1</button>
@@ -571,21 +648,15 @@
     const parts = [`<button class="link back" data-back type="button">← все участки</button>
       <h3>${esc(segName(seg))}</h3>
       <div class="sub">${sv.lengthKm} км · ${terr}${seg.directorate ? ` · ${seg.directorate === 'north' ? 'Северная' : 'Южная'} дирекция` : ''}</div>
-      <div class="bar${sv.opened ? ' done' : ''}"><i style="width:${sv.progress}%"></i></div>
+      <div class="bar${sv.opened ? ' done' : ''}"><i class="proj-h" data-projh="${seg.id}" style="width:${sv.opened ? 0 : Math.min(100, sv.progress + seasonGain(seg, sv.crews))}%"></i><i style="width:${sv.progress}%"></i></div>
       <div class="kv"><span>${sv.opened ? 'Участок открыт' : 'Готовность'}</span><span>${Math.round(sv.progress)}%</span></div>`];
     if (!sv.opened) {
       parts.push(`<div class="kv"><span>Осталось работ / денег на материалы</span><span>${Math.round(sv.work - sv.workDone)} / ${money(sv.costLeft)}</span></div>
         <div class="kv"><span>Темп сезона (${SEASON_RU[s.season].toLowerCase()})</span><span>×${sv.seasonMult.toFixed(2)}</span></div>`);
       if (s.unlocked.construction) {
-        const perCrew = c.balance.crews.workPerCrewPerSeason * sv.seasonMult * s.morale / 100;
-        const next = Math.min(sv.work - sv.workDone, sv.crews * perCrew);
         parts.push(`<div class="sect"><div class="sect-title">Артели на участке (до ${sv.maxCrews})</div>
-          <div class="stepper">
-            <button class="mini" data-crew="-5">−5</button><button class="mini" data-crew="-1">−1</button>
-            <span class="count">${sv.crews}</span>
-            <button class="mini" data-crew="1">+1</button><button class="mini" data-crew="5">+5</button>
-          </div>
-          <div class="hint">${sv.crews ? `За сезон ≈ ${Math.round(next / (sv.work || 1) * 100)}% участка. ` : ''}Свободно ${S.view.freeCrews}.</div></div>`);
+          ${sliderHtml(seg)}
+          <div class="hint">Свободно <span data-free>${S.view.freeCrews}</span>. Прогноз на сезон учитывает время года и настрой.</div></div>`);
       }
     }
     const feats = seg.features || [];
@@ -614,10 +685,7 @@
   function bindSegmentPanel() {
     const el = $('panel');
     el.querySelector('[data-back]').addEventListener('click', () => selectSeg(S.selected));
-    el.querySelectorAll('[data-crew]').forEach(b => b.addEventListener('click', () => {
-      const cur = S.view.segments[S.selected].crews;
-      setCrewsLocal(S.selected, cur + Number(b.dataset.crew));
-    }));
+    bindSliders(el);
     el.querySelectorAll('[data-feat]').forEach(b => b.addEventListener('click', () =>
       act({ type: 'SET_FEATURE', segmentId: S.selected, feature: b.dataset.feat, value: b.dataset.val }).then(renderGame)));
   }

@@ -338,3 +338,60 @@ details.fact .src a { color: var(--ink-faded); }
 #map .crew-badge circle { fill: var(--paper); stroke: var(--route); stroke-width: 1.2; }
 #map .crew-badge text { fill: var(--route); font-family: var(--font-ui); font-size: 9.5px; font-weight: 700; }
 #map .cartouche-box { fill: var(--paper); stroke: var(--ink); stroke-width: 0.8; }
+
+/* ---------- линейная схема дороги с бегунками ---------- */
+.scheme { margin-top: 2px; }
+.st-row, .sg-row { display: grid; grid-template-columns: 30px 1fr; }
+.rail { position: relative; display: flex; justify-content: center; }
+.st-row { min-height: 22px; align-items: center; }
+.st-row .rail { align-self: stretch; align-items: center; }
+.st-dot { position: relative; z-index: 1; display: block; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--paper); }
+.st-dot.capital { width: 15px; height: 15px; box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 8px var(--ink); }
+.st-name { font-family: var(--font-display); font-style: italic; font-size: 15px; padding-left: 2px; }
+.rail-track {
+  position: relative;
+  width: 7px;
+  margin: -2px 0;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  overflow: hidden;
+}
+.rail-track i { position: absolute; left: 0; right: 0; top: 0; display: block; }
+.rail-track .fill { background: var(--route); }
+.rail-track .proj { background: var(--route-wash); border-bottom: 1px dashed var(--route); }
+.rail-track.done .fill { background: repeating-linear-gradient(to bottom, var(--route) 0 5px, var(--ink) 5px 6px); }
+.sg-body { padding: 4px 0 8px 4px; border-bottom: 1px solid var(--ink-hair); }
+.sg-row.opened .sg-body { padding-bottom: 4px; }
+.sg-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  width: 100%; padding: 2px 0; background: none; border: none; cursor: pointer; text-align: left;
+}
+.sg-meta { font-size: 12px; color: var(--ink-faded); }
+.sg-pct { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; }
+.sg-row.opened .sg-pct { font-weight: 400; font-family: var(--font-display); font-style: italic; color: var(--ink-faded); }
+.sg-slider { display: grid; grid-template-columns: 1fr 86px; align-items: center; gap: 8px; }
+.sg-crews { text-align: right; font-size: 13px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.sg-crews b { font-size: 17px; }
+.sg-crews small { display: block; font-size: 11px; color: var(--ink-faded); }
+
+input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 32px; margin: 0;
+  background: transparent; touch-action: pan-y;
+}
+input[type=range]:focus { outline: none; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; background: var(--ink); border-radius: 0; }
+input[type=range]::-moz-range-track { height: 4px; background: var(--ink); }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px; margin-top: -9px;
+  border-radius: 50%;
+  background: var(--paper); border: 2px solid var(--route);
+  box-shadow: 0 0 0 3px var(--paper);
+}
+input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--paper); border: 2px solid var(--route); }
+input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--route); outline-offset: 2px; }
+
+.bar .proj-h { background: var(--route-wash); border-right: 1px dashed var(--route); }
+#map .seg-pct { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; fill: var(--route); paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }
+#map .seg-pct.done { fill: var(--ink); font-weight: 400; }
