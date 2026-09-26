@@ -1,0 +1,19 @@
+/* Эпоха 1: «Гравюра и старинный чертёж» (docs/DESIGN.md). Только токены — компоненты берут цвета и шрифты отсюда. */
+[data-era="engraving"] {
+  --paper: #E8E0CB;
+  --paper-deep: #DCD1B6;
+  --ink: #2A2119;
+  --ink-faded: #6E5E4B;
+  --route: #9C1C1C;
+  --wash-water: #6D8CA3;
+  --wash-marsh: #7D8A5C;
+
+  --ink-hair: rgba(42, 33, 25, 0.16);
+  --ink-soft: rgba(42, 33, 25, 0.62);
+  --route-wash: rgba(156, 28, 28, 0.08);
+  --ok: #3F6B3A;
+  --scrim: rgba(42, 33, 25, 0.38);
+
+  --font-display: 'Old Standard TT', 'Times New Roman', Georgia, serif;
+  --font-ui: 'PT Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}

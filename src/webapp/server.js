@@ -9,12 +9,15 @@ const contourRepo = require('../db/repo/contour');
 const arena = require('./quizArena');
 const { generateVerifiedQuestion } = require('../handlers/quiz');
 const { verifyInitData } = require('./auth');
+const koleya = require('../../koleya/billy-plugin');
 
 let botRef = null;
 function setBot(bot) {
   botRef = bot;
   // Эрудит: приглашения на турнир и итоги бот постит в чат
   arena.setBot(bot);
+  // «Пять футов» (Koleya): уведомления игрокам
+  koleya.setBot(bot);
 }
 
 function authMiddleware(req, res, next) {
@@ -350,6 +353,9 @@ function start() {
       res.status(500).json({ error: 'server' });
     }
   });
+
+  // «Пять футов» (Koleya): мини-апп /koleya/ и API /koleya/api/*
+  koleya.mount(app);
 
   app.use((req, res) => res.status(404).json({ error: 'not_found' }));
 

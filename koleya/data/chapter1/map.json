@@ -1,0 +1,368 @@
+{
+  "chapterId": "chapter1",
+  "title": "Петербург — Москва",
+  "era": "engraving",
+  "note": "Длины участков — игровые приближения по современным километровым отметкам, сведённые к исторической длине ~645 км. Рельеф — игровая схема, не историческая съёмка. Координаты приблизительные.",
+  "nodes": [
+    {
+      "id": "spb",
+      "name": "Санкт-Петербург",
+      "lat": 59.93,
+      "lon": 30.362,
+      "kind": "capital"
+    },
+    {
+      "id": "kolpino",
+      "name": "Колпино",
+      "lat": 59.751,
+      "lon": 30.593,
+      "kind": "station"
+    },
+    {
+      "id": "tosno",
+      "name": "Тосно",
+      "lat": 59.54,
+      "lon": 30.877,
+      "kind": "station"
+    },
+    {
+      "id": "luban",
+      "name": "Любань",
+      "lat": 59.35,
+      "lon": 31.247,
+      "kind": "station"
+    },
+    {
+      "id": "chudovo",
+      "name": "Чудово",
+      "lat": 59.125,
+      "lon": 31.667,
+      "kind": "station"
+    },
+    {
+      "id": "m_vishera",
+      "name": "Малая Вишера",
+      "lat": 58.846,
+      "lon": 32.225,
+      "kind": "station"
+    },
+    {
+      "id": "okulovka",
+      "name": "Окуловка",
+      "lat": 58.395,
+      "lon": 33.296,
+      "kind": "station"
+    },
+    {
+      "id": "bologoe",
+      "name": "Бологое",
+      "lat": 57.884,
+      "lon": 34.05,
+      "kind": "station"
+    },
+    {
+      "id": "v_volochek",
+      "name": "Вышний Волочёк",
+      "lat": 57.587,
+      "lon": 34.564,
+      "kind": "town"
+    },
+    {
+      "id": "spirovo",
+      "name": "Спирово",
+      "lat": 57.419,
+      "lon": 34.972,
+      "kind": "station"
+    },
+    {
+      "id": "tver",
+      "name": "Тверь",
+      "lat": 56.834,
+      "lon": 35.905,
+      "kind": "town"
+    },
+    {
+      "id": "klin",
+      "name": "Клин",
+      "lat": 56.333,
+      "lon": 36.736,
+      "kind": "town"
+    },
+    {
+      "id": "moscow",
+      "name": "Москва",
+      "lat": 55.776,
+      "lon": 37.655,
+      "kind": "capital"
+    },
+    {
+      "id": "novgorod",
+      "name": "Новгород",
+      "lat": 58.522,
+      "lon": 31.275,
+      "kind": "town",
+      "variant": "novgorod"
+    }
+  ],
+  "segments": [
+    {
+      "id": "spb_kolpino",
+      "from": "spb",
+      "to": "kolpino",
+      "length_km": 25,
+      "terrain": {
+        "plain": 0.8,
+        "swamp": 0.2
+      },
+      "features": [],
+      "directorate": "north",
+      "variant": "both"
+    },
+    {
+      "id": "kolpino_tosno",
+      "from": "kolpino",
+      "to": "tosno",
+      "length_km": 28,
+      "terrain": {
+        "plain": 0.5,
+        "forest": 0.3,
+        "swamp": 0.2
+      },
+      "features": [],
+      "directorate": "north",
+      "variant": "both"
+    },
+    {
+      "id": "tosno_luban",
+      "from": "tosno",
+      "to": "luban",
+      "length_km": 32,
+      "terrain": {
+        "forest": 0.5,
+        "swamp": 0.5
+      },
+      "features": [],
+      "directorate": "north",
+      "variant": "both"
+    },
+    {
+      "id": "luban_chudovo",
+      "from": "luban",
+      "to": "chudovo",
+      "length_km": 31,
+      "terrain": {
+        "forest": 0.4,
+        "swamp": 0.6
+      },
+      "features": [],
+      "directorate": "north",
+      "variant": "both"
+    },
+    {
+      "id": "chudovo_vishera",
+      "from": "chudovo",
+      "to": "m_vishera",
+      "length_km": 49,
+      "terrain": {
+        "forest": 0.5,
+        "swamp": 0.5
+      },
+      "features": [
+        "volkhov_bridge"
+      ],
+      "directorate": "north",
+      "variant": "direct"
+    },
+    {
+      "id": "vishera_okulovka",
+      "from": "m_vishera",
+      "to": "okulovka",
+      "length_km": 94,
+      "terrain": {
+        "forest": 0.5,
+        "hills": 0.4,
+        "swamp": 0.1
+      },
+      "features": [
+        "verebye_grade",
+        "msta_bridge"
+      ],
+      "directorate": "north",
+      "variant": "direct",
+      "fact_refs": [
+        "F013",
+        "F014"
+      ]
+    },
+    {
+      "id": "okulovka_bologoe",
+      "from": "okulovka",
+      "to": "bologoe",
+      "length_km": 67,
+      "terrain": {
+        "forest": 0.4,
+        "hills": 0.6
+      },
+      "features": [],
+      "directorate": "south",
+      "variant": "direct"
+    },
+    {
+      "id": "bologoe_volochek",
+      "from": "bologoe",
+      "to": "v_volochek",
+      "length_km": 50,
+      "terrain": {
+        "forest": 0.5,
+        "plain": 0.3,
+        "swamp": 0.2
+      },
+      "features": [],
+      "directorate": "south",
+      "variant": "direct"
+    },
+    {
+      "id": "chudovo_novgorod",
+      "from": "chudovo",
+      "to": "novgorod",
+      "length_km": 70,
+      "terrain": {
+        "swamp": 0.5,
+        "forest": 0.3,
+        "plain": 0.2
+      },
+      "features": [
+        "volkhov_bridge"
+      ],
+      "directorate": "north",
+      "variant": "novgorod"
+    },
+    {
+      "id": "novgorod_volochek",
+      "from": "novgorod",
+      "to": "v_volochek",
+      "length_km": 220,
+      "terrain": {
+        "forest": 0.4,
+        "hills": 0.4,
+        "swamp": 0.2
+      },
+      "features": [
+        "msta_bridge"
+      ],
+      "directorate": "south",
+      "variant": "novgorod"
+    },
+    {
+      "id": "volochek_spirovo",
+      "from": "v_volochek",
+      "to": "spirovo",
+      "length_km": 27,
+      "terrain": {
+        "plain": 0.6,
+        "forest": 0.4
+      },
+      "features": [],
+      "directorate": "south",
+      "variant": "both"
+    },
+    {
+      "id": "spirovo_tver",
+      "from": "spirovo",
+      "to": "tver",
+      "length_km": 72,
+      "terrain": {
+        "plain": 0.5,
+        "forest": 0.4,
+        "swamp": 0.1
+      },
+      "features": [
+        "volga_bridge"
+      ],
+      "directorate": "south",
+      "variant": "both"
+    },
+    {
+      "id": "tver_klin",
+      "from": "tver",
+      "to": "klin",
+      "length_km": 80,
+      "terrain": {
+        "plain": 0.5,
+        "forest": 0.5
+      },
+      "features": [],
+      "directorate": "south",
+      "variant": "both"
+    },
+    {
+      "id": "klin_moscow",
+      "from": "klin",
+      "to": "moscow",
+      "length_km": 90,
+      "terrain": {
+        "plain": 0.6,
+        "forest": 0.3,
+        "hills": 0.1
+      },
+      "features": [],
+      "directorate": "south",
+      "variant": "both"
+    }
+  ],
+  "features": {
+    "volkhov_bridge": {
+      "name": "Мост через Волхов",
+      "kind": "bridge",
+      "options": [
+        "wooden",
+        "iron"
+      ],
+      "default": "wooden"
+    },
+    "msta_bridge": {
+      "name": "Мост через Мсту",
+      "kind": "bridge",
+      "options": [
+        "wooden",
+        "iron"
+      ],
+      "default": "wooden",
+      "event": "E12"
+    },
+    "volga_bridge": {
+      "name": "Мост через Волгу",
+      "kind": "bridge",
+      "options": [
+        "wooden",
+        "iron"
+      ],
+      "default": "wooden"
+    },
+    "verebye_grade": {
+      "name": "Веребьинский подъём",
+      "kind": "grade",
+      "options": [
+        "steep",
+        "bypass"
+      ],
+      "default": "steep",
+      "event": "E10",
+      "bypass_extra_km": 5
+    }
+  },
+  "historical": {
+    "route": "direct",
+    "gauge_mm": 1524,
+    "tracks": 2,
+    "verebye_grade": "steep",
+    "msta_bridge": "wooden",
+    "firstRun": {
+      "from": "spb",
+      "to": "moscow",
+      "minutes": 1305,
+      "fact_ref": "F011",
+      "comment": "Исторический первый поезд: 21 ч 45 мин."
+    }
+  }
+}

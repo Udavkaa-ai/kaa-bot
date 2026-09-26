@@ -1,0 +1,264 @@
+{
+  "comment": "Игровой баланс. НЕ исторические данные. Деньги — тыс. руб. серебром (условные). Все значения — стартовые для плейтеста.",
+  "seasons": [
+    "spring",
+    "summer",
+    "autumn",
+    "winter"
+  ],
+  "seasonMultiplier": {
+    "plain": {
+      "spring": 0.8,
+      "summer": 1.0,
+      "autumn": 0.8,
+      "winter": 0.3
+    },
+    "forest": {
+      "spring": 0.7,
+      "summer": 1.0,
+      "autumn": 0.8,
+      "winter": 0.4
+    },
+    "swamp": {
+      "spring": 0.3,
+      "summer": 0.7,
+      "autumn": 0.5,
+      "winter": 0.6
+    },
+    "hills": {
+      "spring": 0.7,
+      "summer": 1.0,
+      "autumn": 0.8,
+      "winter": 0.3
+    }
+  },
+  "terrain": {
+    "plain": {
+      "costPerKm": 55,
+      "workPerKm": 10
+    },
+    "forest": {
+      "costPerKm": 70,
+      "workPerKm": 14
+    },
+    "swamp": {
+      "costPerKm": 105,
+      "workPerKm": 22
+    },
+    "hills": {
+      "costPerKm": 90,
+      "workPerKm": 18
+    }
+  },
+  "gauge": {
+    "1435": {
+      "costMult": 0.95,
+      "capacityMult": 1.0,
+      "speedMult": 1.0
+    },
+    "1524": {
+      "costMult": 1.0,
+      "capacityMult": 1.1,
+      "speedMult": 1.02
+    },
+    "1829": {
+      "costMult": 1.2,
+      "capacityMult": 1.2,
+      "speedMult": 1.03
+    }
+  },
+  "tracks": {
+    "1": {
+      "costMult": 1.0,
+      "workMult": 1.0,
+      "incidentMult": 1.5,
+      "revenueMult": 0.7
+    },
+    "2": {
+      "costMult": 1.6,
+      "workMult": 1.5,
+      "incidentMult": 1.0,
+      "revenueMult": 1.0
+    }
+  },
+  "bridges": {
+    "wooden": {
+      "cost": 800,
+      "work": 120,
+      "fireRiskPerSeason": 0.01
+    },
+    "iron": {
+      "cost": 2200,
+      "work": 200,
+      "fireRiskPerSeason": 0.0
+    }
+  },
+  "grade": {
+    "steep": {
+      "speedCapKmh": 20,
+      "incidentRiskPerRun": 0.08,
+      "extraCost": 0,
+      "cappedKm": 15
+    },
+    "bypass": {
+      "speedCapKmh": null,
+      "incidentRiskPerRun": 0.0,
+      "extraCost": 1500,
+      "cappedKm": 0
+    }
+  },
+  "crews": {
+    "unit": "1 артель = 1000 рабочих (условно)",
+    "workPerCrewPerSeason": 20,
+    "pay": {
+      "low": {
+        "costPerCrew": 22,
+        "moraleDeltaPerSeason": -6
+      },
+      "normal": {
+        "costPerCrew": 30,
+        "moraleDeltaPerSeason": 0
+      },
+      "high": {
+        "costPerCrew": 40,
+        "moraleDeltaPerSeason": 4
+      }
+    },
+    "hireCostPerCrew": 5,
+    "maxHirePerSeason": 12,
+    "maxCrewsPerKm": 0.6,
+    "unpaidMoralePenalty": 15,
+    "unpaidFavorPenalty": 3
+  },
+  "chapter1": {
+    "startYear": 1842,
+    "startSeason": "spring",
+    "constructionStart": {
+      "year": 1843,
+      "season": "summer"
+    },
+    "deadline": {
+      "year": 1851,
+      "season": "autumn"
+    },
+    "startTreasury": 30000,
+    "yearlyAllocation": 10000,
+    "petition": {
+      "amount": 6000,
+      "favorCost": 12,
+      "cooldownSeasons": 4
+    },
+    "startFavor": 60,
+    "startMorale": 70,
+    "startCrews": 0,
+    "favor": {
+      "milestoneBonus": 6,
+      "seasonLatePenalty": 8,
+      "incidentPenalty": 5,
+      "revisionThreshold": 20
+    },
+    "revenuePerOpenKmPerSeason": 2.0,
+    "novgorodRevenueBonus": 1.25,
+    "maxTurns": 44,
+    "behindSchedule": {
+      "lagShare": 0.15,
+      "favorPenalty": 2
+    }
+  },
+  "prologue": {
+    "startYear": 1836,
+    "startSeason": "spring",
+    "startTreasury": 4500,
+    "startFavor": 60,
+    "startMorale": 70,
+    "startCrews": 3,
+    "maxTurns": 16,
+    "yearlyAllocation": 0
+  },
+  "train": {
+    "locomotives": {
+      "english_early": {
+        "name": "Паровоз английской постройки",
+        "baseSpeedKmh": 40,
+        "cost": 120,
+        "chapter": "prologue"
+      },
+      "domestic_1840s": {
+        "name": "Паровоз отечественной сборки",
+        "baseSpeedKmh": 38,
+        "cost": 150,
+        "chapter": "chapter1"
+      }
+    },
+    "carriageCost": 15,
+    "stopMinutesPerStation": 20,
+    "minCarriages": {
+      "prologue": 1,
+      "chapter1": 3
+    },
+    "meetDelayMinutesPerStation": {
+      "1": 15,
+      "2": 0
+    },
+    "incidentDelayMinutes": 90
+  },
+  "score": {
+    "stars": 5,
+    "historicalDecisions": [
+      "E03",
+      "E04",
+      "E05",
+      "E10",
+      "E12"
+    ],
+    "thresholds": {
+      "deadlineLateSeasons": [
+        0,
+        1,
+        2,
+        4,
+        6
+      ],
+      "treasurySpentToPlan": [
+        0.9,
+        1.0,
+        1.15,
+        1.3,
+        1.5
+      ],
+      "incidents": [
+        0,
+        1,
+        2,
+        3,
+        5
+      ],
+      "trainTimeToHistorical": [
+        0.85,
+        0.95,
+        1.05,
+        1.15,
+        1.3
+      ]
+    },
+    "treasuryPlan": {
+      "chapter1": 120000,
+      "prologue": 3200
+    },
+    "comment": "Звёзды: 5 минус число порогов, которые игрок не уложил. Пороги — игровые, не исторические."
+  },
+  "moraleMin": 0,
+  "moraleMax": 100,
+  "favorMin": 0,
+  "favorMax": 100,
+  "events": {
+    "repeatable": [
+      "E07",
+      "E08",
+      "E09",
+      "E18"
+    ],
+    "repeatCooldownTurns": 4
+  },
+  "featureLockProgress": 0.5
+}

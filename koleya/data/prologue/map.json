@@ -1,0 +1,69 @@
+{
+  "chapterId": "prologue",
+  "title": "Царскосельская дорога",
+  "era": "engraving",
+  "note": "Координаты приблизительные, для схематичной карты.",
+  "nodes": [
+    {
+      "id": "spb_tsarskoselsky",
+      "name": "Петербург (Царскосельский вокзал)",
+      "lat": 59.92,
+      "lon": 30.329,
+      "kind": "city"
+    },
+    {
+      "id": "tsarskoye_selo",
+      "name": "Царское Село",
+      "lat": 59.715,
+      "lon": 30.395,
+      "kind": "town"
+    },
+    {
+      "id": "pavlovsk",
+      "name": "Павловск",
+      "lat": 59.686,
+      "lon": 30.447,
+      "kind": "town"
+    }
+  ],
+  "segments": [
+    {
+      "id": "spb_tsarskoye",
+      "from": "spb_tsarskoselsky",
+      "to": "tsarskoye_selo",
+      "length_km": 23,
+      "terrain": {
+        "plain": 0.85,
+        "swamp": 0.15
+      },
+      "features": [],
+      "fact_refs": [
+        "F002"
+      ]
+    },
+    {
+      "id": "tsarskoye_pavlovsk",
+      "from": "tsarskoye_selo",
+      "to": "pavlovsk",
+      "length_km": 4,
+      "terrain": {
+        "plain": 1.0
+      },
+      "features": [],
+      "fact_refs": [
+        "F002"
+      ]
+    }
+  ],
+  "historical": {
+    "gauge_mm": 1829,
+    "tracks": 1,
+    "firstRun": {
+      "from": "spb_tsarskoselsky",
+      "to": "tsarskoye_selo",
+      "minutes": 35,
+      "fact_ref": "F002",
+      "comment": "Сравнение с историческим первым рейсом: 23 км за 35 минут."
+    }
+  }
+}

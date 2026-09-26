@@ -6,7 +6,11 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "migrate": "node src/db/migrate.js"
+    "migrate": "node src/db/migrate.js",
+    "koleya:test": "node --test \"koleya/test/*.test.js\"",
+    "koleya:check": "node koleya/scripts/check-facts.js",
+    "koleya:sim": "node koleya/scripts/simulate.js 1000",
+    "koleya:dev": "node koleya/scripts/dev-server.js"
   },
   "engines": {
     "node": ">=20.0.0"

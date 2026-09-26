@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru" data-era="engraving">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Пять футов</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=PT+Sans:wght@400;700&display=swap">
+  <link rel="stylesheet" href="themes/engraving.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Титул -->
+  <section id="s-home" class="screen">
+    <div class="title-sheet">
+      <div class="title-rule"></div>
+      <div class="title-kicker">историческая стратегия</div>
+      <h1 class="title-main">Пять футов</h1>
+      <div class="title-sub">о постройке первых русских железных дорог</div>
+      <div class="title-rule"></div>
+    </div>
+    <div class="chapters" id="chapters"></div>
+    <div class="home-links">
+      <button class="link" id="btn-museum" type="button">Музей</button>
+      <button class="link" id="btn-about" type="button">Об игре</button>
+    </div>
+    <div class="home-note" id="home-note"></div>
+  </section>
+
+  <!-- Игра -->
+  <section id="s-game" class="screen hidden">
+    <div class="resbar" id="resbar"></div>
+    <div class="map-wrap" id="map-wrap">
+      <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Карта-чертёж трассы"></svg>
+    </div>
+    <div class="panel" id="panel"></div>
+    <button class="btn-season" id="btn-season" type="button">Завершить сезон</button>
+  </section>
+
+  <!-- Итог главы -->
+  <section id="s-final" class="screen hidden"></section>
+
+  <!-- Викторина -->
+  <section id="s-quiz" class="screen hidden"></section>
+
+  <!-- Музей -->
+  <section id="s-museum" class="screen hidden"></section>
+
+  <!-- Об игре -->
+  <section id="s-about" class="screen hidden">
+    <h2 class="sheet-title">Об игре</h2>
+    <p>Вы — главный инженер. Каждый ход — сезон: распределите артели по участкам, следите за казной,
+      благоволением и настроем, отвечайте на депеши. В конце главы — первый поезд, «как было на самом деле» и викторина.</p>
+    <p>Исторические сведения в игре берутся только из карточек фактов с источниками. Пометка
+      «уточняется» — версия, которую ещё не сверили; «легенда» — байка, рядом с которой сказано, как было.</p>
+    <p>Деньги, артели, скорости и прочие числа механики — игровые, для баланса. Историческими они не являются.</p>
+    <p>Реплики советников — художественная стилизация, не цитаты.</p>
+    <button class="btn" id="btn-about-back" type="button">Назад</button>
+  </section>
+
+  <!-- Депеша / доклад -->
+  <div class="modal hidden" id="modal" role="dialog" aria-modal="true">
+    <div class="dispatch" id="dispatch"></div>
+  </div>
+
+  <div class="toast hidden" id="toast" role="status"></div>
+  <div class="loading" id="loading">Раскладываем чертежи…</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

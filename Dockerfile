@@ -7,6 +7,7 @@ RUN npm install --omit=dev
 
 COPY src ./src
 COPY public ./public
+COPY koleya ./koleya
 
 ENV NODE_ENV=production
 
