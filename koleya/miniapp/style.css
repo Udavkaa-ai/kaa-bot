@@ -123,12 +123,44 @@ button { font-family: inherit; color: inherit; }
 .meter i.f { background: var(--ink); }
 .meter.low i.f { background: var(--route); border-color: var(--route); }
 
+.map-toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 9px 12px;
+  background: transparent;
+  border: 1px solid var(--ink);
+  outline: 1px solid var(--ink);
+  outline-offset: -4px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: left;
+}
+.map-toggle:active { background: var(--paper-deep); }
+.map-toggle-title { font-family: var(--font-display); font-size: 17px; }
+.map-toggle-title::before { content: '⌖ '; color: var(--route); }
+.map-toggle-sub { font-size: 12px; color: var(--ink-faded); font-variant-numeric: tabular-nums; }
+
+.map-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  padding: calc(8px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom));
+}
+.map-sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
+.map-sheet-kicker { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--ink-faded); }
+.map-sheet-hint { text-align: center; padding-top: 4px; }
 .map-wrap {
   position: relative;
-  flex: 0 0 auto;
-  height: 46vh;
-  min-height: 220px;
-  margin: 8px 0 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 4px 0;
 }
 #map { width: 100%; height: 100%; display: block; touch-action: manipulation; }
 #map .seg-hit { stroke: transparent; stroke-width: 22; fill: none; cursor: pointer; }

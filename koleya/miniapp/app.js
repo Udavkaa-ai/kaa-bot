@@ -92,10 +92,23 @@
     syncTelegramButtons();
   }
   function modalOpen() { return !$('modal').classList.contains('hidden'); }
+  function mapOpen() { return !$('map-sheet').classList.contains('hidden'); }
+
+  // Карта — по кнопке, поверх игры (и поверх доклада, если открыта из него)
+  function openMap() {
+    haptic('tap');
+    $('map-sheet').classList.remove('hidden');
+    renderMap();
+    syncTelegramButtons();
+  }
+  function closeMap() {
+    $('map-sheet').classList.add('hidden');
+    syncTelegramButtons();
+  }
 
   function syncTelegramButtons() {
     const inGame = S.screen === 's-game' && S.state && !S.state.finished;
-    const canEnd = inGame && !modalOpen() && !S.state.pendingEvents.length;
+    const canEnd = inGame && !modalOpen() && !mapOpen() && !S.state.pendingEvents.length;
     $('btn-season').classList.toggle('hidden', !inGame || !!tg);
     $('btn-season').disabled = !canEnd || S.busy;
     if (!tg) return;
@@ -105,7 +118,7 @@
         if (canEnd) { tg.MainButton.show(); tg.MainButton.enable(); } else tg.MainButton.hide();
       }
       if (tg.BackButton) {
-        if (S.screen !== 's-home' || (S.screen === 's-game' && S.selected)) tg.BackButton.show();
+        if (S.screen !== 's-home' || mapOpen()) tg.BackButton.show();
         else tg.BackButton.hide();
       }
     } catch (_) {}
@@ -113,11 +126,14 @@
   if (tg && tg.MainButton) tg.MainButton.onClick(() => endSeason());
   if (tg && tg.BackButton) tg.BackButton.onClick(() => goBack());
   $('btn-season').addEventListener('click', () => endSeason());
+  $('btn-map').addEventListener('click', openMap);
+  $('btn-map-close').addEventListener('click', () => { haptic('tap'); closeMap(); });
 
   function goBack() {
     haptic('tap');
+    if (mapOpen()) { closeMap(); return; }
     if (modalOpen()) return; // депешу надо решить, доклад — закрыть кнопкой
-    if (S.screen === 's-game' && S.selected) { S.selected = null; renderPanel(); renderMap(); syncTelegramButtons(); return; }
+    if (S.screen === 's-game' && S.selected) { S.selected = null; renderPanel(); syncTelegramButtons(); return; }
     if (S.screen === 's-quiz' || S.screen === 's-museum') { if (S.state && S.state.finished && S.screen === 's-quiz') { renderFinal(); show('s-final'); } else openHome(); return; }
     openHome();
   }
@@ -289,6 +305,12 @@
       <div class="res"><span class="lbl">Благоволение</span>${meter(s.favor)}</div>
       <div class="res"><span class="lbl">Настрой</span>${meter(s.morale)}</div>
       <div class="res"><span class="lbl">Построено</span><span class="val">${Math.round(v.overallProgress)}%</span></div>`;
+    const act = Object.values(v.segments).filter(x => x.active);
+    const opened = act.filter(x => x.opened).length;
+    const building = act.filter(x => !x.opened && x.crews > 0).length;
+    $('map-toggle-sub').textContent = s.unlocked.construction
+      ? `открыто ${opened} из ${act.length}${building ? ` · строится ${building}` : ''}`
+      : 'посмотреть трассу';
   }
 
   // ---- карта-чертёж (SVG) ----
@@ -309,7 +331,7 @@
   function renderMap() {
     const svg = $('map');
     const c = C();
-    if (!c) return;
+    if (!c || !mapOpen()) return;
     const box = $('map-wrap').getBoundingClientRect();
     const W = Math.max(300, Math.round(box.width)), H = Math.max(220, Math.round(box.height));
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
@@ -403,7 +425,15 @@
       <text x="22" y="30" class="cartouche-title" font-size="14">${esc(c.map.title)}</text>
       <text x="22" y="44" class="cartouche-sub" font-size="8.5">ЧЕРТЁЖ ТРАССЫ · ${esc(yearsOf(S.chapter))}</text></g>`);
     svg.innerHTML = parts.join('');
-    svg.querySelectorAll('.seg-hit').forEach(el => el.addEventListener('click', () => selectSeg(el.dataset.seg)));
+    svg.querySelectorAll('.seg-hit').forEach(el => el.addEventListener('click', () => {
+      if (modalOpen()) { closeMap(); return; } // из доклада — только посмотреть
+      closeMap();
+      S.selected = el.dataset.seg;
+      haptic('tap');
+      renderPanel();
+      $('panel').scrollTop = 0;
+      syncTelegramButtons();
+    }));
     if (S.animate.size) setTimeout(() => S.animate.clear(), 1800);
   }
   const yearsOf = ch => (CHAPTER_INFO[ch] || {}).years || '';
@@ -411,7 +441,7 @@
   function selectSeg(id) {
     haptic('tap');
     S.selected = S.selected === id ? null : id;
-    renderMap(); renderPanel(); syncTelegramButtons();
+    renderPanel(); $('panel').scrollTop = 0; syncTelegramButtons();
   }
 
   // ---- нижняя панель ----
@@ -678,7 +708,12 @@
     openModal(`<div class="kicker">Доклад</div>
       <h2>Итоги ${SEASON_GEN[r.season]} ${r.year} года</h2>
       ${lines.join('')}${progHtml}${notes.join('')}
-      <button class="btn" data-next>Далее</button>`, d => d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); }));
+      ${log.some(l => l.kind === 'opened') ? '<button class="btn ghost" data-map>Показать на карте</button>' : ''}
+      <button class="btn" data-next>Далее</button>`, d => {
+        d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); });
+        const m = d.querySelector('[data-map]');
+        if (m) m.addEventListener('click', openMap);
+      });
   }
 
   function showTimeJump(j) {
@@ -928,7 +963,7 @@
   $('btn-museum').addEventListener('click', openMuseum);
   $('btn-about').addEventListener('click', () => { haptic('tap'); show('s-about'); });
   $('btn-about-back').addEventListener('click', () => openHome());
-  window.addEventListener('resize', () => { if (S.screen === 's-game') renderMap(); });
+  window.addEventListener('resize', () => { if (mapOpen()) renderMap(); });
 
   // ================= старт =================
   (async function boot() {

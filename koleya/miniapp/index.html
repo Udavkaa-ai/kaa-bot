@@ -32,9 +32,10 @@
   <!-- Игра -->
   <section id="s-game" class="screen hidden">
     <div class="resbar" id="resbar"></div>
-    <div class="map-wrap" id="map-wrap">
-      <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Карта-чертёж трассы"></svg>
-    </div>
+    <button class="map-toggle" id="btn-map" type="button">
+      <span class="map-toggle-title">Карта-чертёж</span>
+      <span class="map-toggle-sub" id="map-toggle-sub"></span>
+    </button>
     <div class="panel" id="panel"></div>
     <button class="btn-season" id="btn-season" type="button">Завершить сезон</button>
   </section>
@@ -59,6 +60,18 @@
     <p>Реплики советников — художественная стилизация, не цитаты.</p>
     <button class="btn" id="btn-about-back" type="button">Назад</button>
   </section>
+
+  <!-- Карта поверх игры: открывается кнопкой, чтобы не занимать экран распределения артелей -->
+  <div class="map-sheet hidden" id="map-sheet" role="dialog" aria-label="Карта-чертёж трассы">
+    <div class="map-sheet-head">
+      <span class="map-sheet-kicker">Карта-чертёж</span>
+      <button class="link" id="btn-map-close" type="button">Закрыть</button>
+    </div>
+    <div class="map-wrap" id="map-wrap">
+      <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Карта-чертёж трассы"></svg>
+    </div>
+    <div class="hint map-sheet-hint">Нажмите на участок, чтобы перейти к нему.</div>
+  </div>
 
   <!-- Депеша / доклад -->
   <div class="modal hidden" id="modal" role="dialog" aria-modal="true">
