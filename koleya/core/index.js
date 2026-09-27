@@ -88,6 +88,33 @@ function signInitData(fields, botToken) {
   return params.toString();
 }
 
+// ---------- гостевой вход веб-версии (вне Telegram) ----------
+// Токен «id.выдан.подпись»: HMAC-SHA256 от секрета сервера. Проверяется на каждом запросе,
+// как и initData. Гостевые id — из отдельного диапазона, чтобы не пересечься с Telegram.
+const WEB_ID_BASE = 1e15;
+const WEB_ID_SPAN = 2 ** 40;
+
+function signWebToken(id, secret, issuedSec) {
+  const body = `${id}.${issuedSec}`;
+  return `${body}.${crypto.createHmac('sha256', secret).update(`koleya-web:${body}`).digest('hex')}`;
+}
+
+function verifyWebToken(token, secret) {
+  if (!token || typeof token !== 'string' || !secret) return null;
+  const m = /^(\d{1,16})\.(\d{1,12})\.([0-9a-f]{64})$/.exec(token);
+  if (!m) return null;
+  const id = Number(m[1]);
+  if (!Number.isSafeInteger(id) || id < WEB_ID_BASE || id >= WEB_ID_BASE + WEB_ID_SPAN) return null;
+  const expected = crypto.createHmac('sha256', secret).update(`koleya-web:${m[1]}.${m[2]}`).digest();
+  const given = Buffer.from(m[3], 'hex');
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
+  return { user: { id, first_name: 'Гость' }, web: true };
+}
+
+function newWebPlayerId() {
+  return WEB_ID_BASE + crypto.randomInt(0, WEB_ID_SPAN);
+}
+
 // ---------- ядро ----------
 
 class ApiError extends Error {
@@ -95,7 +122,7 @@ class ApiError extends Error {
 }
 
 function createKoleya(deps) {
-  const { botToken, db, notify = async () => {}, log = () => {}, now = () => Date.now(), randomSeed } = deps;
+  const { botToken, webSecret, db, notify = async () => {}, log = () => {}, now = () => Date.now(), randomSeed } = deps;
   if (!db || typeof db.query !== 'function') throw new Error('koleya: нужен db.query');
   const seedGen = randomSeed || (() => crypto.randomBytes(4).readUInt32LE(0));
   const locks = new Map(); // tgId → Promise: действия одного игрока выполняются по очереди
@@ -402,8 +429,9 @@ function createKoleya(deps) {
 
   async function handleApi(req) {
     try {
-      const auth = verifyInitData(req.initData, botToken, Math.floor(now() / 1000));
-      if (!auth) return { status: 401, body: { error: 'Не удалось проверить Telegram-подпись. Откройте игру из бота заново.' } };
+      const auth = verifyInitData(req.initData, botToken, Math.floor(now() / 1000))
+        || (webSecret ? verifyWebToken(req.webToken, webSecret) : null);
+      if (!auth) return { status: 401, body: { error: webSecret ? 'Сессия не подтверждена. Обновите страницу.' : 'Не удалось проверить Telegram-подпись. Откройте игру из бота заново.' } };
       const body = await route(req, auth.user);
       return { status: 200, body };
     } catch (err) {
@@ -444,4 +472,4 @@ function createKoleya(deps) {
   };
 }
 
-module.exports = { createKoleya, verifyInitData, signInitData, MIGRATION };
+module.exports = { createKoleya, verifyInitData, signInitData, MIGRATION, signWebToken, verifyWebToken, newWebPlayerId, WEB_ID_BASE };

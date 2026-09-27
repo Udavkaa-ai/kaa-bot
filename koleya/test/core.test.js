@@ -3,7 +3,7 @@
 // иначе тесты пропускаются (в CI и у «Билли» базы для тестов может не быть).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createKoleya, verifyInitData, signInitData } = require('../core');
+const { createKoleya, verifyInitData, signInitData, signWebToken, verifyWebToken, newWebPlayerId } = require('../core');
 
 const TOKEN = '123456:TEST-token';
 const DB_URL = process.env.KOLEYA_TEST_DATABASE_URL;
@@ -22,6 +22,22 @@ test('initData: верная подпись проходит, подделка �
   assert.equal(verifyInitData(initData(1, { authDate: now - 2 * 86400 }), TOKEN, now), null, 'просрочено');
   assert.equal(verifyInitData('', TOKEN, now), null);
   assert.equal(verifyInitData('hash=zz', TOKEN, now), null);
+});
+
+test('веб-версия: гостевой токен проверяется подписью и диапазоном id', async () => {
+  const SECRET = 'x'.repeat(40);
+  const id = newWebPlayerId();
+  const token = signWebToken(id, SECRET, 1700000000);
+  assert.equal(verifyWebToken(token, SECRET).user.id, id);
+  assert.equal(verifyWebToken(token, 'y'.repeat(40)), null, 'чужой секрет');
+  assert.equal(verifyWebToken(signWebToken(777, SECRET, 1), SECRET), null, 'id из диапазона Telegram');
+  assert.equal(verifyWebToken(token.slice(0, -1) + (token.endsWith('0') ? '1' : '0'), SECRET), null, 'подделка');
+  const db = { query: async () => ({ rows: [] }) };
+  const withWeb = createKoleya({ botToken: TOKEN, webSecret: SECRET, db });
+  assert.notEqual((await withWeb.handleApi({ method: 'GET', path: '/nope', webToken: token })).status, 401, 'токен принят');
+  assert.equal((await withWeb.handleApi({ method: 'GET', path: '/game', webToken: 'garbage' })).status, 401);
+  const noWeb = createKoleya({ botToken: TOKEN, db });
+  assert.equal((await noWeb.handleApi({ method: 'GET', path: '/game', webToken: token })).status, 401, 'без секрета веб-вход выключен');
 });
 
 test('API: без подписи — 401', async () => {

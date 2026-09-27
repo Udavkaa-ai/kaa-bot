@@ -1,0 +1,10 @@
+{
+  "name": "koleya-web",
+  "private": true,
+  "description": "«Пять футов» — веб-версия игры (отдельный сервис)",
+  "engines": { "node": ">=20.0.0" },
+  "dependencies": {
+    "express": "^4.22.2",
+    "pg": "^8.13.1"
+  }
+}

@@ -680,3 +680,16 @@ body.coach-on .panel { padding-bottom: 180px; }
 @keyframes showName { 0%, 90% { opacity: 0; } 100% { opacity: 1; } }
 .bigtime.arrived { color: var(--route); transition: color 0.4s; }
 .ride { margin-bottom: 30px; }
+
+/* ================= широкий экран (веб-версия, Telegram Desktop) =================
+   Игра остаётся колонкой шириной с телефон-планшет по центру, вокруг — бумага потемнее */
+@media (min-width: 760px) {
+  html { background: var(--paper-deep); }
+  body {
+    max-width: 640px;
+    margin: 0 auto;
+    box-shadow: 0 0 0 1px var(--ink-hair), 0 12px 48px var(--ink-hair);
+  }
+  .toast { max-width: 600px; margin: 0 auto; }
+  .map-sheet { max-width: 900px; margin: 0 auto; box-shadow: 0 0 0 1px var(--ink-hair); }
+}

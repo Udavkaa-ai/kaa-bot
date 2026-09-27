@@ -6,6 +6,10 @@
   const tgRaw = window.Telegram && window.Telegram.WebApp;
   const tg = tgRaw && tgRaw.initData ? tgRaw : null;
   let initData = tg ? tg.initData : '';
+  // Веб-версия: вне Telegram — гостевой токен, выданный сервером и сохранённый в браузере
+  const WEB_TOKEN_KEY = 'koleya-web-token';
+  let webToken = '';
+  const webMode = () => !tg && !!webToken;
   if (tg) {
     tg.ready();
     tg.expand();
@@ -217,7 +221,7 @@
 
   // ================= API =================
   async function api(method, path, body) {
-    const opts = { method, headers: { 'X-Telegram-Init-Data': initData } };
+    const opts = { method, headers: initData ? { 'X-Telegram-Init-Data': initData } : { 'X-Koleya-Web-Token': webToken } };
     let url = `api${path}`;
     if (method === 'GET' && body) url += '?' + new URLSearchParams(body).toString();
     else if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
@@ -520,7 +524,10 @@
         </div>
       </div>`;
     }).join('');
-    $('home-note').textContent = done.prologue || saves.chapter1 ? '' : 'Начните с пролога: это обучение, на каждом шаге подскажем, что делать и зачем.';
+    $('home-note').textContent = [
+      done.prologue || saves.chapter1 ? '' : 'Начните с пролога: это обучение, на каждом шаге подскажем, что делать и зачем.',
+      webMode() ? 'Прогресс хранится в этом браузере.' : '',
+    ].filter(Boolean).join(' ');
     $('chapters').querySelectorAll('[data-start]').forEach(b => b.addEventListener('click', () => startChapter(b.dataset.start)));
     $('chapters').querySelectorAll('[data-resume]').forEach(b => b.addEventListener('click', () => resumeChapter(b.dataset.resume)));
   }
@@ -1835,6 +1842,19 @@
   $('btn-about-back').addEventListener('click', () => openHome());
   window.addEventListener('resize', () => { if (mapOpen()) renderMap(); });
 
+  // Гостевой вход веб-версии: токен из браузера или новый от сервера.
+  // На сервере без веб-версии (бот «Билли») адреса нет — тогда остаётся вход через Telegram.
+  async function webSession() {
+    try { webToken = localStorage.getItem(WEB_TOKEN_KEY) || ''; } catch (_) {}
+    if (webToken) return;
+    const r = await fetch('web/session', { method: 'POST' }).catch(() => null);
+    if (!r || r.status === 404) return;
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(data.error || `Ошибка ${r.status}`), { status: r.status });
+    webToken = data.token || '';
+    try { localStorage.setItem(WEB_TOKEN_KEY, webToken); } catch (_) {}
+  }
+
   // ================= старт =================
   (async function boot() {
     try {
@@ -1843,8 +1863,16 @@
         const r = await fetch(`dev-init?user=${u}`);
         if (r.ok) initData = await r.text();
       }
-      if (!initData) throw Object.assign(new Error('Откройте игру из Telegram: команда /koleya у бота.'), { status: 401 });
-      await openHome();
+      if (!initData) await webSession();
+      if (!initData && !webToken) throw Object.assign(new Error('Откройте игру из Telegram: команда /koleya у бота.'), { status: 401 });
+      try { await openHome(); } catch (err) {
+        // Токен из другой установки или отозван — берём новый один раз
+        if (!(webMode() && err.status === 401)) throw err;
+        try { localStorage.removeItem(WEB_TOKEN_KEY); } catch (_) {}
+        webToken = '';
+        await webSession();
+        await openHome();
+      }
       const active = S.home && S.home.player && S.home.player.activeChapter;
       const sv = active && S.home.saves[active];
       if (sv && !sv.finished) await resumeChapter(active);

@@ -17,6 +17,7 @@ function mountHttp(app, core) {
       query,
       body,
       initData: String(initData),
+      webToken: String(req.get('X-Koleya-Web-Token') || ''),
     });
     res.status(status).json(out);
   });
