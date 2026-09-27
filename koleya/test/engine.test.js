@@ -135,8 +135,9 @@ test('без денег работы встают, без жалованья п�
 
 test('участок открывается, артели освобождаются, благоволение растёт', () => {
   let s = afterIntro();
-  s = act(s, { type: 'HIRE_CREWS', amount: 12 });
-  s = act(s, { type: 'ASSIGN_CREWS', segmentId: 'spb_kolpino', crews: 12 });
+  const n = ch1.balance.crews.maxHirePerSeason;
+  s = act(s, { type: 'HIRE_CREWS', amount: n });
+  s = act(s, { type: 'ASSIGN_CREWS', segmentId: 'spb_kolpino', crews: n });
   const { work } = E._internal.segmentTotals(s, ch1, ch1.segmentsById.spb_kolpino);
   s.segments.spb_kolpino.workDone = work - 1;
   const favor = s.favor;

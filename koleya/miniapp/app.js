@@ -377,6 +377,126 @@
     syncTelegramButtons();
   }
 
+  // ---- справочник по показателям: все числа — из balance.json и событий главы ----
+  function eventThreshold(key, fallback) {
+    const ev = (C().events || []).find(e => e.trigger && e.trigger[key] !== undefined);
+    return ev ? ev.trigger[key] : fallback;
+  }
+  const favorRevision = () => eventThreshold('favorLte', 20);
+  const moraleGrumble = () => eventThreshold('moraleLte', 35);
+  const signed = n => (n > 0 ? `+${n}` : `−${Math.abs(n)}`);
+
+  function helpHtml(key) {
+    const s = S.state, v = S.view, b = C().balance, cb = b[S.chapter], cr = b.crews;
+    const fv = cb.favor || {};
+    const li = items => `<ul class="help-list">${items.filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ul>`;
+    switch (key) {
+      case 'favor': return {
+        title: 'Высочайшее благоволение',
+        value: `${s.favor} из 100`,
+        text: 'Насколько государь и начальство довольны вашей работой. Это ваш запас доверия: пока он есть, вам дают деньги и не мешают. Кончится — вас отстранят.',
+        body: `<div class="sect-title">Растёт</div>${li([
+          fv.milestoneBonus && `открыт участок: <b>${signed(fv.milestoneBonus)}</b>`,
+          'решения в депешах, угодные начальству: число указано у варианта',
+        ])}<div class="sect-title">Падает</div>${li([
+          cb.behindSchedule && `отставание от графика больше чем на ${Math.round(cb.behindSchedule.lagShare * 100)}%: <b>${signed(-cb.behindSchedule.favorPenalty)}</b> каждый сезон`,
+          fv.seasonLatePenalty && `после срока: <b>${signed(-fv.seasonLatePenalty)}</b> каждый сезон`,
+          cb.petition && `прошение о деньгах: <b>${signed(-cb.petition.favorCost)}</b>`,
+          cr.unpaidFavorPenalty && `не хватило на жалованье: <b>${signed(-cr.unpaidFavorPenalty)}</b>`,
+          fv.incidentPenalty && `происшествие на первом рейсе: <b>${signed(-fv.incidentPenalty)}</b>`,
+        ])}<div class="sect-title">Пороги</div>${li([
+          `<b>${favorRevision()}</b> и ниже — приезжает ревизия: сезон уходит на бумаги или страдает настрой`,
+          `<b>0</b> — вас отстраняют, глава проиграна`,
+        ])}`,
+      };
+      case 'morale': return {
+        title: 'Настрой артелей',
+        value: `${s.morale} из 100`,
+        text: `Выработка прямо пропорциональна настрою: при ${s.morale} артели работают на ${s.morale}% своих сил.`,
+        body: `<div class="sect-title">Каждый сезон от оплаты</div>${li(['low', 'normal', 'high'].map(l => `${PAY_RU[l]} (${cr.pay[l].costPerCrew} за артель): <b>${cr.pay[l].moraleDeltaPerSeason ? signed(cr.pay[l].moraleDeltaPerSeason) : '0'}</b>${s.pay === l ? ' · сейчас' : ''}`))}
+          <div class="sect-title">Ещё</div>${li([
+            cr.unpaidMoralePenalty && `не хватило на жалованье: <b>${signed(-cr.unpaidMoralePenalty)}</b>`,
+            'зимние и весенние депеши: бараки, осушение, ропот — число указано у варианта',
+            `<b>${moraleGrumble()}</b> и ниже — ропот в артелях`,
+          ])}`,
+      };
+      case 'treasury': {
+        const pet = cb.petition;
+        return {
+          title: 'Казна',
+          value: `${money(s.treasury)} тыс. руб.`,
+          text: 'Деньги кончатся — работы встанут: материалы покупаются по мере работ, а без жалованья падают настрой и благоволение.',
+          body: `<div class="sect-title">Приход</div>${li([
+            cb.yearlyAllocation && `каждую весну ассигнования: <b>+${money(cb.yearlyAllocation)}</b>`,
+            cb.revenuePerOpenKmPerSeason && `доход с открытых участков: ${cb.revenuePerOpenKmPerSeason} за км в сезон`,
+            pet && `прошение: <b>+${money(pet.amount)}</b> за ${pet.favorCost} благоволения, не чаще раза в ${pet.cooldownSeasons} ${seasonsWord(pet.cooldownSeasons)}`,
+          ])}<div class="sect-title">Расход</div>${li([
+            `жалованье всем артелям, и свободным тоже: сейчас <b>${money(v.payPerSeason)}</b> за сезон`,
+            `материалы — по мере работ, пропорционально стоимости участка`,
+            `найм: ${cr.hireCostPerCrew} за артель`,
+            'решения в депешах: цена указана у варианта',
+          ])}`,
+        };
+      }
+      case 'crews': return {
+        title: 'Артели',
+        value: `${s.crewsTotal}, свободно ${v.freeCrews}`,
+        text: `Одна артель за сезон делает до ${cr.workPerCrewPerSeason} единиц работы, с поправкой на время года и настрой.`,
+        body: li([
+          `найм ${cr.hireCostPerCrew} за артель, не больше ${cr.maxHirePerSeason} за сезон — набирать людей надо заранее`,
+          `на участке помещается до ${cr.maxCrewsPerKm} артели на километр`,
+          'жалованье платится всем, свободные артели проедают казну впустую',
+          'распустить можно только свободные',
+          'когда участок открыт, его артели освобождаются — поставьте их на другой',
+        ]),
+      };
+      case 'progress': return {
+        title: 'Построено',
+        value: `${Math.round(v.overallProgress)}%`,
+        text: 'Доля всего объёма работ по трассе. Болото и холмы требуют больше работы, чем равнина.',
+        body: li([
+          cb.behindSchedule && `начальство ждёт равномерной работы до срока; отставание больше ${Math.round(cb.behindSchedule.lagShare * 100)}% от графика стоит ${cb.behindSchedule.favorPenalty} благоволения за сезон`,
+          'график и срок видны на календаре под показателями',
+        ]),
+      };
+    }
+    return null;
+  }
+
+  function showHelp(key) {
+    if (modalOpen()) return;
+    const h = helpHtml(key);
+    if (!h) return;
+    haptic('tap');
+    openModal(`<div class="kicker">Справочник главного инженера</div>
+      <h2>${h.title}</h2>
+      <div class="help-value">Сейчас: <b>${h.value}</b></div>
+      <div class="text">${h.text}</div>
+      ${DECOR.rule('✦')}
+      <div class="help-body">${h.body}</div>
+      <div class="hint">Числа — игровые, для баланса, а не исторические.</div>
+      <button class="btn" data-next>Понятно</button>`, d => d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); }));
+  }
+
+  // Памятка при первом открытии стройки в главе (один раз на устройстве)
+  function memoKey() { return `koleya-memo-${S.chapter}`; }
+  function memoSeen() { try { return localStorage.getItem(memoKey()) === '1'; } catch (_) { return true; } }
+  function showMemo() {
+    try { localStorage.setItem(memoKey(), '1'); } catch (_) {}
+    const cb = C().balance[S.chapter];
+    openModal(`<div class="kicker">Памятка главного инженера</div>
+      <h2>Четыре вещи, за которыми надо следить</h2>
+      ${DECOR.rule('❦')}
+      <div class="help-body"><ul class="help-list">
+        <li><b>Казна.</b> Жалованье платится всем артелям каждый сезон, материалы — по мере работ. Кончатся деньги — стройка встанет.</li>
+        <li><b>Благоволение.</b> Доверие начальства. Падает от отставания, опоздания и прошений о деньгах. При ${favorRevision()} — ревизия, при 0 — отставка.</li>
+        <li><b>Настрой.</b> От него зависит выработка. Скудная оплата его роняет.</li>
+        <li><b>Срок.</b> ${cb.deadline ? `${SEASON_RU[cb.deadline.season].toLowerCase()} ${cb.deadline.year}. Календарь под показателями покажет, успеваете ли вы.` : 'Срока нет, но число сезонов ограничено — смотрите календарь.'}</li>
+      </ul></div>
+      <div class="hint">Нажмите на любой показатель вверху — откроется справка с точными числами.</div>
+      <button class="btn" data-next>К работам</button>`, d => d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); }));
+  }
+
   function meter(v, cells = 5) {
     const f = Math.round(v / 100 * cells);
     return `<span class="meter${v <= 25 ? ' low' : ''}">${Array.from({ length: cells }, (_, i) => `<i class="${i < f ? 'f' : ''}"></i>`).join('')}</span>`;
@@ -453,11 +573,12 @@
     renderCalendar();
     $('resbar').innerHTML = `
       <div class="res"><span class="lbl">${esc(C().map.title)}</span><span class="date"><span class="sglyph">${SEASON_GLYPH[s.season]}</span> ${SEASON_RU[s.season]} ${s.year}</span></div>
-      <div class="res"><span class="lbl">Казна, тыс. руб.</span><span class="val${s.treasury < 0 ? ' neg' : ''}">${money(s.treasury)}</span></div>
-      <div class="res"><span class="lbl">Артели своб./всего</span><span class="val">${v.freeCrews} / ${s.crewsTotal}</span></div>
-      <div class="res"><span class="lbl">Благоволение</span>${meter(s.favor)}</div>
-      <div class="res"><span class="lbl">Настрой</span>${meter(s.morale)}</div>
-      <div class="res"><span class="lbl">Построено</span><span class="val">${Math.round(v.overallProgress)}%</span></div>`;
+      <button class="res" data-help="treasury" type="button"><span class="lbl">Казна, тыс. руб. ⓘ</span><span class="val${s.treasury < 0 ? ' neg' : ''}">${money(s.treasury)}</span></button>
+      <button class="res" data-help="crews" type="button"><span class="lbl">Артели своб./всего ⓘ</span><span class="val">${v.freeCrews} / ${s.crewsTotal}</span></button>
+      <button class="res" data-help="favor" type="button"><span class="lbl">Благоволение ⓘ</span><span class="val-meter"><b class="${s.favor <= favorRevision() ? 'neg' : ''}">${s.favor}</b>${meter(s.favor)}</span></button>
+      <button class="res" data-help="morale" type="button"><span class="lbl">Настрой ⓘ</span><span class="val-meter"><b class="${s.morale <= moraleGrumble() ? 'neg' : ''}">${s.morale}</b>${meter(s.morale)}</span></button>
+      <button class="res" data-help="progress" type="button"><span class="lbl">Построено ⓘ</span><span class="val">${Math.round(v.overallProgress)}%</span></button>`;
+    $('resbar').querySelectorAll('[data-help]').forEach(b => b.addEventListener('click', () => showHelp(b.dataset.help)));
     const act = Object.values(v.segments).filter(x => x.active);
     const opened = act.filter(x => x.opened).length;
     const building = act.filter(x => !x.opened && x.crews > 0).length;
@@ -919,7 +1040,8 @@
       <div class="kv"><span>Израсходовано</span><span>${money(v.spentTotal)}</span></div>
       ${cb.yearlyAllocation ? `<div class="kv"><span>Ассигнования каждую весну</span><span>${money(cb.yearlyAllocation)}</span></div>` : ''}
       ${dl ? `<div class="kv"><span>Срок открытия</span><span>${dl}</span></div>` : ''}
-      ${pet && s.unlocked.construction ? `<button class="btn ghost" data-petition ${s.petitionCooldown > 0 ? 'disabled' : ''}>Прошение о средствах: +${money(pet.amount)}, благоволение −${pet.favorCost}${s.petitionCooldown > 0 ? ` (через ${s.petitionCooldown} сез.)` : ''}</button>` : ''}
+      ${pet && s.unlocked.construction ? `<button class="btn ghost" data-petition ${s.petitionCooldown > 0 ? 'disabled' : ''}>Прошение о средствах: +${money(pet.amount)} в казну, благоволение ${s.favor} → ${Math.max(0, s.favor - pet.favorCost)}${s.petitionCooldown > 0 ? ` (через ${s.petitionCooldown} сез.)` : ''}</button>
+        <div class="hint">${s.favor - pet.favorCost <= 0 ? 'Это прошение станет последним: благоволение кончится, и вас отстранят.' : s.favor - pet.favorCost <= favorRevision() ? `После прошения благоволение опустится до ${favorRevision()} и ниже — жди ревизии.` : `Ревизия приезжает при благоволении ${favorRevision()} и ниже, отставка — при 0.`}</div>` : ''}
       <button class="link" data-home type="button">В меню</button>
     </div>`;
   }
@@ -947,7 +1069,8 @@
       if (r) handleLog(r.log || []);
     }));
     el.querySelectorAll('[data-petition]').forEach(b => b.addEventListener('click', async () => {
-      if (!(await confirmBox('Подать прошение о дополнительных средствах? Благоволение уменьшится.'))) return;
+      const pet = C().balance[S.chapter].petition;
+      if (!(await confirmBox(`Подать прошение? Казна +${money(pet.amount)}, благоволение ${S.state.favor} → ${Math.max(0, S.state.favor - pet.favorCost)}.`))) return;
       const r = await act({ type: 'PETITION_FUNDS' });
       renderGame();
       if (r) handleLog(r.log || []);
@@ -1050,6 +1173,10 @@
     if (jump) S.modalQueue.push(() => showTimeJump(jump));
     if (log.some(l => l.kind === 'firstRun')) S.modalQueue.push(() => showFirstRunThenFinal());
     for (const fn of extra) S.modalQueue.push(fn);
+    if (S.state && S.state.unlocked.construction && !S.state.finished && !memoSeen() && !S.modalQueue.memo) {
+      S.modalQueue.memo = true;
+      S.modalQueue.push(() => { S.modalQueue.memo = false; showMemo(); });
+    }
     nextModal();
   }
 

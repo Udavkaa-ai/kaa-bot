@@ -1,5 +1,5 @@
 {
-  "comment": "Игровой баланс. НЕ исторические данные. Деньги — тыс. руб. серебром (условные). Все значения — стартовые для плейтеста.",
+  "comment": "Игровой баланс. НЕ исторические данные. Деньги — тыс. руб. серебром (условные). Сложность подобрана симулятором (koleya/scripts/simulate.js): хороший план успевает к сроку примерно в 9 партиях из 10, неопытный игрок чаще опаздывает или теряет благоволение.",
   "seasons": [
     "spring",
     "summer",
@@ -75,8 +75,8 @@
       "revenueMult": 0.7
     },
     "2": {
-      "costMult": 1.6,
-      "workMult": 1.5,
+      "costMult": 1.35,
+      "workMult": 1.3,
       "incidentMult": 1.0,
       "revenueMult": 1.0
     }
@@ -109,7 +109,7 @@
   },
   "crews": {
     "unit": "1 артель = 1000 рабочих (условно)",
-    "workPerCrewPerSeason": 20,
+    "workPerCrewPerSeason": 16,
     "pay": {
       "low": {
         "costPerCrew": 22,
@@ -124,8 +124,8 @@
         "moraleDeltaPerSeason": 4
       }
     },
-    "hireCostPerCrew": 5,
-    "maxHirePerSeason": 12,
+    "hireCostPerCrew": 8,
+    "maxHirePerSeason": 10,
     "maxCrewsPerKm": 0.6,
     "unpaidMoralePenalty": 15,
     "unpaidFavorPenalty": 3
@@ -142,10 +142,10 @@
       "season": "autumn"
     },
     "startTreasury": 30000,
-    "yearlyAllocation": 10000,
+    "yearlyAllocation": 8500,
     "petition": {
       "amount": 6000,
-      "favorCost": 12,
+      "favorCost": 15,
       "cooldownSeasons": 4
     },
     "startFavor": 60,
@@ -161,8 +161,8 @@
     "novgorodRevenueBonus": 1.25,
     "maxTurns": 44,
     "behindSchedule": {
-      "lagShare": 0.15,
-      "favorPenalty": 2
+      "lagShare": 0.12,
+      "favorPenalty": 3
     }
   },
   "prologue": {
