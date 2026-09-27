@@ -162,7 +162,7 @@ button { font-family: inherit; color: inherit; }
   min-height: 0;
   margin: 4px 0;
 }
-#map { width: 100%; height: 100%; display: block; touch-action: manipulation; }
+#map { width: 100%; height: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; }
 #map .seg-hit { stroke: transparent; stroke-width: 22; fill: none; cursor: pointer; }
 #map .node-label { font-family: var(--font-display); font-style: italic; fill: var(--ink); }
 #map .cartouche-title { font-family: var(--font-display); fill: var(--ink); }
@@ -498,3 +498,11 @@ body { background-image: var(--paper-vignette), var(--paper-grain); background-a
 #map .scale-w { fill: var(--paper); stroke: var(--ink); stroke-width: 0.6; }
 #map .scale-t { font-family: var(--font-display); font-style: italic; font-size: 9.5px; fill: var(--ink); }
 #map .cartouche-box.thin { fill: none; stroke-width: 0.5; }
+
+/* Масштаб карты: линии трассы остаются тонкими при любом приближении */
+#map .zc .route-plan, #map .zc .route-alt, #map .zc .route-build, #map .zc .route-progress,
+#map .zc .route-done, #map .zc .route-selected, #map .zc .node, #map .zc .bridge,
+#map .zc .river, #map .zc .bypass, #map .zc .grade-mark, #map .zc .crew-badge circle, #map .zc .sleepers { vector-effect: non-scaling-stroke; }
+.zoom-btns { display: flex; gap: 6px; margin-left: auto; margin-right: 12px; }
+.zoom-btns .mini { min-width: 34px; height: 30px; padding: 0 8px; background: var(--paper); }
+.map-sheet-hint { font-size: 12px; }

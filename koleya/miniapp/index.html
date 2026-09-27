@@ -68,12 +68,17 @@
   <div class="map-sheet hidden" id="map-sheet" role="dialog" aria-label="Карта-чертёж трассы">
     <div class="map-sheet-head">
       <span class="map-sheet-kicker">Карта-чертёж</span>
+      <span class="zoom-btns">
+        <button class="mini" id="btn-zoom-out" type="button" aria-label="Отдалить">−</button>
+        <button class="mini" id="btn-zoom-in" type="button" aria-label="Приблизить">+</button>
+        <button class="mini" id="btn-zoom-fit" type="button" aria-label="Весь чертёж">⤢</button>
+      </span>
       <button class="link" id="btn-map-close" type="button">Закрыть</button>
     </div>
     <div class="map-wrap" id="map-wrap">
       <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Карта-чертёж трассы"></svg>
     </div>
-    <div class="hint map-sheet-hint">Нажмите на участок, чтобы перейти к нему.</div>
+    <div class="hint map-sheet-hint">Разведите пальцы, чтобы приблизить. Двойной тап — ближе или весь чертёж. Нажмите на участок, чтобы перейти к нему.</div>
   </div>
 
   <!-- Депеша / доклад -->

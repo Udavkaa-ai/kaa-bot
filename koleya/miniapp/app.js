@@ -144,7 +144,8 @@
     view: null,
     quiz: null,
     selected: null,       // id участка в панели
-    animate: new Set(),   // только что открытые участки — дочертить
+    animate: new Set(),
+    zoom: { k: 1, x: 0, y: 0 }, // масштаб карты-чертежа   // только что открытые участки — дочертить
     modalQueue: [],       // доклады, которые надо показать до депеш
     busy: false,
   };
@@ -176,6 +177,7 @@
   function openMap() {
     haptic('tap');
     $('map-sheet').classList.remove('hidden');
+    S.zoom = { k: 1, x: 0, y: 0 };
     renderMap();
     syncTelegramButtons();
   }
@@ -206,6 +208,9 @@
   $('btn-season').addEventListener('click', () => endSeason());
   $('btn-map').addEventListener('click', openMap);
   $('btn-map-close').addEventListener('click', () => { haptic('tap'); closeMap(); });
+  $('btn-zoom-in').addEventListener('click', () => zoomBy(1.6));
+  $('btn-zoom-out').addEventListener('click', () => zoomBy(1 / 1.6));
+  $('btn-zoom-fit').addEventListener('click', () => { haptic('sel'); S.zoom = { k: 1, x: 0, y: 0 }; renderMap(); });
 
   function goBack() {
     haptic('tap');
@@ -487,6 +492,106 @@
   }
   function lineLen(a, b) { return Math.hypot(b[0] - a[0], b[1] - a[1]); }
 
+  // ---- масштаб карты пальцами ----
+  // S.zoom: k — во сколько раз приближено, (x, y) — левый верхний угол окна в координатах чертежа.
+  const ZOOM_MAX = 6;
+  const mapDims = { W: 0, H: 0 };
+  function clampZoom(z, W, H) {
+    z.k = Math.max(1, Math.min(ZOOM_MAX, z.k));
+    z.x = Math.max(0, Math.min(W - W / z.k, z.x));
+    z.y = Math.max(0, Math.min(H - H / z.k, z.y));
+    return z;
+  }
+  // Приблизить к точке экрана (px, py — в координатах SVG-окна), сохранив её под пальцем
+  function zoomAt(k, px, py, from = S.zoom) {
+    const cx = from.x + px / from.k, cy = from.y + py / from.k;
+    S.zoom = clampZoom({ k, x: cx - px / k, y: cy - py / k }, mapDims.W, mapDims.H);
+  }
+  let zoomRaf = 0;
+  function scheduleMap() { if (!zoomRaf) zoomRaf = requestAnimationFrame(() => { zoomRaf = 0; renderMap(); }); }
+  function zoomBy(f) {
+    haptic('sel');
+    zoomAt(S.zoom.k * f, mapDims.W / 2, mapDims.H / 2);
+    renderMap();
+  }
+
+  (function setupMapGestures() {
+    const svg = $('map');
+    const pts = new Map();
+    let start = null, moved = false, lastTap = 0;
+    const toSvg = e => {
+      const r = svg.getBoundingClientRect();
+      return [(e.clientX - r.left) * mapDims.W / r.width, (e.clientY - r.top) * mapDims.H / r.height];
+    };
+    const snapshot = () => {
+      const list = [...pts.values()];
+      if (list.length >= 2) {
+        const [a, b] = list;
+        start = { zoom: { ...S.zoom }, dist: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] };
+      } else if (list.length === 1) {
+        start = { zoom: { ...S.zoom }, p: list[0] };
+      } else start = null;
+    };
+    svg.addEventListener('pointerdown', e => {
+      pts.set(e.pointerId, toSvg(e));
+      if (pts.size === 1) moved = false;
+      snapshot();
+    });
+    svg.addEventListener('pointermove', e => {
+      if (!pts.has(e.pointerId) || !start) return;
+      pts.set(e.pointerId, toSvg(e));
+      const list = [...pts.values()];
+      if (list.length >= 2 && start.dist) {
+        const [a, b] = list;
+        const dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        const k = start.zoom.k * dist / start.dist;
+        // точка чертежа под начальной серединой остаётся под текущей серединой
+        const cx = start.zoom.x + start.mid[0] / start.zoom.k, cy = start.zoom.y + start.mid[1] / start.zoom.k;
+        const kk = Math.max(1, Math.min(ZOOM_MAX, k));
+        S.zoom = clampZoom({ k: kk, x: cx - mid[0] / kk, y: cy - mid[1] / kk }, mapDims.W, mapDims.H);
+        moved = true;
+        scheduleMap();
+      } else if (list.length === 1 && start.p) {
+        const [x, y] = list[0];
+        const dx = x - start.p[0], dy = y - start.p[1];
+        if (Math.hypot(dx, dy) > 6) moved = true;
+        if (moved && start.zoom.k > 1) {
+          S.zoom = clampZoom({ k: start.zoom.k, x: start.zoom.x - dx / start.zoom.k, y: start.zoom.y - dy / start.zoom.k }, mapDims.W, mapDims.H);
+          scheduleMap();
+        }
+      }
+    });
+    const up = e => {
+      if (!pts.has(e.pointerId)) return;
+      const p = pts.get(e.pointerId);
+      pts.delete(e.pointerId);
+      snapshot();
+      // двойной тап: приблизить в точку, на сильном приближении — весь чертёж
+      if (!moved && pts.size === 0 && e.type === 'pointerup') {
+        const now = Date.now();
+        if (now - lastTap < 300) {
+          lastTap = 0;
+          haptic('sel');
+          if (S.zoom.k > 2.5) S.zoom = { k: 1, x: 0, y: 0 };
+          else zoomAt(S.zoom.k * 2, p[0], p[1]);
+          renderMap();
+        } else lastTap = now;
+      }
+    };
+    svg.addEventListener('pointerup', up);
+    svg.addEventListener('pointercancel', up);
+    // После перетаскивания касание не должно открывать участок
+    svg.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); } }, true);
+    // Колесо мыши — на компьютере
+    svg.addEventListener('wheel', e => {
+      e.preventDefault();
+      const [x, y] = toSvg(e);
+      zoomAt(S.zoom.k * Math.exp(-e.deltaY * 0.0015), x, y);
+      scheduleMap();
+    }, { passive: false });
+  })();
+
   function renderMap() {
     const svg = $('map');
     const c = C();
@@ -499,15 +604,22 @@
     const P = projector(visibleNodes, W, H, { x: 70, top: 64, bottom: 34 }, { from: c.nodesById[fr.from], to: c.nodesById[fr.to] });
     const s = S.state, v = S.view;
     const parts = [];
+    // Масштаб пальцами: содержимое в группе с transform, украшения поверх — неподвижны.
+    // Подписи и кружки делим на zk, чтобы при приближении они оставались читаемого размера.
+    mapDims.W = W; mapDims.H = H;
+    const Z = clampZoom(S.zoom, W, H);
+    const zk = Z.k, inv = 1 / zk;
 
     parts.push(`<defs>
-      <pattern id="p-forest" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M1 6 L3 2 M5 7 L7 3" class="hatch-forest"/></pattern>
-      <pattern id="p-swamp" width="10" height="6" patternUnits="userSpaceOnUse"><path d="M0 3 H4 M6 3 H9" class="hatch-swamp"/></pattern>
-      <pattern id="p-hills" width="10" height="8" patternUnits="userSpaceOnUse"><path d="M1 6 Q5 0 9 6" class="hatch-hills"/></pattern>
-      <pattern id="p-plain" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="0.6" class="hatch-plain"/></pattern>
+      <clipPath id="map-clip"><rect x="8" y="8" width="${W - 16}" height="${H - 16}"/></clipPath>
+      <pattern id="p-forest" patternTransform="scale(${inv})" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M1 6 L3 2 M5 7 L7 3" class="hatch-forest"/></pattern>
+      <pattern id="p-swamp" patternTransform="scale(${inv})" width="10" height="6" patternUnits="userSpaceOnUse"><path d="M0 3 H4 M6 3 H9" class="hatch-swamp"/></pattern>
+      <pattern id="p-hills" patternTransform="scale(${inv})" width="10" height="8" patternUnits="userSpaceOnUse"><path d="M1 6 Q5 0 9 6" class="hatch-hills"/></pattern>
+      <pattern id="p-plain" patternTransform="scale(${inv})" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="0.6" class="hatch-plain"/></pattern>
     </defs>`);
     // Рамка — двойная линия
     parts.push(`<rect x="3" y="3" width="${W - 6}" height="${H - 6}" class="frame"/><rect x="7" y="7" width="${W - 14}" height="${H - 14}" class="frame thin"/>`);
+    parts.push(`<g clip-path="url(#map-clip)"><g class="zc" id="map-zoom" transform="translate(${(-Z.x * zk).toFixed(2)} ${(-Z.y * zk).toFixed(2)}) scale(${zk})">`);
 
     const segs = c.map.segments.map(seg => ({ seg, a: P(c.nodesById[seg.from]), b: P(c.nodesById[seg.to]), sv: v.segments[seg.id] }));
     const decided = !!s.routeVariant || !c.map.segments.some(x => x.variant && x.variant !== 'both');
@@ -570,38 +682,39 @@
         const dx = b[0] - a[0], dy = b[1] - a[1], Ln = Math.hypot(dx, dy) || 1;
         let nx = -dy / Ln, ny = dx / Ln;
         if (nx > 0) { nx = -nx; ny = -ny; } // подписи станций справа — проценты слева
-        parts.push(`<text x="${m[0] + nx * 17}" y="${m[1] + ny * 17 + 4}" text-anchor="end" class="seg-pct">${Math.round(sv.progress)}%</text>`);
+        parts.push(`<text x="${m[0] + nx * 17 * inv}" y="${m[1] + (ny * 17 + 4) * inv}" text-anchor="end" class="seg-pct" style="font-size:${(10.5 * inv).toFixed(2)}px;stroke-width:${(3 * inv).toFixed(2)}px">${Math.round(sv.progress)}%</text>`);
       }
       if (sv.opened && !alt) {
         const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
         const dx = b[0] - a[0], dy = b[1] - a[1], Ln = Math.hypot(dx, dy) || 1;
         let nx = -dy / Ln, ny = dx / Ln;
         if (nx > 0) { nx = -nx; ny = -ny; }
-        parts.push(`<text x="${m[0] + nx * 15}" y="${m[1] + ny * 15 + 4}" text-anchor="end" class="seg-pct done">✓</text>`);
+        parts.push(`<text x="${m[0] + nx * 15 * inv}" y="${m[1] + (ny * 15 + 4) * inv}" text-anchor="end" class="seg-pct done" style="font-size:${(10.5 * inv).toFixed(2)}px;stroke-width:${(3 * inv).toFixed(2)}px">✓</text>`);
       }
       if (sv.crews > 0 && !sv.opened) {
         const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-        parts.push(`<g class="crew-badge"><circle cx="${m[0]}" cy="${m[1]}" r="8.5"/><text x="${m[0]}" y="${m[1] + 3.5}" text-anchor="middle">${sv.crews}</text></g>`);
+        parts.push(`<g class="crew-badge" transform="translate(${m[0]} ${m[1]}) scale(${inv}) translate(${-m[0]} ${-m[1]})"><circle cx="${m[0]}" cy="${m[1]}" r="8.5"/><text x="${m[0]}" y="${m[1] + 3.5}" text-anchor="middle">${sv.crews}</text></g>`);
       }
-      if (!alt) parts.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="seg-hit" data-seg="${seg.id}"/>`);
+      if (!alt) parts.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="seg-hit" style="stroke-width:${(22 * inv).toFixed(2)}px" data-seg="${seg.id}"/>`);
     }
     // Станции
     const fs = Math.max(10, Math.min(13, W / 34));
     for (const n of c.map.nodes) {
       if (decided && n.variant && n.variant !== s.routeVariant) continue;
       const [x, y] = P(n);
-      if (n.kind === 'capital') parts.push(`<circle cx="${x}" cy="${y}" r="6.5" class="node"/><circle cx="${x}" cy="${y}" r="3" class="node inner"/>`);
-      else parts.push(`<circle cx="${x}" cy="${y}" r="${n.kind === 'town' ? 4 : 3}" class="node${n.kind === 'station' ? ' small' : ''}"/>`);
-      const right = x < W * 0.62;
-      parts.push(`<text x="${x + (right ? 9 : -9)}" y="${y + 4}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${n.kind === 'station' ? fs - 1 : fs + 1}">${esc(n.name.replace(/\s*\(.+\)/, ''))}</text>`);
+      if (n.kind === 'capital') parts.push(`<circle cx="${x}" cy="${y}" r="${6.5 * inv}" class="node"/><circle cx="${x}" cy="${y}" r="${3 * inv}" class="node inner"/>`);
+      else parts.push(`<circle cx="${x}" cy="${y}" r="${(n.kind === 'town' ? 4 : 3) * inv}" class="node${n.kind === 'station' ? ' small' : ''}"/>`);
+      const right = (x - Z.x) * zk < W * 0.62;
+      parts.push(`<text x="${x + (right ? 9 : -9) * inv}" y="${y + 4 * inv}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${((n.kind === 'station' ? fs - 1 : fs + 1) * inv).toFixed(2)}">${esc(n.name.replace(/\s*\(.+\)/, ''))}</text>`);
     }
+    parts.push(`</g></g>`);
     // Роза ветров и масштабная линейка в вёрстах (1 верста = 1,0668 км)
     parts.push(DECOR.rose(W - 44, H - 58, 26, P.northDeg));
     {
       const a0 = c.map.nodes[0], a1 = c.map.nodes[c.map.nodes.length - 1];
-      const pxPerKm = Math.hypot(P(a1)[0] - P(a0)[0], P(a1)[1] - P(a0)[1]) /
+      const pxPerKm = zk * Math.hypot(P(a1)[0] - P(a0)[0], P(a1)[1] - P(a0)[1]) /
         (Math.hypot((a1.lon - a0.lon) * Math.cos((a0.lat + a1.lat) / 2 * Math.PI / 180), a1.lat - a0.lat) * 111.32 || 1);
-      const steps = [5, 10, 20, 50, 100];
+      const steps = [1, 2, 5, 10, 20, 50, 100];
       const versts = steps.find(v => v * 1.0668 * pxPerKm >= 72) || 100;
       const L = versts * 1.0668 * pxPerKm;
       const x0 = 20, y0 = H - 24;
