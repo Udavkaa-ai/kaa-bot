@@ -3,7 +3,8 @@
 // иначе тесты пропускаются (в CI и у «Билли» базы для тестов может не быть).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createKoleya, verifyInitData, signInitData, signWebToken, verifyWebToken, newWebPlayerId } = require('../core');
+const { createKoleya, verifyInitData, signInitData, signWebToken, verifyWebToken, newWebPlayerId, signTelegramSession, verifyTelegramLogin } = require('../core');
+const crypto = require('crypto');
 
 const TOKEN = '123456:TEST-token';
 const DB_URL = process.env.KOLEYA_TEST_DATABASE_URL;
@@ -38,6 +39,27 @@ test('веб-версия: гостевой токен проверяется п
   assert.equal((await withWeb.handleApi({ method: 'GET', path: '/game', webToken: 'garbage' })).status, 401);
   const noWeb = createKoleya({ botToken: TOKEN, db });
   assert.equal((await noWeb.handleApi({ method: 'GET', path: '/game', webToken: token })).status, 401, 'без секрета веб-вход выключен');
+});
+
+test('вход через Telegram на сайте: подпись Login Widget и сессия с настоящим id', () => {
+  const now = Math.floor(Date.now() / 1000);
+  const sign = f => {
+    const dcs = Object.keys(f).sort().map(k => `${k}=${f[k]}`).join('\n');
+    const secret = crypto.createHash('sha256').update(TOKEN).digest();
+    return { ...f, hash: crypto.createHmac('sha256', secret).update(dcs).digest('hex') };
+  };
+  const ok = sign({ id: 4242, first_name: 'Инженер', username: 'eng', auth_date: now });
+  assert.equal(verifyTelegramLogin(ok, TOKEN, now).user.id, 4242);
+  assert.equal(verifyTelegramLogin({ ...ok, id: 4243 }, TOKEN, now), null, 'подменён id');
+  assert.equal(verifyTelegramLogin(ok, '999:other', now), null, 'чужой бот');
+  assert.equal(verifyTelegramLogin(sign({ id: 1, first_name: 'x', auth_date: now - 3 * 86400 }), TOKEN, now), null, 'просрочено');
+  const SECRET = 's'.repeat(40);
+  const t = signTelegramSession(4242, SECRET, now);
+  const v = verifyWebToken(t, SECRET);
+  assert.equal(v.user.id, 4242);
+  assert.equal(v.telegram, true);
+  assert.equal(verifyWebToken(signWebToken(4242, SECRET, now), SECRET), null, 'Telegram id без входа не принимается');
+  assert.equal(verifyWebToken(signTelegramSession(newWebPlayerId(), SECRET, now), SECRET), null, 'гостевой id не выдать за Telegram');
 });
 
 test('API: без подписи — 401', async () => {
@@ -169,5 +191,29 @@ test('API: викторина главы 1 открывает факты в «М
   r = await call('GET', '/museum');
   assert.equal(r.body.facts.length, 5);
   assert.ok(r.body.facts.every(f => f.status === 'verified'));
+  await pool.end();
+});
+
+test('вход гостя через Telegram переносит его главы, не трогая главы аккаунта', { skip: !DB_URL && 'нет KOLEYA_TEST_DATABASE_URL' }, async () => {
+  const { Pool } = require('pg');
+  const pool = new Pool({ connectionString: DB_URL });
+  const k = createKoleya({ botToken: TOKEN, webSecret: 'w'.repeat(40), db: pool, randomSeed: () => 5 });
+  await k.migrate();
+  const guest = newWebPlayerId(), tg = 91000 + Math.floor(Math.random() * 1e6);
+  const g = (method, path, body) => k.handleApi({ method, path, body, query: body, webToken: signWebToken(guest, 'w'.repeat(40), 1) });
+  const t = (method, path, body) => k.handleApi({ method, path, body, query: body, initData: initData(tg) });
+  assert.equal((await g('POST', '/game/start', { chapter: 'prologue', difficulty: 'easy' })).status, 200);
+  await pool.query(`UPDATE koleya_players SET completed = '{"prologue":{"stars":4,"max":5}}' WHERE tg_id = $1`, [guest]);
+  assert.equal((await g('POST', '/game/start', { chapter: 'chapter1' })).status, 200);
+  // В аккаунте уже есть свой пролог — его не перезаписываем
+  assert.equal((await t('POST', '/game/start', { chapter: 'prologue' })).status, 200);
+  const r = await k.adoptGuest(guest, tg, 'Инженер');
+  assert.equal(r.moved, 1, 'перенесена только глава I');
+  const home = (await t('GET', '/game')).body;
+  assert.ok(home.saves.chapter1, 'глава I гостя теперь в аккаунте');
+  assert.equal(home.saves.prologue.difficulty, 'normal', 'пролог аккаунта не тронут');
+  assert.ok(home.player.completed.prologue, 'пройденные главы гостя засчитаны');
+  const left = await pool.query('SELECT count(*)::int AS n FROM koleya_games WHERE tg_id = $1', [guest]);
+  assert.equal(left.rows[0].n, 0, 'у гостя ничего не осталось');
   await pool.end();
 });

@@ -99,16 +99,45 @@ function signWebToken(id, secret, issuedSec) {
   return `${body}.${crypto.createHmac('sha256', secret).update(`koleya-web:${body}`).digest('hex')}`;
 }
 
+// Сессия игрока, вошедшего через Telegram Login Widget: тот же формат с префиксом «t»,
+// id — настоящий Telegram id (прогресс общий с мини-аппом в боте).
+function signTelegramSession(id, secret, issuedSec) {
+  return signWebToken(`t${id}`, secret, issuedSec);
+}
+
 function verifyWebToken(token, secret) {
   if (!token || typeof token !== 'string' || !secret) return null;
-  const m = /^(\d{1,16})\.(\d{1,12})\.([0-9a-f]{64})$/.exec(token);
+  const m = /^(t?)(\d{1,16})\.(\d{1,12})\.([0-9a-f]{64})$/.exec(token);
   if (!m) return null;
-  const id = Number(m[1]);
-  if (!Number.isSafeInteger(id) || id < WEB_ID_BASE || id >= WEB_ID_BASE + WEB_ID_SPAN) return null;
-  const expected = crypto.createHmac('sha256', secret).update(`koleya-web:${m[1]}.${m[2]}`).digest();
-  const given = Buffer.from(m[3], 'hex');
+  const id = Number(m[2]);
+  const telegram = m[1] === 't';
+  if (!Number.isSafeInteger(id) || id <= 0) return null;
+  const guestRange = id >= WEB_ID_BASE && id < WEB_ID_BASE + WEB_ID_SPAN;
+  if (telegram === guestRange) return null; // гостевые id — только гостям, Telegram id — только через вход
+  const expected = crypto.createHmac('sha256', secret).update(`koleya-web:${m[1]}${m[2]}.${m[3]}`).digest();
+  const given = Buffer.from(m[4], 'hex');
   if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
-  return { user: { id, first_name: 'Гость' }, web: true };
+  return { user: { id, first_name: telegram ? 'Игрок' : 'Гость' }, web: true, telegram };
+}
+
+// Telegram Login Widget: hash = HMAC-SHA256(data_check_string, SHA256(bot_token)),
+// auth_date не старше суток (https://core.telegram.org/widgets/login#checking-authorization)
+function verifyTelegramLogin(fields, botToken, nowSec) {
+  if (!fields || typeof fields !== 'object' || !botToken) return null;
+  const hash = String(fields.hash || '');
+  if (!/^[0-9a-f]{64}$/i.test(hash)) return null;
+  const allowed = ['id', 'first_name', 'last_name', 'username', 'photo_url', 'auth_date'];
+  const dataCheckString = allowed.filter(k => fields[k] !== undefined && fields[k] !== null)
+    .sort().map(k => `${k}=${fields[k]}`).join('\n');
+  const secret = crypto.createHash('sha256').update(botToken).digest();
+  const computed = crypto.createHmac('sha256', secret).update(dataCheckString).digest();
+  const given = Buffer.from(hash, 'hex');
+  if (given.length !== computed.length || !crypto.timingSafeEqual(given, computed)) return null;
+  const authDate = parseInt(fields.auth_date, 10);
+  if (!authDate || nowSec - authDate > INIT_DATA_MAX_AGE_SEC || authDate - nowSec > 300) return null;
+  const id = Number(fields.id);
+  if (!Number.isSafeInteger(id) || id <= 0 || id >= WEB_ID_BASE) return null;
+  return { user: { id, first_name: String(fields.first_name || ''), username: fields.username ? String(fields.username) : null } };
 }
 
 function newWebPlayerId() {
@@ -431,6 +460,39 @@ function createKoleya(deps) {
     }
   }
 
+  // Гость вошёл через Telegram: его главы, музей и результаты викторин переходят в аккаунт.
+  // Главы, которые в аккаунте уже есть, не перезаписываются — побеждает аккаунт.
+  async function adoptGuest(guestId, tgId, name) {
+    if (!(guestId >= WEB_ID_BASE) || guestId === tgId) return { moved: 0 };
+    const client = db.connect ? await db.connect() : db;
+    try {
+      await client.query('BEGIN');
+      const moved = await client.query(
+        `UPDATE koleya_games g SET tg_id = $2 WHERE g.tg_id = $1
+           AND NOT EXISTS (SELECT 1 FROM koleya_games t WHERE t.tg_id = $2 AND t.chapter = g.chapter)`, [guestId, tgId]);
+      await client.query('DELETE FROM koleya_games WHERE tg_id = $1', [guestId]);
+      await client.query('INSERT INTO koleya_museum (tg_id, fact_id, opened_at) SELECT $2, fact_id, opened_at FROM koleya_museum WHERE tg_id = $1 ON CONFLICT DO NOTHING', [guestId, tgId]);
+      await client.query('DELETE FROM koleya_museum WHERE tg_id = $1', [guestId]);
+      await client.query('UPDATE koleya_quiz_results SET tg_id = $2 WHERE tg_id = $1', [guestId, tgId]);
+      await client.query(
+        `INSERT INTO koleya_players (tg_id, name, active_chapter, completed, campaign)
+           SELECT $2, $3, active_chapter, completed, campaign FROM koleya_players WHERE tg_id = $1
+         ON CONFLICT (tg_id) DO UPDATE SET
+           completed = EXCLUDED.completed || koleya_players.completed,
+           campaign = EXCLUDED.campaign || koleya_players.campaign,
+           active_chapter = COALESCE(koleya_players.active_chapter, EXCLUDED.active_chapter),
+           updated_at = now()`, [guestId, tgId, name || null]);
+      await client.query('DELETE FROM koleya_players WHERE tg_id = $1', [guestId]);
+      await client.query('COMMIT');
+      return { moved: moved.rowCount || 0 };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      if (client.release) client.release();
+    }
+  }
+
   async function handleApi(req) {
     try {
       const auth = verifyInitData(req.initData, botToken, Math.floor(now() / 1000))
@@ -472,8 +534,9 @@ function createKoleya(deps) {
     migrate,
     handleApi,
     progressText,
+    adoptGuest,
     staticDir: path.join(__dirname, '..', 'miniapp'),
   };
 }
 
-module.exports = { createKoleya, verifyInitData, signInitData, MIGRATION, signWebToken, verifyWebToken, newWebPlayerId, WEB_ID_BASE };
+module.exports = { createKoleya, verifyInitData, signInitData, MIGRATION, signWebToken, verifyWebToken, newWebPlayerId, WEB_ID_BASE, signTelegramSession, verifyTelegramLogin };

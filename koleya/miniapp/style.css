@@ -697,3 +697,15 @@ body.coach-on .panel { padding-bottom: 180px; }
 /* Выбор сложности главы */
 .diff-choice .hint { margin: 4px 2px 0; font-size: 13px; color: var(--ink-faded); }
 .diff-choice .diff-num { display: block; font-family: var(--font-ui); font-style: normal; font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* Вход через Telegram на сайте */
+.home-account { margin: 14px auto 0; max-width: 520px; text-align: center; font-size: 14px; color: var(--ink-faded); }
+.home-account p { margin: 0 auto 8px; }
+.home-account #tg-login { min-height: 40px; }
+
+.name-form { display: grid; gap: 8px; max-width: 360px; margin: 8px auto 0; }
+.name-form input { font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--ink); border-radius: 3px; background: var(--paper); color: var(--ink); }
+.name-form input:focus { outline: 2px solid var(--route); outline-offset: 1px; }
+.name-form .btn { margin-top: 0; }
+.home-account .hint { font-size: 12px; margin-top: 6px; }
+.home-account .or { margin: 10px 0 6px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }

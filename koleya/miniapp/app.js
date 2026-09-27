@@ -526,8 +526,8 @@
     }).join('');
     $('home-note').textContent = [
       done.prologue || saves.chapter1 ? '' : 'Начните с пролога: это обучение, на каждом шаге подскажем, что делать и зачем.',
-      webMode() ? 'Прогресс хранится в этом браузере.' : '',
     ].filter(Boolean).join(' ');
+    renderAccount();
     $('chapters').querySelectorAll('[data-start]').forEach(b => b.addEventListener('click', () => startChapter(b.dataset.start)));
     $('chapters').querySelectorAll('[data-resume]').forEach(b => b.addEventListener('click', () => resumeChapter(b.dataset.resume)));
   }
@@ -1904,6 +1904,89 @@
     if (!r.ok) throw Object.assign(new Error(data.error || `Ошибка ${r.status}`), { status: r.status });
     webToken = data.token || '';
     try { localStorage.setItem(WEB_TOKEN_KEY, webToken); } catch (_) {}
+  }
+
+  // Вход через Telegram на сайте: Login Widget → сервер проверяет подпись и выдаёт сессию
+  // с настоящим Telegram id (прогресс общий с мини-аппом, прогресс гостя переносится)
+  const WEB_NAME_KEY = 'koleya-web-name';
+  const tgLogged = () => webToken.startsWith('t');
+  const WEB_KIND_KEY = 'koleya-web-kind';
+  const storeGet = k => { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } };
+  function storeSession(token, name, kind) {
+    webToken = token;
+    try { localStorage.setItem(WEB_TOKEN_KEY, token); localStorage.setItem(WEB_NAME_KEY, name || ''); localStorage.setItem(WEB_KIND_KEY, kind); } catch (_) {}
+  }
+  function mountTelegramButton(box) {
+    if (!S.webConfig || !S.webConfig.telegramLogin || !box) return;
+    const sc = document.createElement('script');
+    sc.async = true;
+    sc.src = 'https://telegram.org/js/telegram-widget.js?22';
+    sc.setAttribute('data-telegram-login', S.webConfig.telegramLogin);
+    sc.setAttribute('data-size', 'large');
+    sc.setAttribute('data-radius', '3');
+    sc.setAttribute('data-onauth', 'koleyaTelegramAuth(user)');
+    box.appendChild(sc);
+  }
+  async function renderAccount() {
+    const el = $('home-account');
+    if (!webMode()) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    if (!S.webConfig) S.webConfig = await fetch('web/config').then(r => r.json()).catch(() => ({}));
+    const name = storeGet(WEB_NAME_KEY);
+    const tgBlock = S.webConfig.telegramLogin ? '<div class="or">или</div><div id="tg-login"></div>' : '';
+    if (tgLogged()) {
+      el.innerHTML = `<p>Вы вошли через Telegram${name ? ` как <b>${esc(name)}</b>` : ''}. Прогресс сохранён в аккаунте и общий с игрой в боте.</p>
+        <button class="link" id="btn-logout" type="button">Выйти</button>`;
+    } else if (storeGet(WEB_KIND_KEY) === 'name' && name) {
+      el.innerHTML = `<p>Вы играете как <b>${esc(name)}</b>. На другом устройстве введите то же имя и PIN.</p>
+        ${S.webConfig.telegramLogin ? '<p class="hint">Можно привязать игру к Telegram — тогда она будет общей с ботом:</p><div id="tg-login"></div>' : ''}
+        <button class="link" id="btn-logout" type="button">Выйти</button>`;
+    } else {
+      el.innerHTML = `<p>Сейчас прогресс хранится только в этом браузере. Сохраните его под своим именем:</p>
+        <form class="name-form" id="name-form" autocomplete="on">
+          <input id="nf-name" name="username" maxlength="24" placeholder="Имя" autocomplete="username" required>
+          <input id="nf-pin" name="password" type="password" inputmode="numeric" pattern="\\d{4,8}" maxlength="8" placeholder="PIN, 4–8 цифр" autocomplete="current-password" required>
+          <button class="btn" type="submit">Играть под этим именем</button>
+        </form>
+        <p class="hint">Новое имя закрепится за вами. С другого устройства — то же имя и PIN.</p>
+        ${tgBlock}`;
+      $('name-form').addEventListener('submit', e => { e.preventDefault(); nameLogin($('nf-name').value, $('nf-pin').value); });
+    }
+    const lo = $('btn-logout');
+    if (lo) lo.addEventListener('click', webLogout);
+    mountTelegramButton($('tg-login'));
+  }
+  async function nameLogin(name, pin) {
+    let ok = false;
+    await withBusy(async () => {
+      const r = await fetch('web/name-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, pin, guestToken: webToken }) });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || `Ошибка ${r.status}`);
+      storeSession(data.token, data.name, 'name');
+      toast(data.created ? `Имя «${data.name}» ваше. Игра сохранена.` : data.moved ? `С возвращением! Перенесено глав из этого браузера: ${data.moved}.` : 'С возвращением!');
+      haptic('ok');
+      ok = true;
+    });
+    if (ok) await openHome();
+  }
+  window.koleyaTelegramAuth = async user => {
+    await withBusy(async () => {
+      const r = await fetch('web/telegram-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auth: user, guestToken: webToken }) });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || `Ошибка ${r.status}`);
+      storeSession(data.token, data.name, 'tg');
+      toast(data.moved ? `Вы вошли. Перенесено глав из этого браузера: ${data.moved}.` : 'Вы вошли через Telegram.');
+      haptic('ok');
+    });
+    await openHome();
+  };
+  async function webLogout() {
+    const where = tgLogged() ? 'в аккаунте Telegram' : 'под вашим именем';
+    if (!(await confirmBox(`Выйти? Прогресс останется ${where}, а здесь начнётся игра гостя.`))) return;
+    try { localStorage.removeItem(WEB_TOKEN_KEY); localStorage.removeItem(WEB_NAME_KEY); localStorage.removeItem(WEB_KIND_KEY); } catch (_) {}
+    webToken = '';
+    await webSession();
+    await openHome();
   }
 
   // ================= старт =================
