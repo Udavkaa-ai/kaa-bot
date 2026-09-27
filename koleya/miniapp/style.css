@@ -82,7 +82,7 @@ button { font-family: inherit; color: inherit; }
   text-transform: uppercase;
   color: var(--ink-faded);
 }
-.title-main { font-family: var(--font-display); font-weight: 400; font-size: 44px; line-height: 1.05; margin: 8px 0 6px; }
+.title-main { font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: 1.1; margin: 8px 0 6px; text-wrap: balance; }
 .title-sub { font-family: var(--font-display); font-style: italic; color: var(--ink-faded); margin-bottom: 16px; }
 .chapters { display: flex; flex-direction: column; gap: 12px; }
 .chapter-card {
