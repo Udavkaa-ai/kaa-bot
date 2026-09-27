@@ -236,6 +236,19 @@
   const TUT = (() => { try { return JSON.parse(localStorage.getItem(TUT_KEY)) || { step: 0, off: false, acked: {} }; } catch (_) { return { step: 0, off: false, acked: {} }; } })();
   function tutSave() { try { localStorage.setItem(TUT_KEY, JSON.stringify(TUT)); } catch (_) {} }
   function tutReset() { TUT.step = 0; TUT.off = false; TUT.acked = {}; tutSave(); }
+  // Вернуть выключенные подсказки: тур продолжится с шага, который соответствует стройке,
+  // уже сделанные шаги (найм, расстановка) пропустятся сами
+  function tutRestore() {
+    TUT.off = false; tutSave();
+    haptic('ok');
+    toast('Подсказки обучения включены');
+    if (S.screen === 's-game') { renderPanel(); syncTelegramButtons(); }
+    renderAboutTut();
+  }
+  function renderAboutTut() {
+    const el = $('about-tut');
+    if (el) el.classList.toggle('hidden', !TUT.off);
+  }
 
   function tutSteps() {
     const b = C().balance, cr = b.crews, cb = b[S.chapter];
@@ -325,7 +338,9 @@
     if (ok) ok.addEventListener('click', () => { haptic('tap'); TUT.acked[st.id] = true; tutSave(); coachUpdate(); syncTelegramButtons(); });
     el.querySelector('[data-coach-off]').addEventListener('click', async () => {
       if (!(await confirmBox('Выключить подсказки обучения? Их можно вернуть, начав пролог заново.'))) return;
-      TUT.off = true; tutSave(); coachUpdate(); syncTelegramButtons();
+      TUT.off = true; tutSave();
+      renderPanel(); // на панели появится «Вернуть подсказки обучения»
+      toast('Подсказки выключены. Вернуть — кнопкой внизу панели или в «Об игре».');
     });
     const target = st.target && st.target();
     if (target) {
@@ -336,11 +351,13 @@
 
   // ================= титул =================
   const CHAPTER_INFO = {
-    prologue: { title: 'Пролог. Царскосельская дорога', years: '1836–1838', desc: 'Обучение: два коротких участка, первый паровоз и первый рейс для публики.' },
-    chapter1: { title: 'Глава I. Петербург — Москва', years: '1842–1851', desc: 'Трасса, колея, два пути, болота, Валдай, мосты и сроки. Главная дорога империи.' },
-    chapter2: { title: 'Глава II. Великий Сибирский путь', years: '1891–1904', desc: 'Через всю Сибирь к Тихому океану: стройка с двух концов, Байкал, выбор между Маньчжурией и Амуром.' },
+    prologue: { level: 1, levelLabel: 'обучение', title: 'Пролог. Царскосельская дорога', years: '1836–1838', desc: 'Обучение: два коротких участка, первый паровоз и первый рейс для публики.' },
+    chapter1: { level: 2, levelLabel: 'умеренная', title: 'Глава I. Петербург — Москва', years: '1842–1851', desc: 'Трасса, колея, два пути, болота, Валдай, мосты и сроки. Главная дорога империи.' },
+    chapter2: { level: 3, levelLabel: 'высокая', title: 'Глава II. Великий Сибирский путь', years: '1891–1904', desc: 'Через всю Сибирь к Тихому океану: стройка с двух концов, Байкал, выбор между Маньчжурией и Амуром.' },
   };
   const CHAPTER_ORDER = Object.keys(CHAPTER_INFO);
+  // Сложность главы: пять делений, закрашенных по уровню
+  const difficultyHtml = info => info.level ? `<div class="difficulty" title="Сложность">Сложность: <span class="dots">${'●'.repeat(info.level)}<span class="off">${'●'.repeat(5 - info.level)}</span></span> ${esc(info.levelLabel)}</div>` : '';
   const nextChapter = ch => {
     const ready = (S.home && S.home.chapters) || CHAPTER_ORDER;
     const n = CHAPTER_ORDER[CHAPTER_ORDER.indexOf(ch) + 1];
@@ -372,6 +389,7 @@
           <div class="years">${info.years}</div>
           <h3>${esc(info.title)}</h3>
           <div class="desc">${esc(info.desc)}</div>
+          ${difficultyHtml(info)}
           <div class="status">Откроется после пролога</div>
         </div>`;
       }
@@ -379,6 +397,7 @@
         <div class="years">${info.years}</div>
         <h3>${esc(info.title)}</h3>
         <div class="desc">${esc(info.desc)}</div>
+        ${difficultyHtml(info)}
         ${status ? `<div class="status">${esc(status)}</div>` : ''}
         <div class="row">
           ${cont ? `<button class="btn" data-resume="${ch}">Продолжить</button>` : ''}
@@ -1199,6 +1218,7 @@
       ${dl ? `<div class="kv"><span>Срок открытия</span><span>${dl}</span></div>` : ''}
       ${pet && s.unlocked.construction ? `<button class="btn ghost" data-petition ${s.petitionCooldown > 0 ? 'disabled' : ''}>Прошение о средствах: +${money(pet.amount)} в казну, благоволение ${s.favor} → ${Math.max(0, s.favor - pet.favorCost)}${s.petitionCooldown > 0 ? ` (через ${s.petitionCooldown} сез.)` : ''}</button>
         <div class="hint">${s.favor - pet.favorCost <= 0 ? 'Это прошение станет последним: благоволение кончится, и вас отстранят.' : s.favor - pet.favorCost <= favorRevision() ? `После прошения благоволение опустится до ${favorRevision()} и ниже — жди ревизии.` : `Ревизия приезжает при благоволении ${favorRevision()} и ниже, отставка — при 0.`}</div>` : ''}
+      ${S.chapter === 'prologue' && TUT.off ? '<button class="btn ghost" data-tut-on type="button">Вернуть подсказки обучения</button>' : ''}
       <button class="link" data-home type="button">В меню</button>
     </div>`;
   }
@@ -1233,6 +1253,7 @@
       if (r) handleLog(r.log || []);
     }));
     el.querySelectorAll('[data-home]').forEach(b => b.addEventListener('click', () => { flushCrews(); openHome(); }));
+    el.querySelectorAll('[data-tut-on]').forEach(b => b.addEventListener('click', tutRestore));
   }
 
   function segmentPanel(seg) {
@@ -1636,7 +1657,8 @@
 
   // ================= прочее =================
   $('btn-museum').addEventListener('click', openMuseum);
-  $('btn-about').addEventListener('click', () => { haptic('tap'); show('s-about'); });
+  $('btn-about').addEventListener('click', () => { haptic('tap'); renderAboutTut(); show('s-about'); });
+  $('btn-about-tut').addEventListener('click', tutRestore);
   $('btn-about-back').addEventListener('click', () => openHome());
   window.addEventListener('resize', () => { if (mapOpen()) renderMap(); });
 

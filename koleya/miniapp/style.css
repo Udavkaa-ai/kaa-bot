@@ -588,3 +588,7 @@ body.coach-on .panel { padding-bottom: 180px; }
 .chapter-card.locked { opacity: 0.55; }
 .chapter-card.locked .status { color: var(--ink-faded); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.difficulty { font-size: 12px; color: var(--ink-faded); margin-top: 6px; letter-spacing: 0.3px; }
+.difficulty .dots { color: var(--route); letter-spacing: 2px; font-size: 11px; }
+.difficulty .dots .off { color: var(--ink-hair); }

@@ -162,7 +162,7 @@
       "season": "autumn"
     },
     "startTreasury": 30000,
-    "yearlyAllocation": 8500,
+    "yearlyAllocation": 9000,
     "petition": {
       "amount": 6000,
       "favorCost": 15,
@@ -182,7 +182,12 @@
     "maxTurns": 44,
     "behindSchedule": {
       "lagShare": 0.12,
-      "favorPenalty": 3
+      "favorPenalty": 2
+    },
+    "overrides": {
+      "crews": {
+        "workPerCrewPerSeason": 17
+      }
     }
   },
   "prologue": {
@@ -334,8 +339,8 @@
     "startMorale": 65,
     "startCrews": 0,
     "favor": {
-      "milestoneBonus": 3,
-      "seasonLatePenalty": 6,
+      "milestoneBonus": 4,
+      "seasonLatePenalty": 4,
       "incidentPenalty": 5,
       "revisionThreshold": 20
     },
@@ -343,33 +348,33 @@
     "maxTurns": 64,
     "behindSchedule": {
       "lagShare": 0.12,
-      "favorPenalty": 2
+      "favorPenalty": 1
     },
     "overrides": {
       "terrain": {
         "plain": {
           "costPerKm": 9.94,
-          "workPerKm": 2.6
+          "workPerKm": 2.34
         },
         "forest": {
           "costPerKm": 12.78,
-          "workPerKm": 3.6
+          "workPerKm": 3.24
         },
         "swamp": {
           "costPerKm": 18.46,
-          "workPerKm": 5.6
+          "workPerKm": 5.04
         },
         "hills": {
           "costPerKm": 15.62,
-          "workPerKm": 4.6
+          "workPerKm": 4.14
         },
         "mountains": {
           "costPerKm": 34.08,
-          "workPerKm": 11.0
+          "workPerKm": 9.9
         },
         "permafrost": {
           "costPerKm": 21.3,
-          "workPerKm": 7.2
+          "workPerKm": 6.48
         }
       },
       "crews": {
