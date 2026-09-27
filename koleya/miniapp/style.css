@@ -437,16 +437,13 @@ body { background-image: var(--paper-vignette), var(--paper-grain); background-a
 .deco-loco .d-hatch { stroke-width: 0.6; }
 .deco-loco .d-thin { stroke-width: 0.9; }
 .deco-loco .d-rod { stroke: var(--route); stroke-width: 2; }
-.deco-loco .d-smoke circle { fill: none; stroke: var(--ink-faded); stroke-width: 0.9; stroke-dasharray: 2 2; }
+.deco-loco .d-smoke circle { fill: var(--paper); stroke: var(--ink-faded); stroke-width: 0.9; stroke-dasharray: 2 2; }
+/* Без анимации клубы дыма стоят над трубой цепочкой */
+.deco-loco .p1 { transform: translate(10px, -3px); } .deco-loco .p2 { transform: translate(23px, -8px) scale(1.4); }
+.deco-loco .p3 { transform: translate(39px, -6px) scale(1.2); } .deco-loco .p4 { transform: translate(52px, -10px) scale(0.9); }
 .loading-in { text-align: center; }
 .loading-in #loading-vignette { width: 180px; margin: 0 auto 12px; opacity: 0.85; }
-@media (prefers-reduced-motion: no-preference) {
-  .loading .d-smoke circle { animation: puff 1.8s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
-  .loading .d-smoke circle:nth-child(2) { animation-delay: 0.3s; }
-  .loading .d-smoke circle:nth-child(3) { animation-delay: 0.6s; }
-  .loading .d-smoke circle:nth-child(4) { animation-delay: 0.9s; }
-}
-@keyframes puff { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+
 
 /* Угловые орнаменты карточек глав */
 .chapter-card { position: relative; }
@@ -506,3 +503,44 @@ body { background-image: var(--paper-vignette), var(--paper-grain); background-a
 .zoom-btns { display: flex; gap: 6px; margin-left: auto; margin-right: 12px; }
 .zoom-btns .mini { min-width: 34px; height: 30px; padding: 0 8px; background: var(--paper); }
 .map-sheet-hint { font-size: 12px; }
+
+/* ---------- паровоз едет и пыхтит ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .deco-loco.anim .wheel { transform-box: fill-box; transform-origin: center; animation: wspin 1.6s linear infinite; }
+  .deco-loco.anim .wheel.small { animation-duration: 0.98s; }
+  .deco-loco.anim .d-sleepers { animation: rails 0.184s linear infinite; }
+  .deco-loco.anim .d-rod { animation: crank 1.6s linear infinite; }
+  .deco-loco.anim .d-body { animation: chuff 0.4s ease-in-out infinite alternate; }
+  .deco-loco.anim .puff { transform-box: fill-box; transform-origin: center; opacity: 0; animation: puff 1.6s ease-out infinite; }
+  .deco-loco.anim .p2 { animation-delay: 0.4s; }
+  .deco-loco.anim .p3 { animation-delay: 0.8s; }
+  .deco-loco.anim .p4 { animation-delay: 1.2s; }
+}
+@keyframes wspin { to { transform: rotate(-360deg); } }
+@keyframes rails { from { transform: translateX(0); } to { transform: translateX(9.4px); } }
+@keyframes crank {
+  0% { transform: translate(3px, 0); } 25% { transform: translate(0, 3px); }
+  50% { transform: translate(-3px, 0); } 75% { transform: translate(0, -3px); } 100% { transform: translate(3px, 0); }
+}
+@keyframes chuff { from { transform: translateY(0); } to { transform: translateY(-0.8px); } }
+@keyframes puff {
+  0% { opacity: 0.95; transform: translate(0, 0) scale(0.35); }
+  60% { opacity: 0.6; }
+  100% { opacity: 0; transform: translate(58px, -14px) scale(1.9); }
+}
+
+/* ---------- закреплённая строка найма ---------- */
+.crewbar {
+  position: sticky; top: -8px; z-index: 3;
+  margin: -8px -4px 6px; padding: 8px 4px 6px;
+  background-color: var(--paper); background-image: var(--paper-grain);
+  border-bottom: 3px double var(--ink);
+}
+.cb-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cb-count { display: flex; flex-direction: column; line-height: 1.15; }
+.cb-count .lbl { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-faded); }
+.cb-count b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.cb-btns { display: flex; align-items: center; gap: 5px; }
+.cb-btns .mini { min-width: 40px; height: 36px; padding: 0 6px; font-weight: 700; }
+.cb-sep { width: 1px; height: 24px; background: var(--ink-faded); margin: 0 2px; }
+.cb-note { font-size: 11px; color: var(--ink-faded); margin-top: 4px; line-height: 1.3; }

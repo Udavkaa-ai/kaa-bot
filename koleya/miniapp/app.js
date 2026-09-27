@@ -33,35 +33,36 @@
     // Виньетка: ранний паровоз с тендером, штриховка котла, клубы дыма
     loco() {
       const hatch = Array.from({ length: 11 }, (_, i) => `<line x1="${26 + i * 7}" y1="42" x2="${26 + i * 7}" y2="58"/>`).join('');
-      const spokes = (cx, cy, r, n) => Array.from({ length: n }, (_, i) => {
+      const wheel = (cx, cy, r, n, cls) => `<g class="wheel ${cls}"><circle cx="${cx}" cy="${cy}" r="${r}" class="d-paper"/>${Array.from({ length: n }, (_, i) => {
         const a = Math.PI * 2 * i / n;
         return `<line x1="${cx}" y1="${cy}" x2="${(cx + Math.cos(a) * r).toFixed(1)}" y2="${(cy + Math.sin(a) * r).toFixed(1)}"/>`;
-      }).join('');
-      const sleepers = Array.from({ length: 23 }, (_, i) => `<line x1="${4 + i * 9.4}" y1="82" x2="${8 + i * 9.4}" y2="86"/>`).join('');
+      }).join('')}<circle cx="${cx}" cy="${cy}" r="${r > 10 ? 2.5 : 1.6}" class="d-fill"/></g>`;
+      // Шпалы с запасом по краям — лента сдвигается на один шаг и повторяется
+      const sleepers = Array.from({ length: 27 }, (_, i) => `<line x1="${-14 + i * 9.4}" y1="82" x2="${-10 + i * 9.4}" y2="86"/>`).join('');
       return `<svg class="deco-loco" viewBox="0 0 220 90" aria-hidden="true">
-        <g class="d-smoke"><circle cx="40" cy="12" r="6"/><circle cx="53" cy="7" r="7.5"/><circle cx="69" cy="9" r="6"/><circle cx="82" cy="5" r="4.5"/></g>
+        <g class="d-smoke"><circle class="puff p1" cx="30" cy="15" r="5"/><circle class="puff p2" cx="30" cy="15" r="5"/><circle class="puff p3" cx="30" cy="15" r="5"/><circle class="puff p4" cx="30" cy="15" r="5"/></g>
         <g class="d-ink">
-          <path d="M22 18 L38 18 L34 30 L26 30 Z" class="d-fill"/>
-          <rect x="27" y="30" width="6" height="11"/>
-          <rect x="18" y="41" width="80" height="18" rx="9" class="d-paper"/>
-          <g class="d-hatch">${hatch}</g>
-          <path d="M56 41 a6 6 0 0 1 12 0" class="d-fill"/>
-          <path d="M96 27 L128 27 M100 27 L100 62 M124 27 L124 62"/>
-          <rect x="104" y="33" width="14" height="10" class="d-paper"/>
-          <line x1="12" y1="62" x2="130" y2="62"/>
-          <rect x="10" y="57" width="8" height="7" class="d-fill"/>
-          <line x1="130" y1="62" x2="138" y2="62"/>
-          <rect x="138" y="44" width="54" height="20" class="d-paper"/>
-          <path d="M142 44 L142 38 L188 38 L188 44"/>
-          <g class="d-hatch">${Array.from({ length: 8 }, (_, i) => `<line x1="${144 + i * 6}" y1="47" x2="${144 + i * 6}" y2="61"/>`).join('')}</g>
-          <circle cx="78" cy="69" r="13" class="d-paper"/>${spokes(78, 69, 13, 10)}<circle cx="78" cy="69" r="2.5" class="d-fill"/>
-          <circle cx="34" cy="73" r="8" class="d-paper"/>${spokes(34, 73, 8, 8)}
-          <circle cx="114" cy="73" r="8" class="d-paper"/>${spokes(114, 73, 8, 8)}
-          <circle cx="152" cy="73" r="8" class="d-paper"/>${spokes(152, 73, 8, 8)}
-          <circle cx="178" cy="73" r="8" class="d-paper"/>${spokes(178, 73, 8, 8)}
+          <g class="d-body">
+            <path d="M22 18 L38 18 L34 30 L26 30 Z" class="d-fill"/>
+            <rect x="27" y="30" width="6" height="11"/>
+            <rect x="18" y="41" width="80" height="18" rx="9" class="d-paper"/>
+            <g class="d-hatch">${hatch}</g>
+            <path d="M56 41 a6 6 0 0 1 12 0" class="d-fill"/>
+            <path d="M96 27 L128 27 M100 27 L100 62 M124 27 L124 62"/>
+            <rect x="104" y="33" width="14" height="10" class="d-paper"/>
+            <line x1="12" y1="62" x2="130" y2="62"/>
+            <rect x="10" y="57" width="8" height="7" class="d-fill"/>
+            <line x1="130" y1="62" x2="138" y2="62"/>
+            <rect x="138" y="44" width="54" height="20" class="d-paper"/>
+            <path d="M142 44 L142 38 L188 38 L188 44"/>
+            <g class="d-hatch">${Array.from({ length: 8 }, (_, i) => `<line x1="${144 + i * 6}" y1="47" x2="${144 + i * 6}" y2="61"/>`).join('')}</g>
+          </g>
+          ${wheel(78, 69, 13, 10, 'big')}
+          ${wheel(34, 73, 8, 8, 'small')}${wheel(114, 73, 8, 8, 'small')}
+          ${wheel(152, 73, 8, 8, 'small')}${wheel(178, 73, 8, 8, 'small')}
           <line x1="34" y1="73" x2="114" y2="73" class="d-rod"/>
           <line x1="0" y1="81" x2="220" y2="81"/>
-          <g class="d-thin">${sleepers}</g>
+          <g class="d-thin d-sleepers">${sleepers}</g>
         </g>
       </svg>`;
     },
@@ -101,7 +102,9 @@
   };
   const SEASON_GLYPH = { spring: '❀', summer: '☼', autumn: '❧', winter: '❄' };
   $('title-vignette').innerHTML = DECOR.loco();
+  $('title-vignette').querySelector('svg').classList.add('anim');
   $('loading-vignette').innerHTML = DECOR.loco();
+  $('loading-vignette').querySelector('svg').classList.add('anim');
 
   // ================= API =================
   async function api(method, path, body) {
@@ -757,12 +760,18 @@
     const el = $('panel');
     const s = S.state, v = S.view, c = C();
     if (!s) return;
-    if (S.selected) { el.innerHTML = segmentPanel(c.segById[S.selected]); bindSegmentPanel(); return; }
+    if (S.selected) {
+      el.innerHTML = (s.unlocked.construction ? crewBar() : '') + segmentPanel(c.segById[S.selected]);
+      bindSegmentPanel();
+      bindCrewBar(el);
+      return;
+    }
 
     const parts = [];
     if (!s.unlocked.construction) {
       parts.push(`<div class="hint">Строительство откроется после первых депеш.</div>`);
     } else {
+      parts.push(crewBar());
       const unopened = c.map.segments.some(x => v.segments[x.id].active && !v.segments[x.id].opened);
       if (v.freeCrews > 0 && unopened) {
         parts.push(`<div class="report-note bad">Без дела ${v.freeCrews} ${pluralCrews(v.freeCrews)}: жалованье идёт, работа стоит. Выберите участок и добавьте людей.</div>`);
@@ -858,23 +867,29 @@
     });
   }
 
-  function crewsSection() {
+  // Строка найма, закреплённая наверху панели: не нужно листать вниз
+  function crewBar() {
     const s = S.state, v = S.view, b = C().balance;
+    const hire5 = Math.min(5, v.hireLeft), dis5 = Math.min(5, v.freeCrews);
+    return `<div class="crewbar">
+      <div class="cb-row">
+        <div class="cb-count"><span class="lbl">Артели</span><span><b data-free>${v.freeCrews}</b> своб. из ${s.crewsTotal}</span></div>
+        <div class="cb-btns">
+          <button class="mini" data-dismiss="${dis5}" ${dis5 < 1 ? 'disabled' : ''} aria-label="Распустить ${dis5}">−${dis5 || 5}</button>
+          <button class="mini" data-dismiss="1" ${v.freeCrews < 1 ? 'disabled' : ''} aria-label="Распустить одну">−1</button>
+          <span class="cb-sep"></span>
+          <button class="mini" data-hire="1" ${v.hireLeft < 1 ? 'disabled' : ''} aria-label="Нанять одну">+1</button>
+          <button class="mini" data-hire="${hire5}" ${hire5 < 1 ? 'disabled' : ''} aria-label="Нанять ${hire5}">+${hire5 || 5}</button>
+        </div>
+      </div>
+      <div class="cb-note">найм ${b.crews.hireCostPerCrew} за артель · ${v.hireLeft ? `ещё ${v.hireLeft} в этот сезон` : 'в этот сезон больше не нанять'} · жалованье ${money(v.payPerSeason)} за сезон · распускаются только свободные</div>
+    </div>`;
+  }
+
+  function crewsSection() {
+    const s = S.state, b = C().balance;
     const pay = b.crews.pay;
-    return `<div class="sect"><div class="sect-title">Артели</div>
-      <div class="kv"><span>Всего / свободно</span><span>${s.crewsTotal} / <span data-free>${v.freeCrews}</span></span></div>
-      <div class="kv"><span>Жалованье за сезон</span><span>${money(v.payPerSeason)}</span></div>
-      <div class="stepper">
-        <button class="mini" data-hire="1" ${v.hireLeft < 1 ? 'disabled' : ''}>+1</button>
-        <button class="mini" data-hire="5" ${v.hireLeft < 5 ? 'disabled' : ''}>+5</button>
-        <span class="sub">нанять (${b.crews.hireCostPerCrew} за артель, ещё ${v.hireLeft} в этот сезон)</span>
-      </div>
-      <div class="stepper">
-        <button class="mini" data-dismiss="1" ${v.freeCrews < 1 ? 'disabled' : ''}>−1</button>
-        <button class="mini" data-dismiss="5" ${v.freeCrews < 5 ? 'disabled' : ''}>−5</button>
-        <span class="sub">распустить свободные</span>
-      </div>
-      <div class="sect-title" style="margin-top:10px">Оплата</div>
+    return `<div class="sect"><div class="sect-title">Оплата артелей</div>
       <div class="opts">${['low', 'normal', 'high'].map(l => `<button class="mini${s.pay === l ? ' on' : ''}" data-pay="${l}">${PAY_RU[l]} · ${pay[l].costPerCrew}</button>`).join('')}</div>
       <div class="hint">Скудная оплата роняет настрой, щедрая — поднимает. От настроя зависит выработка.</div>
     </div>`;
@@ -909,10 +924,22 @@
     </div>`;
   }
 
+  function bindCrewBar(el) {
+    el.querySelectorAll('[data-hire]').forEach(b => b.addEventListener('click', async () => {
+      flushCrews(); await waitCrews();
+      await act({ type: 'HIRE_CREWS', amount: +b.dataset.hire });
+      renderGame();
+    }));
+    el.querySelectorAll('[data-dismiss]').forEach(b => b.addEventListener('click', async () => {
+      flushCrews(); await waitCrews();
+      await act({ type: 'DISMISS_CREWS', amount: +b.dataset.dismiss });
+      renderGame();
+    }));
+  }
+
   function bindCommon() {
     const el = $('panel');
-    el.querySelectorAll('[data-hire]').forEach(b => b.addEventListener('click', () => act({ type: 'HIRE_CREWS', amount: +b.dataset.hire }).then(renderGame)));
-    el.querySelectorAll('[data-dismiss]').forEach(b => b.addEventListener('click', () => act({ type: 'DISMISS_CREWS', amount: +b.dataset.dismiss }).then(renderGame)));
+    bindCrewBar(el);
     el.querySelectorAll('[data-pay]').forEach(b => b.addEventListener('click', () => act({ type: 'SET_PAY', level: b.dataset.pay }).then(renderGame)));
     el.querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', async () => {
       const r = await act({ type: 'BUY', itemId: b.dataset.buy, qty: 1 });
