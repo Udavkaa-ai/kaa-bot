@@ -384,7 +384,7 @@ function createKoleya(deps) {
     if (state.outcome === 'halted') {
       // Глава, которую нельзя пройти: засчитывается как завершённая, без звёзд
       await upsertPlayer(tgId, name, { completed: { [chapter]: { stars: null, max: null, halted: true } } });
-      await notify(tgId, `🛑 «Пять футов»: ${ch.map.title} — стройку остановили, как и в истории. В игре ждёт викторина.`, { button: 'open_game' }).catch(() => {});
+      await notify(tgId, `🛑 «История железных дорог России»: ${ch.map.title} — стройку остановили, как и в истории. В игре ждёт викторина.`, { button: 'open_game' }).catch(() => {});
     } else if (state.outcome === 'won') {
       await upsertPlayer(tgId, name, {
         completed: { [chapter]: { stars: state.score?.total ?? null, max: state.score?.max ?? null } },
@@ -393,10 +393,10 @@ function createKoleya(deps) {
           : chapter === 'prologue' ? undefined : { [`${chapter}Route`]: state.routeVariant },
       });
       const stars = state.score ? ` · звёзд ${state.score.total} из ${state.score.max}` : '';
-      await notify(tgId, `🚂 «Пять футов»: ${ch.map.title} — глава пройдена${stars}. В игре ждёт викторина.`, { button: 'open_game' }).catch(() => {});
+      await notify(tgId, `🚂 «История железных дорог России»: ${ch.map.title} — глава пройдена${stars}. В игре ждёт викторина.`, { button: 'open_game' }).catch(() => {});
     } else {
       const why = state.outcome === 'removed' ? 'благоволение исчерпано, вас отстранили' : 'сроки вышли';
-      await notify(tgId, `📜 «Пять футов»: ${ch.map.title} — ${why}. Главу можно начать заново.`, { button: 'open_game' }).catch(() => {});
+      await notify(tgId, `📜 «История железных дорог России»: ${ch.map.title} — ${why}. Главу можно начать заново.`, { button: 'open_game' }).catch(() => {});
     }
   }
 

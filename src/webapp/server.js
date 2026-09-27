@@ -16,7 +16,7 @@ function setBot(bot) {
   botRef = bot;
   // Эрудит: приглашения на турнир и итоги бот постит в чат
   arena.setBot(bot);
-  // «Пять футов» (Koleya): уведомления игрокам
+  // «История железных дорог России» (Koleya): уведомления игрокам
   koleya.setBot(bot);
 }
 
@@ -354,7 +354,7 @@ function start() {
     }
   });
 
-  // «Пять футов» (Koleya): мини-апп /koleya/ и API /koleya/api/*
+  // «История железных дорог России» (Koleya): мини-апп /koleya/ и API /koleya/api/*
   koleya.mount(app);
 
   app.use((req, res) => res.status(404).json({ error: 'not_found' }));
