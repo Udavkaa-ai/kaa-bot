@@ -1448,7 +1448,7 @@
     const arch = (ill.archive || []).find(a => (a.events || []).includes(evId));
     if (arch) {
       const lic = { 'public-domain': 'общественное достояние', CC0: 'CC0', 'CC-BY': 'CC BY', 'CC-BY-SA': 'CC BY-SA' }[arch.license] || arch.license;
-      return `<figure class="plate archive"><img src="${esc(arch.file)}" alt="${esc(arch.title)}" loading="lazy">
+      return `<figure class="plate archive"><div class="ph"><img src="${esc(arch.file)}" alt="${esc(arch.title)}"></div>
         <figcaption>${esc(arch.title)}. ${esc(arch.author)}${arch.year ? `, ${esc(arch.year)}` : ''}. <a href="${esc(arch.source.url)}" target="_blank" rel="noopener">${esc(arch.source.title)}</a> · ${esc(lic)}</figcaption></figure>`;
     }
     const d = (ill.drawings || []).find(x => (x.events || []).includes(evId));

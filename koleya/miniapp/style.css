@@ -596,7 +596,12 @@ body.coach-on .panel { padding-bottom: 180px; }
 /* ================= рисунки игры (plates.js) ================= */
 .plate { margin: 10px 0 6px; border: 1px solid var(--ink); outline: 1px solid var(--ink); outline-offset: 3px; background: var(--paper); padding: 6px; }
 .plate .plate-svg { width: 100%; height: auto; display: block; }
-.plate img { width: 100%; height: auto; display: block; filter: sepia(0.35) contrast(1.05); }
+.plate.archive .ph { overflow: hidden; background: var(--paper-deep); }
+.plate img { width: 100%; height: auto; max-height: 46vh; object-fit: contain; display: block; filter: sepia(0.22) contrast(1.04); }
+@media (prefers-reduced-motion: no-preference) {
+  .modal:not(.hidden) .plate.archive img { animation: kenBurns 16s ease-out both; }
+}
+@keyframes kenBurns { from { transform: scale(1.001); } to { transform: scale(1.08) translate(-1.5%, -1%); } }
 .plate figcaption { font-family: var(--font-display); font-style: italic; font-size: 12px; color: var(--ink-faded); margin-top: 4px; }
 .plate figcaption a { color: var(--ink-faded); }
 .plate.drawing { padding: 0; background: var(--ink); }

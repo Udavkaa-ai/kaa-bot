@@ -1,5 +1,5 @@
 {
-  "comment": "Иллюстрации игры. drawings — собственные гравированные рисунки (miniapp/plates.js), привязанные к событиям. archive — архивные изображения: только общественное достояние или свободные лицензии, с автором, годом, источником и лицензией (docs/FACTS_POLICY.md, п. 6). Файлы архивных изображений кладутся в miniapp/img/.",
+  "comment": "Иллюстрации игры. drawings — собственные гравированные рисунки (miniapp/plates.js), привязанные к событиям. archive — архивные изображения: только общественное достояние или свободные лицензии, с автором, годом, источником и лицензией (docs/FACTS_POLICY.md, п. 6). Файлы архивных изображений кладутся в miniapp/img/ (уменьшенные копии шириной 960 px). Если у события есть архивное изображение, в депеше показывается оно, иначе рисунок.",
   "drawings": [
     {
       "id": "d-decree",
@@ -102,5 +102,275 @@
       ]
     }
   ],
-  "archive": []
+  "archive": [
+    {
+      "id": "a-medal-1837",
+      "file": "img/medal-1837.jpg",
+      "events": [
+        "P01"
+      ],
+      "title": "Медаль в память открытия Царскосельской железной дороги",
+      "author": "Неизвестный медальер",
+      "year": "XIX век",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:TSRailwaysCoin.jpg"
+      }
+    },
+    {
+      "id": "a-beggrov-tsr",
+      "file": "img/beggrov-tsr.jpg",
+      "events": [
+        "P02"
+      ],
+      "title": "Царскосельская железная дорога. Акварель",
+      "author": "Карл Беггров",
+      "year": "1840-е",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:Tzarskoselskaya_Railway_-_Watercolour.jpg"
+      }
+    },
+    {
+      "id": "a-opening-1837",
+      "file": "img/opening-1837.jpg",
+      "events": [
+        "P03"
+      ],
+      "title": "Торжественное открытие Царскосельской железной дороги",
+      "author": "Ф. Мартенс",
+      "year": "после 1837",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:The_Ceremonial_Opening_of_the_Tzarskoye_Selo_Railway.jpg"
+      }
+    },
+    {
+      "id": "a-verebye-petzold",
+      "file": "img/verebye-petzold.jpg",
+      "events": [
+        "E10"
+      ],
+      "title": "Веребьинский мост",
+      "author": "Август Петцольд",
+      "year": "1851–1852",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:%D0%90._%D0%9F%D0%B5%D1%82%D1%86%D0%BE%D0%BB%D1%8C%D0%B4._%D0%92%D0%B5%D1%80%D0%B5%D0%B1%D1%8C%D0%B8%D0%BD%D1%81%D0%BA%D0%B8%D0%B9_%D0%BC%D0%BE%D1%81%D1%82.jpg"
+      }
+    },
+    {
+      "id": "a-msta-bridge",
+      "file": "img/msta-bridge.jpg",
+      "events": [
+        "E12"
+      ],
+      "title": "Мстинский мост Николаевской железной дороги",
+      "author": "Неизвестный автор",
+      "year": "1850-е",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:%D0%9C%D1%81%D1%82%D0%B8%D0%BD%D1%81%D0%BA%D0%B8%D0%B9_%D0%BC%D0%BE%D1%81%D1%82_5447.jpg"
+      }
+    },
+    {
+      "id": "a-bologoye-1851",
+      "file": "img/bologoye-1851.jpg",
+      "events": [
+        "E13"
+      ],
+      "title": "Вокзал станции Бологое. Старая открытка",
+      "author": "Неизвестный автор",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:%D0%97%D0%B4%D0%B0%D0%BD%D0%B8%D0%B5_%D0%B2%D0%BE%D0%BA%D0%B7%D0%B0%D0%BB%D0%B0_%D0%BD%D0%B0_%D1%81%D1%82%D0%B0%D0%BD%D1%86%D0%B8%D0%B8_%D0%91%D0%BE%D0%BB%D0%BE%D0%B3%D0%BE%D0%B5_(1851).jpg"
+      }
+    },
+    {
+      "id": "a-depot-zhelyazevich",
+      "file": "img/depot-zhelyazevich.jpg",
+      "events": [
+        "E14"
+      ],
+      "title": "Паровозное депо Николаевской железной дороги",
+      "author": "Р. А. Желязевич",
+      "year": "1850-е",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:%D0%9F%D0%B0%D1%80%D0%BE%D0%B2%D0%BE%D0%B7%D0%BD%D0%BE%D0%B5_%D0%B4%D0%B5%D0%BF%D0%BE._%D0%9D%D0%B8%D0%BA%D0%BE%D0%BB%D0%B0%D0%B5%D0%B2%D1%81%D0%BA%D0%B0%D1%8F_%D0%B6%D0%B5%D0%BB%D0%B5%D0%B7%D0%BD%D0%B0%D1%8F_%D0%B4%D0%BE%D1%80%D0%BE%D0%B3%D0%B0_0035.jpg"
+      }
+    },
+    {
+      "id": "a-spb-terminal-1851",
+      "file": "img/spb-terminal-1851.jpg",
+      "events": [
+        "E15"
+      ],
+      "title": "Дебаркадер вокзала Николаевской дороги в Петербурге",
+      "author": "Август Петцольд",
+      "year": "1851",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:Railway_station_Saint-Petersburg._003.JPG"
+      }
+    },
+    {
+      "id": "a-verebye-goffert",
+      "file": "img/verebye-goffert.jpg",
+      "events": [
+        "E16"
+      ],
+      "title": "Веребьинский мост",
+      "author": "Иосиф Гофферт",
+      "year": "1863–1864",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:Vereb%27inskiy_bridge._13.jpg"
+      }
+    },
+    {
+      "id": "a-stone-hewing",
+      "file": "img/stone-hewing.jpg",
+      "events": [
+        "T04"
+      ],
+      "title": "Тёска камней для Енисейского моста",
+      "author": "Иван Томашкевич",
+      "year": "1899",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:120_%D0%A2%D0%B5%D1%81%D0%BA%D0%B0_%D0%BA%D0%B0%D0%BC%D0%BD%D0%B5%D0%B9_%D0%B4%D0%BB%D1%8F_%D0%95%D0%BD%D0%B8%D1%81%D0%B5%D0%B9%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BC%D0%BE%D1%81%D1%82%D0%B0_(cropped).jpg"
+      }
+    },
+    {
+      "id": "a-baikal-ferry",
+      "file": "img/baikal-ferry.jpg",
+      "events": [
+        "T05"
+      ],
+      "title": "Паром «Байкал» за выгрузкой. Из альбома Кругобайкальской железной дороги",
+      "author": "Неизвестный автор",
+      "year": "начало 1900-х",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:%D0%91%D0%B0%D0%B9%D0%BA%D0%B0%D0%BB._%D0%9F%D0%B0%D1%80%D0%BE%D0%BC_%C2%AB%D0%91%D0%B0%D0%B9%D0%BA%D0%B0%D0%BB%C2%BB_%D0%B7%D0%B0_%D0%B2%D1%8B%D0%B3%D1%80%D1%83%D0%B7%D0%BA%D0%BE%D0%B9.(%D0%90%D0%BB%D1%8C%D0%B1.%D0%9A%D1%80%D1%83%D0%B3%D0%BE%D0%B1%D0%B0%D0%B9%D0%BA%D0%B0%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B9_%D0%B6.%D0%B4.)_%D0%BD%D0%B0%D1%87.1900%D1%85%D0%B3%D0%B3_%D0%93%D0%98%D0%9C_e1r.jpg"
+      }
+    },
+    {
+      "id": "a-yenisei-bridge",
+      "file": "img/yenisei-bridge.jpg",
+      "events": [
+        "T07"
+      ],
+      "title": "Мост через Енисей",
+      "author": "Неизвестный автор",
+      "year": "1904",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:Bridge_over_Yenisei_2.jpg"
+      }
+    },
+    {
+      "id": "a-ob-bridge",
+      "file": "img/ob-bridge.jpg",
+      "events": [
+        "T09"
+      ],
+      "title": "Мост через реку Обь",
+      "author": "Иван Томашкевич",
+      "year": "1899",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:001_%D0%9C%D0%BE%D1%81%D1%82_%D1%87%D0%B5%D1%80%D0%B5%D0%B7_%D1%80%D0%B5%D0%BA%D1%83_%D0%9E%D0%B1%D1%8C_(cropped).jpg"
+      }
+    },
+    {
+      "id": "a-rock-cut",
+      "file": "img/rock-cut.jpg",
+      "events": [
+        "T11"
+      ],
+      "title": "Каменная выемка на 644-й версте",
+      "author": "Иван Томашкевич",
+      "year": "1899",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:086_%D0%9A%D0%B0%D0%BC%D0%B5%D0%BD%D0%BD%D0%B0%D1%8F_%D0%B2%D1%8B%D0%B5%D0%BC%D0%BA%D0%B0_%D0%BD%D0%B0_644_%D0%B2%D0%B5%D1%80.jpg"
+      }
+    },
+    {
+      "id": "a-baikal-angara-mysovaya",
+      "file": "img/baikal-angara-mysovaya.jpg",
+      "events": [
+        "T12"
+      ],
+      "title": "Ледоколы «Байкал» и «Ангара» в порту Мысовая",
+      "author": "Неизвестный автор",
+      "year": "1901–1905",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:%C2%AB%D0%91%D0%B0%D0%B9%D0%BA%D0%B0%D0%BB%C2%BB_%D0%B8_%C2%AB%D0%90%D0%BD%D0%B3%D0%B0%D1%80%D0%B0%C2%BB_%D0%B2_%D0%BF%D0%BE%D1%80%D1%82%D1%83_%D0%9C%D1%8B%D1%81%D0%BE%D0%B2%D0%B0%D1%8F.jpg"
+      }
+    },
+    {
+      "id": "a-track-laying",
+      "file": "img/track-laying.jpg",
+      "events": [
+        "T13"
+      ],
+      "title": "Укладка пути",
+      "author": "Иван Томашкевич",
+      "year": "1899",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:099_%D0%A3%D0%BA%D0%BB%D0%B0%D0%B4%D0%BA%D0%B0_%D0%BF%D1%83%D1%82%D0%B8_(cropped).jpg"
+      }
+    },
+    {
+      "id": "a-circum-baikal",
+      "file": "img/circum-baikal.jpg",
+      "events": [
+        "T16"
+      ],
+      "title": "Кругобайкальская железная дорога. Линия вдоль берега",
+      "author": "Неизвестный автор",
+      "year": "1902–1904",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:%D0%91%D0%B0%D0%B9%D0%BA%D0%B0%D0%BB._%D0%9A%D1%80%D1%83%D0%B3%D0%BE%D0%B1%D0%B0%D0%B9%D0%BA%D0%B0%D0%BB%D1%8C%D1%81%D0%BA%D0%B0%D1%8F_%D0%B6-%D0%B4._%D0%9B%D0%B8%D0%BD%D0%B8%D1%8F_%D0%B2%D0%B4%D0%BE%D0%BB%D1%8C_%D0%B1%D0%B5%D1%80%D0%B5%D0%B3%D0%B0._1902-1904%D0%B3%D0%B3_%D0%93%D0%98%D0%9C_e1.jpg"
+      }
+    },
+    {
+      "id": "a-kemchug-line",
+      "file": "img/kemchug-line.jpg",
+      "events": [
+        "T17"
+      ],
+      "title": "Линия железной дороги вдоль берега реки Кемчуг",
+      "author": "Иван Томашкевич",
+      "year": "1899",
+      "license": "public-domain",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:080_%D0%9B%D0%B8%D0%BD%D0%B8%D1%8F_%D0%B6%D0%B5%D0%BB%D0%B5%D0%B7%D0%BD%D0%BE%D0%B9_%D0%B4%D0%BE%D1%80%D0%BE%D0%B3%D0%B8_%D0%B2%D0%B4%D0%BE%D0%BB%D1%8C_%D0%B1%D0%B5%D1%80%D0%B5%D0%B3%D0%B0_%D1%80_%D0%9A%D0%B5%D0%BC%D1%87%D1%83%D0%B3%D0%B0_(cropped).jpg"
+      }
+    }
+  ]
 }
