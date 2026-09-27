@@ -27,6 +27,82 @@
   };
   const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // ================= украшения (гравюра и казённая бумага) =================
+  // Цвета — только классы, которые красятся токенами темы в style.css.
+  const DECOR = {
+    // Виньетка: ранний паровоз с тендером, штриховка котла, клубы дыма
+    loco() {
+      const hatch = Array.from({ length: 11 }, (_, i) => `<line x1="${26 + i * 7}" y1="42" x2="${26 + i * 7}" y2="58"/>`).join('');
+      const spokes = (cx, cy, r, n) => Array.from({ length: n }, (_, i) => {
+        const a = Math.PI * 2 * i / n;
+        return `<line x1="${cx}" y1="${cy}" x2="${(cx + Math.cos(a) * r).toFixed(1)}" y2="${(cy + Math.sin(a) * r).toFixed(1)}"/>`;
+      }).join('');
+      const sleepers = Array.from({ length: 23 }, (_, i) => `<line x1="${4 + i * 9.4}" y1="82" x2="${8 + i * 9.4}" y2="86"/>`).join('');
+      return `<svg class="deco-loco" viewBox="0 0 220 90" aria-hidden="true">
+        <g class="d-smoke"><circle cx="40" cy="12" r="6"/><circle cx="53" cy="7" r="7.5"/><circle cx="69" cy="9" r="6"/><circle cx="82" cy="5" r="4.5"/></g>
+        <g class="d-ink">
+          <path d="M22 18 L38 18 L34 30 L26 30 Z" class="d-fill"/>
+          <rect x="27" y="30" width="6" height="11"/>
+          <rect x="18" y="41" width="80" height="18" rx="9" class="d-paper"/>
+          <g class="d-hatch">${hatch}</g>
+          <path d="M56 41 a6 6 0 0 1 12 0" class="d-fill"/>
+          <path d="M96 27 L128 27 M100 27 L100 62 M124 27 L124 62"/>
+          <rect x="104" y="33" width="14" height="10" class="d-paper"/>
+          <line x1="12" y1="62" x2="130" y2="62"/>
+          <rect x="10" y="57" width="8" height="7" class="d-fill"/>
+          <line x1="130" y1="62" x2="138" y2="62"/>
+          <rect x="138" y="44" width="54" height="20" class="d-paper"/>
+          <path d="M142 44 L142 38 L188 38 L188 44"/>
+          <g class="d-hatch">${Array.from({ length: 8 }, (_, i) => `<line x1="${144 + i * 6}" y1="47" x2="${144 + i * 6}" y2="61"/>`).join('')}</g>
+          <circle cx="78" cy="69" r="13" class="d-paper"/>${spokes(78, 69, 13, 10)}<circle cx="78" cy="69" r="2.5" class="d-fill"/>
+          <circle cx="34" cy="73" r="8" class="d-paper"/>${spokes(34, 73, 8, 8)}
+          <circle cx="114" cy="73" r="8" class="d-paper"/>${spokes(114, 73, 8, 8)}
+          <circle cx="152" cy="73" r="8" class="d-paper"/>${spokes(152, 73, 8, 8)}
+          <circle cx="178" cy="73" r="8" class="d-paper"/>${spokes(178, 73, 8, 8)}
+          <line x1="34" y1="73" x2="114" y2="73" class="d-rod"/>
+          <line x1="0" y1="81" x2="220" y2="81"/>
+          <g class="d-thin">${sleepers}</g>
+        </g>
+      </svg>`;
+    },
+    // Сургучная печать с колесом и номером
+    seal(label) {
+      const spokes = Array.from({ length: 8 }, (_, i) => {
+        const a = Math.PI * 2 * i / 8;
+        return `<line x1="30" y1="30" x2="${(30 + Math.cos(a) * 11).toFixed(1)}" y2="${(30 + Math.sin(a) * 11).toFixed(1)}"/>`;
+      }).join('');
+      return `<svg class="deco-seal" viewBox="0 0 60 60" aria-hidden="true">
+        <circle cx="30" cy="30" r="25" class="s-wax"/>
+        <circle cx="30" cy="30" r="26" class="s-edge"/>
+        <circle cx="30" cy="30" r="19" class="s-ring"/>
+        <g class="s-mark"><circle cx="30" cy="30" r="11"/>${spokes}<circle cx="30" cy="30" r="2.5" class="s-hub"/></g>
+        ${label ? `<text x="30" y="55.5" text-anchor="middle" class="s-text">${label}</text>` : ''}
+      </svg>`;
+    },
+    // Орнаментальная линейка с виньеткой посередине
+    // Строка подписи с росчерком пера
+    signature(left, right) {
+      return `<div class="signature"><span>${left}</span><i><svg viewBox="0 0 80 16" preserveAspectRatio="none" aria-hidden="true"><path d="M2 12 C10 2, 16 14, 24 7 S36 3, 40 10 S52 15, 58 6 S70 2, 78 9"/></svg></i><span>${right}</span></div>`;
+    },
+    rule(glyph = '❦') { return `<div class="orn" aria-hidden="true"><span>${glyph}</span></div>`; },
+    // Роза ветров для карты-чертежа
+    rose(x, y, r) {
+      const pt = (a, len) => [(x + Math.sin(a) * len).toFixed(1), (y - Math.cos(a) * len).toFixed(1)];
+      const ray = (a, len, w, cls) => {
+        const [tx, ty] = pt(a, len), [lx, ly] = pt(a - Math.PI / 2, w), [rx, ry] = pt(a + Math.PI / 2, w);
+        return `<path d="M${tx} ${ty} L${lx} ${ly} L${x} ${y} Z" class="${cls}"/><path d="M${tx} ${ty} L${rx} ${ry} L${x} ${y} Z" class="${cls}-dark"/>`;
+      };
+      let g = `<circle cx="${x}" cy="${y}" r="${r * 0.62}" class="rose-ring"/>`;
+      for (let i = 0; i < 4; i++) g += ray(Math.PI / 4 + i * Math.PI / 2, r * 0.6, r * 0.12, 'rose-ray-s');
+      for (let i = 0; i < 4; i++) g += ray(i * Math.PI / 2, r, r * 0.18, i === 0 ? 'rose-ray-n' : 'rose-ray');
+      const [nx, ny] = pt(0, r + 8);
+      return `<g class="rose">${g}<text x="${nx}" y="${ny}" text-anchor="middle" class="rose-n">С</text></g>`;
+    },
+  };
+  const SEASON_GLYPH = { spring: '❀', summer: '☼', autumn: '❧', winter: '❄' };
+  $('title-vignette').innerHTML = DECOR.loco();
+  $('loading-vignette').innerHTML = DECOR.loco();
+
   // ================= API =================
   async function api(method, path, body) {
     const opts = { method, headers: { 'X-Telegram-Init-Data': initData } };
@@ -160,7 +236,7 @@
       else if (sv && sv.finished) status = sv.outcome === 'won' ? 'Пройдена' : 'Проиграна';
       const cont = sv && !sv.finished;
       const review = sv && sv.finished && sv.outcome === 'won';
-      return `<div class="chapter-card">
+      return `<div class="chapter-card"><i class="corner tl">✥</i><i class="corner tr">✥</i><i class="corner bl">✥</i><i class="corner br">✥</i>
         <div class="years">${info.years}</div>
         <h3>${esc(info.title)}</h3>
         <div class="desc">${esc(info.desc)}</div>
@@ -368,7 +444,7 @@
     if (!s) return;
     renderCalendar();
     $('resbar').innerHTML = `
-      <div class="res"><span class="lbl">${esc(C().map.title)}</span><span class="date">${SEASON_RU[s.season]} ${s.year}</span></div>
+      <div class="res"><span class="lbl">${esc(C().map.title)}</span><span class="date"><span class="sglyph">${SEASON_GLYPH[s.season]}</span> ${SEASON_RU[s.season]} ${s.year}</span></div>
       <div class="res"><span class="lbl">Казна, тыс. руб.</span><span class="val${s.treasury < 0 ? ' neg' : ''}">${money(s.treasury)}</span></div>
       <div class="res"><span class="lbl">Артели своб./всего</span><span class="val">${v.freeCrews} / ${s.crewsTotal}</span></div>
       <div class="res"><span class="lbl">Благоволение</span>${meter(s.favor)}</div>
@@ -503,8 +579,22 @@
       const right = x < W * 0.62;
       parts.push(`<text x="${x + (right ? 9 : -9)}" y="${y + 4}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${n.kind === 'station' ? fs - 1 : fs + 1}">${esc(n.name.replace(/\s*\(.+\)/, ''))}</text>`);
     }
+    // Роза ветров и масштабная линейка в вёрстах (1 верста = 1,0668 км)
+    parts.push(DECOR.rose(W - 44, H - 58, 26));
+    {
+      const a0 = c.map.nodes[0], a1 = c.map.nodes[c.map.nodes.length - 1];
+      const pxPerKm = Math.hypot(P(a1)[0] - P(a0)[0], P(a1)[1] - P(a0)[1]) /
+        (Math.hypot((a1.lon - a0.lon) * Math.cos((a0.lat + a1.lat) / 2 * Math.PI / 180), a1.lat - a0.lat) * 111.32 || 1);
+      const steps = [5, 10, 20, 50, 100];
+      const versts = steps.find(v => v * 1.0668 * pxPerKm >= 45) || 100;
+      const L = versts * 1.0668 * pxPerKm;
+      const x0 = 20, y0 = H - 24;
+      const ticks = [0, 1, 2, 3].map(i => `<rect x="${x0 + i * L / 4}" y="${y0 - 3}" width="${L / 4}" height="4" class="${i % 2 ? 'scale-w' : 'scale-b'}"/>`).join('');
+      parts.push(`<g class="scale">${ticks}<text x="${x0}" y="${y0 + 11}" class="scale-t">0</text><text x="${x0 + L}" y="${y0 + 11}" text-anchor="end" class="scale-t">${versts} вёрст</text></g>`);
+    }
     // Картуш
     parts.push(`<g class="cartouche"><rect x="14" y="14" width="${Math.min(W - 28, 230)}" height="36" class="cartouche-box"/>
+      <rect x="11" y="11" width="${Math.min(W - 28, 230) + 6}" height="42" class="cartouche-box thin"/>
       <text x="22" y="30" class="cartouche-title" font-size="14">${esc(c.map.title)}</text>
       <text x="22" y="44" class="cartouche-sub" font-size="8.5">ЧЕРТЁЖ ТРАССЫ · ${esc(yearsOf(S.chapter))}</text></g>`);
     svg.innerHTML = parts.join('');
@@ -558,7 +648,7 @@
       const gName = { north: 'Северная дирекция · Мельников', south: 'Южная дирекция · Крафт', main: 'Участки' };
       for (const [g, list] of Object.entries(groups)) {
         const crews = list.reduce((a, x) => a + v.segments[x.id].crews, 0);
-        parts.push(`<div class="sect"><div class="sect-title">${gName[g]} · ${crews} ${pluralCrews(crews)}</div><div class="scheme">`);
+        parts.push(`<div class="sect"><div class="sect-title fleur">${gName[g]} · ${crews} ${pluralCrews(crews)}</div><div class="scheme">`);
         parts.push(stationRow(list[0].from));
         for (const seg of list) { parts.push(schemeRow(seg)); parts.push(stationRow(seg.to)); }
         parts.push(`</div></div>`);
@@ -840,9 +930,11 @@
         return `<div class="report-line"><span>${esc(segName(c.segById[id]))}</span><span>+${Math.round(w / (sv.work || 1) * 100)}% → ${Math.round(sv.progress)}%</span></div>`;
       }).join('')
       : (S.state.unlocked.construction ? `<div class="report-note">Работы в этом сезоне не велись.</div>` : '');
-    openModal(`<div class="kicker">Доклад</div>
-      <h2>Итоги ${SEASON_GEN[r.season]} ${r.year} года</h2>
-      ${lines.join('')}${progHtml}${notes.join('')}
+    openModal(`<div class="doc-head"><div><div class="kicker">Ведомость · доклад по строительству</div>
+      <h2>Итоги ${SEASON_GEN[r.season]} ${r.year} года</h2></div>${DECOR.seal(String(r.year))}</div>
+      ${DECOR.rule('✦')}
+      <div class="ledger">${lines.join('')}</div>${progHtml}${notes.join('')}
+      ${DECOR.signature('Составил', 'главный инженер')}
       ${log.some(l => l.kind === 'opened') ? '<button class="btn ghost" data-map>Показать на карте</button>' : ''}
       <button class="btn" data-next>Далее</button>`, d => {
         d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); });
@@ -898,13 +990,17 @@
         <button class="btn${ev.type === 'decision' ? ' ghost' : ''}" data-choice="${ch.id}">${esc(ch.label)}${effectHint(ch.effects || {})}</button>
         ${advisorLines(`${ev.id}.${ch.id}`)}
       </div>`).join('');
-    openModal(`<div class="kicker">${kicker} · ${SEASON_RU[s.season].toLowerCase()} ${s.year}</div>
+    const inNo = (s.firedEvents.length + s.pendingEvents.length) * 7 + s.turn + 101;
+    openModal(`<div class="doc-head"><div><div class="kicker">${kicker} · ${SEASON_RU[s.season].toLowerCase()} ${s.year}</div>
+      <div class="stamp">Входящая № ${inNo}</div></div>${DECOR.seal('')}</div>
       <h2>${esc(ev.title)}</h2>
       ${isLegend ? '<span class="tag legend">слух · легенда</span>' : ''}
       <div class="text">${esc(ev.text)}</div>
       ${intro}
       ${!isLegend && (ev.fact_refs || []).length ? `<div class="facts">${factsHtml(ev.fact_refs)}</div>` : ''}
-      ${choices}`, d => d.querySelectorAll('[data-choice]').forEach(b => b.addEventListener('click', () => choose(ev, b.dataset.choice))));
+      ${DECOR.rule('❧')}
+      ${choices}
+      ${DECOR.signature('Канцелярия строительства', 'к исполнению')}`, d => d.querySelectorAll('[data-choice]').forEach(b => b.addEventListener('click', () => choose(ev, b.dataset.choice))));
   }
 
   async function choose(ev, choiceId) {
@@ -934,6 +1030,7 @@
     const text = ev.legend ? '' : `<div class="t">${esc(h.text || '')}</div>`;
     openModal(`<div class="kicker">${ev.legend ? 'Легенда и правда' : 'Как было на самом деле'}</div>
       <h2>${esc(ev.title)}</h2>
+      ${DECOR.rule('❦')}
       <div class="history"><div class="h">${ev.legend ? 'На деле' : 'История'}</div>${text}${verdict}</div>
       <div class="facts">${factsHtml(ev.fact_refs || [], { open: !!ev.legend })}</div>
       <button class="btn" data-next>Далее</button>`, d => d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); }));

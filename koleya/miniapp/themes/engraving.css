@@ -13,6 +13,11 @@
   --route-wash: rgba(156, 28, 28, 0.08);
   --ok: #3F6B3A;
   --scrim: rgba(42, 33, 25, 0.38);
+  --wax: #8E1B1B;
+  --wax-dark: #5E1010;
+  /* Зерно бумаги ручного отлива и потемнение к краям листа */
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.16 0 0 0 0 0.13 0 0 0 0 0.10 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-vignette: radial-gradient(ellipse at 50% 40%, rgba(220, 209, 182, 0) 55%, rgba(176, 156, 118, 0.35) 100%);
 
   --font-display: 'Old Standard TT', 'Times New Roman', Georgia, serif;
   --font-ui: 'PT Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;

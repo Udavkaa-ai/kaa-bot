@@ -15,11 +15,12 @@
   <!-- Титул -->
   <section id="s-home" class="screen">
     <div class="title-sheet">
+      <div class="title-vignette" id="title-vignette"></div>
       <div class="title-rule"></div>
       <div class="title-kicker">историческая стратегия</div>
       <h1 class="title-main">Пять футов</h1>
       <div class="title-sub">о постройке первых русских железных дорог</div>
-      <div class="title-rule"></div>
+      <div class="orn" aria-hidden="true"><span>❦</span></div>
     </div>
     <div class="chapters" id="chapters"></div>
     <div class="home-links">
@@ -53,6 +54,7 @@
   <!-- Об игре -->
   <section id="s-about" class="screen hidden">
     <h2 class="sheet-title">Об игре</h2>
+    <div class="orn" aria-hidden="true"><span>✥</span></div>
     <p>Вы — главный инженер. Каждый ход — сезон: распределите артели по участкам, следите за казной,
       благоволением и настроем, отвечайте на депеши. В конце главы — первый поезд, «как было на самом деле» и викторина.</p>
     <p>Исторические сведения в игре берутся только из карточек фактов с источниками. Пометка
@@ -80,7 +82,7 @@
   </div>
 
   <div class="toast hidden" id="toast" role="status"></div>
-  <div class="loading" id="loading">Раскладываем чертежи…</div>
+  <div class="loading" id="loading"><div class="loading-in"><div id="loading-vignette"></div><div>Раскладываем чертежи…</div></div></div>
 
   <script src="app.js"></script>
 </body>
