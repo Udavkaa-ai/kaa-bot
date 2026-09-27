@@ -86,7 +86,7 @@
     },
     rule(glyph = '❦') { return `<div class="orn" aria-hidden="true"><span>${glyph}</span></div>`; },
     // Роза ветров для карты-чертежа
-    rose(x, y, r) {
+    rose(x, y, r, deg = 0) {
       const pt = (a, len) => [(x + Math.sin(a) * len).toFixed(1), (y - Math.cos(a) * len).toFixed(1)];
       const ray = (a, len, w, cls) => {
         const [tx, ty] = pt(a, len), [lx, ly] = pt(a - Math.PI / 2, w), [rx, ry] = pt(a + Math.PI / 2, w);
@@ -96,7 +96,7 @@
       for (let i = 0; i < 4; i++) g += ray(Math.PI / 4 + i * Math.PI / 2, r * 0.6, r * 0.12, 'rose-ray-s');
       for (let i = 0; i < 4; i++) g += ray(i * Math.PI / 2, r, r * 0.18, i === 0 ? 'rose-ray-n' : 'rose-ray');
       const [nx, ny] = pt(0, r + 8);
-      return `<g class="rose">${g}<text x="${nx}" y="${ny}" text-anchor="middle" class="rose-n">С</text></g>`;
+      return `<g class="rose" transform="rotate(${deg.toFixed(1)} ${x} ${y})">${g}<text x="${nx}" y="${ny}" text-anchor="middle" class="rose-n">С</text></g>`;
     },
   };
   const SEASON_GLYPH = { spring: '❀', summer: '☼', autumn: '❧', winter: '❄' };
@@ -460,16 +460,30 @@
 
   // ---- карта-чертёж (SVG) ----
   const SVGNS = 'http://www.w3.org/2000/svg';
-  function projector(nodes, W, H, pad) {
-    const lats = nodes.map(n => n.lat), lons = nodes.map(n => n.lon);
+  // Проекция чертежа. На вертикальном экране карта разворачивается вдоль трассы
+  // (как старинные путевые карты): линия from → to идёт сверху вниз и занимает всю высоту.
+  // P.northDeg — на сколько повернуть розу ветров, чтобы она показывала настоящий север.
+  function projector(nodes, W, H, pad, along) {
+    const lats = nodes.map(n => n.lat);
     const lat0 = (Math.min(...lats) + Math.max(...lats)) / 2;
     const kx = Math.cos(lat0 * Math.PI / 180);
-    const minX = Math.min(...lons) * kx, maxX = Math.max(...lons) * kx;
-    const minY = Math.min(...lats), maxY = Math.max(...lats);
+    const base = n => [n.lon * kx, -n.lat];
+    let alpha = 0;
+    if (along && H > W * 1.15) {
+      const [u0, v0] = base(along.from), [u1, v1] = base(along.to);
+      alpha = Math.PI / 2 - Math.atan2(v1 - v0, u1 - u0);
+    }
+    const ca = Math.cos(alpha), sa = Math.sin(alpha);
+    const rot = n => { const [u, v] = base(n); return [u * ca - v * sa, u * sa + v * ca]; };
+    const pts = nodes.map(rot);
+    const minX = Math.min(...pts.map(p => p[0])), maxX = Math.max(...pts.map(p => p[0]));
+    const minY = Math.min(...pts.map(p => p[1])), maxY = Math.max(...pts.map(p => p[1]));
     const sc = Math.min((W - 2 * pad.x) / Math.max(1e-6, maxX - minX), (H - pad.top - pad.bottom) / Math.max(1e-6, maxY - minY));
     const offX = (W - (maxX - minX) * sc) / 2;
     const offY = pad.top + ((H - pad.top - pad.bottom) - (maxY - minY) * sc) / 2;
-    return n => [offX + (n.lon * kx - minX) * sc, offY + (maxY - n.lat) * sc];
+    const P = n => { const [x, y] = rot(n); return [offX + (x - minX) * sc, offY + (y - minY) * sc]; };
+    P.northDeg = alpha * 180 / Math.PI;
+    return P;
   }
   function lineLen(a, b) { return Math.hypot(b[0] - a[0], b[1] - a[1]); }
 
@@ -480,7 +494,9 @@
     const box = $('map-wrap').getBoundingClientRect();
     const W = Math.max(300, Math.round(box.width)), H = Math.max(220, Math.round(box.height));
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    const P = projector(c.map.nodes, W, H, { x: 46, top: 56, bottom: 26 });
+    const visibleNodes = c.map.nodes.filter(n => !(S.state.routeVariant && n.variant && n.variant !== S.state.routeVariant));
+    const fr = c.map.historical.firstRun;
+    const P = projector(visibleNodes, W, H, { x: 70, top: 64, bottom: 34 }, { from: c.nodesById[fr.from], to: c.nodesById[fr.to] });
     const s = S.state, v = S.view;
     const parts = [];
 
@@ -580,13 +596,13 @@
       parts.push(`<text x="${x + (right ? 9 : -9)}" y="${y + 4}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${n.kind === 'station' ? fs - 1 : fs + 1}">${esc(n.name.replace(/\s*\(.+\)/, ''))}</text>`);
     }
     // Роза ветров и масштабная линейка в вёрстах (1 верста = 1,0668 км)
-    parts.push(DECOR.rose(W - 44, H - 58, 26));
+    parts.push(DECOR.rose(W - 44, H - 58, 26, P.northDeg));
     {
       const a0 = c.map.nodes[0], a1 = c.map.nodes[c.map.nodes.length - 1];
       const pxPerKm = Math.hypot(P(a1)[0] - P(a0)[0], P(a1)[1] - P(a0)[1]) /
         (Math.hypot((a1.lon - a0.lon) * Math.cos((a0.lat + a1.lat) / 2 * Math.PI / 180), a1.lat - a0.lat) * 111.32 || 1);
       const steps = [5, 10, 20, 50, 100];
-      const versts = steps.find(v => v * 1.0668 * pxPerKm >= 45) || 100;
+      const versts = steps.find(v => v * 1.0668 * pxPerKm >= 72) || 100;
       const L = versts * 1.0668 * pxPerKm;
       const x0 = 20, y0 = H - 24;
       const ticks = [0, 1, 2, 3].map(i => `<rect x="${x0 + i * L / 4}" y="${y0 - 3}" width="${L / 4}" height="4" class="${i % 2 ? 'scale-w' : 'scale-b'}"/>`).join('');
