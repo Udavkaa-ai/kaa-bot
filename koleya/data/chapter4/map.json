@@ -1,0 +1,259 @@
+{
+  "chapterId": "chapter4",
+  "title": "ВСМ «Центр — Юг»",
+  "era": "techbook",
+  "note": "Сценарий «что если»: на деле строительство так и не началось (факт V26). Трасса — по описанию проекта (Москва — Харьков — Лозовая с ответвлениями на Симферополь и Ростов-на-Дону), длины участков — игровые приближения, координаты приблизительные.",
+  "directorates": {
+    "north": "Участок Москва — Курск",
+    "center": "Участок Курск — Лозовая",
+    "crimea": "Крымское направление",
+    "caucasus": "Кавказское направление"
+  },
+  "nodes": [
+    {
+      "id": "moscow",
+      "name": "Москва",
+      "lat": 55.75,
+      "lon": 37.62,
+      "kind": "capital"
+    },
+    {
+      "id": "tula",
+      "name": "Тула",
+      "lat": 54.19,
+      "lon": 37.62,
+      "kind": "town"
+    },
+    {
+      "id": "orel",
+      "name": "Орёл",
+      "lat": 52.97,
+      "lon": 36.07,
+      "kind": "town"
+    },
+    {
+      "id": "kursk",
+      "name": "Курск",
+      "lat": 51.73,
+      "lon": 36.19,
+      "kind": "town"
+    },
+    {
+      "id": "belgorod",
+      "name": "Белгород",
+      "lat": 50.6,
+      "lon": 36.59,
+      "kind": "town"
+    },
+    {
+      "id": "kharkov",
+      "name": "Харьков",
+      "lat": 49.99,
+      "lon": 36.23,
+      "kind": "town"
+    },
+    {
+      "id": "lozovaya",
+      "name": "Лозовая",
+      "lat": 48.89,
+      "lon": 36.32,
+      "kind": "station"
+    },
+    {
+      "id": "zaporozhye",
+      "name": "Запорожье",
+      "lat": 47.84,
+      "lon": 35.14,
+      "kind": "town"
+    },
+    {
+      "id": "dzhankoy",
+      "name": "Джанкой",
+      "lat": 45.71,
+      "lon": 34.39,
+      "kind": "station"
+    },
+    {
+      "id": "simferopol",
+      "name": "Симферополь",
+      "lat": 44.95,
+      "lon": 34.1,
+      "kind": "capital"
+    },
+    {
+      "id": "debaltsevo",
+      "name": "Дебальцево",
+      "lat": 48.34,
+      "lon": 38.4,
+      "kind": "station"
+    },
+    {
+      "id": "rostov",
+      "name": "Ростов-на-Дону",
+      "lat": 47.23,
+      "lon": 39.72,
+      "kind": "capital"
+    }
+  ],
+  "segments": [
+    {
+      "id": "moscow_tula",
+      "from": "moscow",
+      "to": "tula",
+      "length_km": 180,
+      "terrain": {
+        "plain": 0.6,
+        "forest": 0.3,
+        "hills": 0.1
+      },
+      "features": [],
+      "directorate": "north"
+    },
+    {
+      "id": "tula_orel",
+      "from": "tula",
+      "to": "orel",
+      "length_km": 180,
+      "terrain": {
+        "plain": 0.7,
+        "hills": 0.3
+      },
+      "features": [],
+      "directorate": "north"
+    },
+    {
+      "id": "orel_kursk",
+      "from": "orel",
+      "to": "kursk",
+      "length_km": 150,
+      "terrain": {
+        "plain": 0.6,
+        "hills": 0.4
+      },
+      "features": [],
+      "directorate": "north"
+    },
+    {
+      "id": "kursk_belgorod",
+      "from": "kursk",
+      "to": "belgorod",
+      "length_km": 140,
+      "terrain": {
+        "plain": 0.6,
+        "hills": 0.4
+      },
+      "features": [],
+      "directorate": "center"
+    },
+    {
+      "id": "belgorod_kharkov",
+      "from": "belgorod",
+      "to": "kharkov",
+      "length_km": 90,
+      "terrain": {
+        "plain": 0.7,
+        "hills": 0.3
+      },
+      "features": [],
+      "directorate": "center"
+    },
+    {
+      "id": "kharkov_lozovaya",
+      "from": "kharkov",
+      "to": "lozovaya",
+      "length_km": 140,
+      "terrain": {
+        "plain": 0.8,
+        "swamp": 0.2
+      },
+      "features": [],
+      "directorate": "center"
+    },
+    {
+      "id": "lozovaya_zaporozhye",
+      "from": "lozovaya",
+      "to": "zaporozhye",
+      "length_km": 180,
+      "terrain": {
+        "plain": 0.8,
+        "hills": 0.2
+      },
+      "features": [
+        "dnieper_bridge"
+      ],
+      "directorate": "crimea"
+    },
+    {
+      "id": "zaporozhye_dzhankoy",
+      "from": "zaporozhye",
+      "to": "dzhankoy",
+      "length_km": 260,
+      "terrain": {
+        "plain": 0.8,
+        "swamp": 0.2
+      },
+      "features": [],
+      "directorate": "crimea"
+    },
+    {
+      "id": "dzhankoy_simferopol",
+      "from": "dzhankoy",
+      "to": "simferopol",
+      "length_km": 90,
+      "terrain": {
+        "plain": 0.6,
+        "hills": 0.4
+      },
+      "features": [],
+      "directorate": "crimea"
+    },
+    {
+      "id": "lozovaya_debaltsevo",
+      "from": "lozovaya",
+      "to": "debaltsevo",
+      "length_km": 170,
+      "terrain": {
+        "plain": 0.6,
+        "hills": 0.4
+      },
+      "features": [],
+      "directorate": "caucasus"
+    },
+    {
+      "id": "debaltsevo_rostov",
+      "from": "debaltsevo",
+      "to": "rostov",
+      "length_km": 200,
+      "terrain": {
+        "plain": 0.6,
+        "hills": 0.3,
+        "swamp": 0.1
+      },
+      "features": [],
+      "directorate": "caucasus"
+    }
+  ],
+  "features": {
+    "dnieper_bridge": {
+      "name": "Мост через Днепр",
+      "kind": "bridge",
+      "options": [
+        "steel"
+      ],
+      "default": "steel"
+    }
+  },
+  "historical": {
+    "gauge_mm": 1520,
+    "gaugeFixed": true,
+    "tracks": 2,
+    "firstRun": {
+      "from": "moscow",
+      "to": "simferopol",
+      "minutes": null,
+      "fact_ref": null,
+      "comment": "Дорогу не построили — сравнивать не с чем."
+    }
+  },
+  "historyScaleLabel": "Как было в истории"
+}

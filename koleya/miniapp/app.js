@@ -32,7 +32,7 @@
   // ================= эпоха и её словарь =================
   // В главах советской эпохи интерфейс говорит языком своего времени: артели — бригады,
   // благоволение — доверие министерства и т. д. Замены того же рода, чтобы не ломать согласование.
-  const SOVIET_ERAS = new Set(['constructivist']);
+  const SOVIET_ERAS = new Set(['constructivist', 'techbook']);
   function isSovietEra() { return SOVIET_ERAS.has(document.documentElement.getAttribute('data-era')); }
   const LEX_SOVIET = (() => {
     const forms = (from, to) => from.map((f, i) => [f, to[i]]);
@@ -104,8 +104,32 @@
         </g>
       </svg>`;
     },
+    // Скоростной электропоезд конца 1980-х: клиновидная кабина, пантограф, лента окон
+    emu() {
+      const wheel = cx => `<g class="wheel small"><circle cx="${cx}" cy="74" r="5" class="d-paper"/>${Array.from({ length: 4 }, (_, i) => {
+        const a = Math.PI * i / 2;
+        return `<line x1="${cx}" y1="74" x2="${(cx + Math.cos(a) * 5).toFixed(1)}" y2="${(74 + Math.sin(a) * 5).toFixed(1)}"/>`;
+      }).join('')}</g>`;
+      const sleepers = Array.from({ length: 27 }, (_, i) => `<line x1="${-14 + i * 9.4}" y1="82" x2="${-10 + i * 9.4}" y2="86"/>`).join('');
+      return `<svg class="deco-loco deco-emu" viewBox="0 0 220 90" aria-hidden="true">
+        <g class="d-ink">
+          <path d="M100 30 l8 -12 l10 12 M104 24 h10" class="d-thin"/>
+          <g class="d-body">
+            <path d="M4 68 V40 q0 -8 8 -8 H160 q34 0 52 30 V68 Z" class="d-paper"/>
+            <path d="M4 56 H206" class="d-stripe"/>
+            ${Array.from({ length: 11 }, (_, i) => `<rect x="${14 + i * 13}" y="40" width="9" height="9" class="d-paper"/>`).join('')}
+            <path d="M172 40 q16 2 26 16 H172 Z" class="d-fill"/>
+            <line x1="0" y1="70" x2="214" y2="70"/>
+          </g>
+          ${wheel(24)}${wheel(40)}${wheel(170)}${wheel(186)}
+          <line x1="0" y1="81" x2="220" y2="81"/>
+          <g class="d-thin d-sleepers">${sleepers}</g>
+        </g>
+      </svg>`;
+    },
     // Виньетка: ранний паровоз с тендером, штриховка котла, клубы дыма
     loco() {
+      if (document.documentElement.getAttribute('data-era') === 'techbook') return DECOR.emu();
       if (isSovietEra()) return DECOR.diesel();
       const hatch = Array.from({ length: 11 }, (_, i) => `<line x1="${26 + i * 7}" y1="42" x2="${26 + i * 7}" y2="58"/>`).join('');
       const wheel = (cx, cy, r, n, cls) => `<g class="wheel ${cls}"><circle cx="${cx}" cy="${cy}" r="${r}" class="d-paper"/>${Array.from({ length: n }, (_, i) => {
@@ -440,6 +464,7 @@
     chapter1: { level: 2, levelLabel: 'умеренная', title: 'Глава I. Петербург — Москва', years: '1842–1851', desc: 'Трасса, колея, два пути, болота, Валдай, мосты и сроки. Главная дорога империи.' },
     chapter2: { level: 3, levelLabel: 'высокая', title: 'Глава II. Великий Сибирский путь', years: '1891–1904', desc: 'Через всю Сибирь к Тихому океану: стройка с двух концов, Байкал, выбор между Маньчжурией и Амуром.' },
     chapter3: { level: 4, levelLabel: 'очень высокая', title: 'Глава III. Байкало-Амурская магистраль', years: '1974–1984', desc: 'Стройка века: от Лены до Тынды через хребты и вечную мерзлоту, обходы и тоннели, «золотое звено».' },
+    chapter4: { level: 5, levelLabel: 'особая', title: 'Глава IV. ВСМ «Центр — Юг»', years: '1988–1991', desc: 'Первая советская высокоскоростная магистраль: от Москвы на Крым и Кавказ, под 300 км/ч. Главе нужен особый подход.' },
   };
   const CHAPTER_ORDER = Object.keys(CHAPTER_INFO);
   // Сложность главы: пять делений, закрашенных по уровню
@@ -467,11 +492,11 @@
       const info = CHAPTER_INFO[ch];
       const sv = saves[ch];
       let status = '';
-      if (done[ch]) status = `Пройдена${done[ch].stars != null ? ` · звёзд ${done[ch].stars} из ${done[ch].max}` : ''}`;
+      if (done[ch]) status = done[ch].halted ? 'Стройка остановлена — как в истории' : `Пройдена${done[ch].stars != null ? ` · звёзд ${done[ch].stars} из ${done[ch].max}` : ''}`;
       else if (sv && !sv.finished) status = `Идёт: ${SEASON_RU[sv.season].toLowerCase()} ${sv.year}`;
-      else if (sv && sv.finished) status = sv.outcome === 'won' ? 'Пройдена' : 'Проиграна';
+      else if (sv && sv.finished) status = sv.outcome === 'won' ? 'Пройдена' : sv.outcome === 'halted' ? 'Стройка остановлена' : 'Проиграна';
       const cont = sv && !sv.finished;
-      const review = sv && sv.finished && sv.outcome === 'won';
+      const review = sv && sv.finished && (sv.outcome === 'won' || sv.outcome === 'halted');
       const locked = S.home.unlocked && !S.home.unlocked.includes(ch);
       if (locked) {
         return `<div class="chapter-card locked"><i class="corner tl">✥</i><i class="corner tr">✥</i><i class="corner bl">✥</i><i class="corner br">✥</i>
@@ -1650,7 +1675,7 @@
     closeModal();
     renderFinal();
     show('s-final');
-    haptic(S.state.outcome === 'won' ? 'ok' : 'bad');
+    haptic(S.state.outcome === 'won' || S.state.outcome === 'halted' ? 'ok' : 'bad');
   }
 
   const SCALE_RU = {
@@ -1666,7 +1691,18 @@
     const s = S.state, c = C();
     const el = $('s-final');
     // Финал главы после пролога — сразу «как было», без ожидания модалок
-    if (s.outcome !== 'won') {
+    if (s.outcome === 'halted') {
+      // Глава, которую нельзя пройти: стройку останавливают извне, как в истории
+      el.innerHTML = `<h2 class="sheet-title">${esc(c.map.title)}: стройка остановлена</h2>
+        <div class="history"><div class="h">Эту главу нельзя было пройти</div><div class="t">Так было и в истории: магистраль не достроили. Вы успели построить ${Math.round(S.view.overallProgress)}% трассы к ${SEASON_GEN[s.season]} ${s.year} года.</div></div>
+        <h3 class="sheet-title" style="font-size:21px;margin-top:18px">Ваши решения и история</h3>
+        ${comparisonHtml()}
+        <h3 class="sheet-title" style="font-size:21px;margin-top:18px">Что было дальше</h3>
+        ${afterwordHtml()}
+        ${c.quizAvailable ? `<button class="btn route" data-quiz>${S.quiz && S.quiz.done ? 'Итоги викторины' : 'Викторина главы'}</button>` : ''}
+        <button class="btn ghost" data-museum>Музей</button>
+        <button class="btn ghost" data-home>В меню</button>`;
+    } else if (s.outcome !== 'won') {
       const why = s.outcome === 'removed'
         ? 'Благоволение исчерпано. Высочайшим повелением вы отстранены от руководства работами.'
         : 'Сроки вышли окончательно. Работы передают другому начальнику.';
@@ -1711,6 +1747,14 @@
         <div class="q" style="font-size:14px">${esc(ev.history.text)}</div></div>`;
     }).join('');
     return rows || '<p>Ключевых решений в этой главе не было.</p>';
+  }
+
+  // Хронология после остановки стройки: события главы с пометкой epilogue, в порядке показа
+  function afterwordHtml() {
+    const c = C();
+    const evs = S.state.firedEvents.map(id => c.eventsById[id]).filter(e => e && e.epilogue);
+    return evs.map(e => `<div class="history" style="margin-top:12px"><div class="h">${esc(e.title)}</div><div class="t">${esc(e.text)}</div></div>
+      <div class="facts">${factsHtml(e.fact_refs || [])}</div>`).join('') || '';
   }
 
   function epilogueHtml() {

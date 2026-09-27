@@ -11,7 +11,11 @@
         "E18",
         "T01",
         "T03",
-        "T14"
+        "T14",
+        "N03",
+        "N06",
+        "N11",
+        "N17"
       ]
     },
     {
@@ -132,7 +136,10 @@
       "events": [
         "M04",
         "M14",
-        "M17"
+        "M17",
+        "N04",
+        "N07",
+        "N10"
       ]
     },
     {
@@ -151,7 +158,9 @@
       "plate": "town",
       "events": [
         "M07",
-        "M11"
+        "M11",
+        "N08",
+        "N09"
       ]
     },
     {
@@ -168,6 +177,27 @@
       "events": [
         "M18",
         "M20"
+      ]
+    },
+    {
+      "id": "d-hsr",
+      "plate": "hsr",
+      "events": [
+        "N01",
+        "N02",
+        "N05",
+        "N15",
+        "N16",
+        "N18"
+      ]
+    },
+    {
+      "id": "d-halt",
+      "plate": "halt",
+      "events": [
+        "N12",
+        "N13",
+        "N14"
       ]
     }
   ],
@@ -515,6 +545,60 @@
         "title": "Wikimedia Commons",
         "url": "https://commons.wikimedia.org/wiki/File:RIAN_archive_463353_Rally_on_occasion_of_arrival_of_construction_team.jpg"
       }
+    },
+    {
+      "id": "a-er200",
+      "file": "img/er200.jpg",
+      "events": [
+        "N02"
+      ],
+      "title": "Скоростной электропоезд ЭР200 в пути",
+      "author": "Л. Н. Морозов",
+      "year": "2006",
+      "license": "CC-BY-SA",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:%D0%AD%D0%A0200_%D0%B2_%D0%BF%D1%83%D1%82%D0%B8.JPG"
+      },
+      "tags": [
+        "hsr_history"
+      ]
+    },
+    {
+      "id": "a-sokol",
+      "file": "img/sokol.jpg",
+      "events": [
+        "N15"
+      ],
+      "title": "Опытный поезд «Сокол» в депо",
+      "author": "Л. Н. Морозов",
+      "year": "2009",
+      "license": "CC-BY",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:Sokol_in_depot.jpg"
+      },
+      "tags": [
+        "hsr_history"
+      ]
+    },
+    {
+      "id": "a-sapsan-ov",
+      "file": "img/sapsan-ov.jpg",
+      "events": [
+        "N16"
+      ],
+      "title": "«Сапсан» рядом со старым паровозом серии Ов",
+      "author": "Л. Н. Морозов",
+      "year": "2009",
+      "license": "CC-BY",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:Sapsan_and_Ov.324.JPG"
+      },
+      "tags": [
+        "hsr_history"
+      ]
     }
   ]
 }

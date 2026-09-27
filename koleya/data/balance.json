@@ -117,6 +117,12 @@
       "cost": 2200,
       "work": 200,
       "fireRiskPerSeason": 0
+    },
+    "steel": {
+      "cost": 1400,
+      "work": 120,
+      "fireRiskPerSeason": 0,
+      "comment": "стальной мост скоростной линии"
     }
   },
   "grade": {
@@ -262,7 +268,10 @@
       "M06",
       "M08",
       "M16",
-      "M17"
+      "M17",
+      "N03",
+      "N05",
+      "N06"
     ],
     "thresholds": {
       "deadlineLateSeasons": [
@@ -298,7 +307,8 @@
       "chapter1": 120000,
       "prologue": 3200,
       "chapter2": 145000,
-      "chapter3": 145000
+      "chapter3": 145000,
+      "chapter4": 120000
     },
     "comment": "Звёзды: 5 минус число порогов, которые игрок не уложил. Пороги — игровые, не исторические."
   },
@@ -320,7 +330,11 @@
       "M10",
       "M13",
       "M14",
-      "M15"
+      "M15",
+      "N07",
+      "N08",
+      "N09",
+      "N10"
     ],
     "repeatCooldownTurns": 4
   },
@@ -521,5 +535,88 @@
       }
     },
     "comment": "БАМ короче Транссиба, но почти весь в горах и мерзлоте: объём работ на км свой (overrides)."
+  },
+  "chapter4": {
+    "startYear": 1988,
+    "startSeason": "winter",
+    "constructionStart": {
+      "year": 1989,
+      "season": "spring"
+    },
+    "deadline": {
+      "year": 1995,
+      "season": "autumn"
+    },
+    "startTreasury": 26000,
+    "yearlyAllocation": 9000,
+    "petition": {
+      "amount": 6000,
+      "favorCost": 15,
+      "cooldownSeasons": 4
+    },
+    "startFavor": 60,
+    "startMorale": 65,
+    "startCrews": 0,
+    "favor": {
+      "milestoneBonus": 4,
+      "seasonLatePenalty": 4,
+      "incidentPenalty": 5,
+      "revisionThreshold": 20
+    },
+    "revenuePerOpenKmPerSeason": 0.25,
+    "maxTurns": 40,
+    "behindSchedule": {
+      "lagShare": 0.12,
+      "favorPenalty": 1
+    },
+    "overrides": {
+      "terrain": {
+        "plain": {
+          "costPerKm": 15.41,
+          "workPerKm": 2.9
+        },
+        "forest": {
+          "costPerKm": 19.81,
+          "workPerKm": 4.02
+        },
+        "swamp": {
+          "costPerKm": 28.61,
+          "workPerKm": 6.25
+        },
+        "hills": {
+          "costPerKm": 24.21,
+          "workPerKm": 5.13
+        },
+        "mountains": {
+          "costPerKm": 52.82,
+          "workPerKm": 12.28
+        },
+        "permafrost": {
+          "costPerKm": 33.02,
+          "workPerKm": 8.04
+        }
+      },
+      "crews": {
+        "maxCrewsPerKm": 0.08
+      },
+      "bridges": {
+        "wooden": {
+          "cost": 500,
+          "work": 70,
+          "fireRiskPerSeason": 0.01
+        },
+        "iron": {
+          "cost": 1200,
+          "work": 120,
+          "fireRiskPerSeason": 0
+        }
+      },
+      "train": {
+        "minCarriages": {
+          "chapter4": 8
+        }
+      }
+    },
+    "comment": "Глава, которую нельзя пройти: осенью 1991 года стройку останавливают (эффект halt). Срок 1995 года — игровой, до него игрок не доживает."
   }
 }

@@ -8,7 +8,7 @@ const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 // Порядок глав кампании. Глава без каталога в data/ просто пропускается.
-const CHAPTERS = ['prologue', 'chapter1', 'chapter2', 'chapter3'];
+const CHAPTERS = ['prologue', 'chapter1', 'chapter2', 'chapter3', 'chapter4'];
 // Рельеф берётся из balance.terrain, этот список — только базовый минимум
 const TERRAINS = ['plain', 'forest', 'swamp', 'hills'];
 
@@ -31,7 +31,7 @@ const TRIGGER_KEYS = new Set([
 ]);
 const EFFECT_KEYS = new Set([
   'treasury', 'favor', 'morale', 'set', 'flag', 'unlock', 'segmentFeature', 'addLengthKm',
-  'segmentWork', 'incidentRisk', 'skipSeason', 'runFirstTrain', 'modifier', 'crews',
+  'segmentWork', 'incidentRisk', 'skipSeason', 'runFirstTrain', 'modifier', 'crews', 'halt',
 ]);
 const MODIFIER_KEYS = new Set(['costMult', 'workMult', 'speedMult', 'incidentMult']);
 const SET_KEYS = new Set(['routeVariant', 'gauge', 'tracks', 'pay']);
@@ -252,18 +252,31 @@ function validate(all = loadAll({ fresh: true })) {
     for (const r of a.fact_refs || []) factOk(w, r);
   }
 
-  // Запрещённые слова — целыми словами, без учёта регистра, по всему data/
+  // Запрещённые слова — целыми словами, без учёта регистра, по всему data/.
+  // Исключение (решение автора, CLAUDE.md, правило 2): каталоги из exceptions.dirs
+  // и факты с тегами из exceptions.factTags — публичная хронология после 1991 года.
   const terms = all.forbidden.terms || [];
+  const exc = all.forbidden.exceptions || {};
+  const excDirs = new Set(exc.dirs || []);
+  const excTags = new Set(exc.factTags || []);
+  const termRes = terms.map(t => [t, new RegExp(`(^|[^\\p{L}\\p{N}])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`, 'iu')]);
+  const scan = (where, text) => { for (const [t, re] of termRes) if (re.test(text)) err(where, `запрещённое слово «${t}»`); };
   const walk = (dir) => {
     for (const name of fs.readdirSync(dir)) {
       const p = path.join(dir, name);
-      if (fs.statSync(p).isDirectory()) { walk(p); continue; }
+      const rel = path.relative(DATA_DIR, p);
+      if (fs.statSync(p).isDirectory()) { if (!excDirs.has(rel)) walk(p); continue; }
       if (name === 'forbidden_terms.json') continue;
-      const text = fs.readFileSync(p, 'utf8');
-      for (const t of terms) {
-        const re = new RegExp(`(^|[^\\p{L}\\p{N}])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`, 'iu');
-        if (re.test(text)) err(path.relative(DATA_DIR, p), `запрещённое слово «${t}»`);
+      if (rel === 'facts.json') {
+        for (const f of all.facts) if (!(f.tags || []).some(t => excTags.has(t))) scan(`facts/${f.id}`, JSON.stringify(f));
+        continue;
       }
+      if (rel === 'illustrations.json') {
+        const ill = JSON.parse(fs.readFileSync(p, 'utf8'));
+        for (const a of [...(ill.drawings || []), ...(ill.archive || [])]) if (!(a.tags || []).some(t => excTags.has(t))) scan(`illustrations/${a.id}`, JSON.stringify(a));
+        continue;
+      }
+      scan(rel, fs.readFileSync(p, 'utf8'));
     }
   };
   walk(DATA_DIR);

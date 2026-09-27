@@ -14,7 +14,7 @@ for (const chId of content.chapterIds()) {
   const ch = content.chapter(chId);
   console.log(`\n=== ${chId}: ${N} прохождений на стратегию ===`);
   for (const strat of STRATEGIES) {
-    const out = { won: 0, removed: 0, timeout: 0 };
+    const out = { won: 0, removed: 0, timeout: 0, halted: 0 };
     const years = [], stars = [], minutes = [], turns = [];
     for (let seed = 1; seed <= N; seed++) {
       const s = playGame(ch, seed, strat);
@@ -28,6 +28,7 @@ for (const chId of content.chapterIds()) {
     const pct = k => (100 * (out[k] || 0) / N).toFixed(1) + '%';
     console.log(
       `${strat.padEnd(11)} победы ${pct('won').padStart(6)}  отстранён ${pct('removed').padStart(6)}  не успел ${pct('timeout').padStart(6)}` +
+      (out.halted ? `  остановлено ${pct('halted').padStart(6)}` : '') +
       `  | открытие ≈ ${avg(years).toFixed(2)}  ходов ${avg(turns).toFixed(1)}  поезд ${Math.round(avg(minutes))} мин  звёзды ${avg(stars).toFixed(2)}/5`
     );
   }

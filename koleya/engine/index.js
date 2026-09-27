@@ -326,6 +326,8 @@ function applyEffects(state, ch, effects, rng, log) {
         log.push({ kind: 'firstRun', minutes: run.minutes, historicalMinutes: run.historicalMinutes, incidents: run.incidents });
         break;
       }
+      // Стройку остановили извне (как ВСМ «Центр — Юг» в 1991 году): глава завершается без победы и поражения
+      case 'halt': if (v) finishChapter(state, ch, 'halted', log); break;
       default: fail(`Неизвестный эффект ${k}`);
     }
   }
@@ -401,6 +403,8 @@ function choose(state, ch, action, rng, log) {
   }
   log.push({ kind: 'resolved', eventId: ev.id, choiceId: choice.id });
 
+  // Стройку уже остановили эффектом halt — исход не переписываем
+  if (state.finished) return;
   // Финал главы: викторина открыта или отправлен поезд, за которым уже ничего не следует
   const hasFollowUp = ch.events.some(e => e.trigger?.afterEvent === ev.id);
   if (choice.effects?.unlock === 'quiz' || (choice.effects?.runFirstTrain && !hasFollowUp)) {

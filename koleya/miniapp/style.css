@@ -639,6 +639,8 @@ body.coach-on .panel { padding-bottom: 180px; }
 .plate-svg .s-ray { fill: var(--route); opacity: 0.14; }
 .plate-svg .s-lining, .plate-svg .s-hole-line { stroke: var(--paper-deep); }
 .plate-svg .s-banner { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: 4px; fill: var(--paper); }
+.plate-svg .s-speed { stroke: var(--route); opacity: 0.6; }
+.plate-svg .s-weed { stroke: var(--ink); }
 .plate-svg .s-banner-sm { font-size: 8px; letter-spacing: 2px; }
 .plate-svg .s-label { font-family: var(--font-display); font-style: italic; font-size: 10px; fill: var(--route); }
 

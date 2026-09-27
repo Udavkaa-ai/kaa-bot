@@ -41,3 +41,10 @@ test('check:facts ловит неверную сумму долей рельеф
   const errs = broken(a => { a.chapters.chapter1.map.segments[0].terrain = { plain: 0.5 }; });
   assert.ok(errs.some(e => /доли рельефа/.test(e)));
 });
+
+test('check:facts: современные названия разрешены только фактам с тегом-исключением', () => {
+  const bad = broken(a => { a.facts[0].text += ' Сапсан'; });
+  assert.ok(bad.some(e => /запрещённое слово/.test(e)));
+  const ok = broken(a => { a.facts[0].text += ' Сапсан'; a.facts[0].tags = [...(a.facts[0].tags || []), 'hsr_history']; });
+  assert.ok(!ok.some(e => /facts\/F001: запрещённое/.test(e)));
+});

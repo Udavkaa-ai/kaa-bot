@@ -316,7 +316,7 @@ function createKoleya(deps) {
         const player = await getPlayer(tgId);
         const chapter = player?.active_chapter;
         const row = chapter ? await getGame(tgId, chapter) : null;
-        if (!row || !row.state.finished || row.state.outcome !== 'won') throw new ApiError(409, 'Викторина — после завершения главы');
+        if (!row || !row.state.finished || !['won', 'halted'].includes(row.state.outcome)) throw new ApiError(409, 'Викторина — после завершения главы');
         let quiz = row.quiz;
         if (!quiz) {
           const ids = pickQuiz(chapter, row.state, row.state.seed);
@@ -381,7 +381,11 @@ function createKoleya(deps) {
 
   async function onFinished(tgId, name, chapter, state) {
     const ch = content.chapter(chapter);
-    if (state.outcome === 'won') {
+    if (state.outcome === 'halted') {
+      // Глава, которую нельзя пройти: засчитывается как завершённая, без звёзд
+      await upsertPlayer(tgId, name, { completed: { [chapter]: { stars: null, max: null, halted: true } } });
+      await notify(tgId, `🛑 «Пять футов»: ${ch.map.title} — стройку остановили, как и в истории. В игре ждёт викторина.`, { button: 'open_game' }).catch(() => {});
+    } else if (state.outcome === 'won') {
       await upsertPlayer(tgId, name, {
         completed: { [chapter]: { stars: state.score?.total ?? null, max: state.score?.max ?? null } },
         // Решения главы переходят в кампанию: колея главы I — во все следующие главы
@@ -420,6 +424,7 @@ function createKoleya(deps) {
       const ch = content.chapter(player.active_chapter);
       const seasonRu = { spring: 'весна', summer: 'лето', autumn: 'осень', winter: 'зима' }[s.season];
       if (s.finished) {
+        if (s.outcome === 'halted') return `${ch.map.title}: стройка остановлена, как и в истории.`;
         return s.outcome === 'won'
           ? `${ch.map.title}: глава пройдена${s.score ? `, звёзд ${s.score.total} из ${s.score.max}` : ''}.`
           : `${ch.map.title}: глава проиграна, можно начать заново.`;

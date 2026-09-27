@@ -553,6 +553,51 @@
     },
   });
 
+  // Скоростной электропоезд (локально: рельс на y = 0, лицом вправо)
+  function emu(cars = 3) {
+    const car = (x, head) => `<g transform="translate(${x} 0)">
+      ${head ? '<path d="M-24 -6 V-20 q0 -4 4 -4 H14 q16 0 26 18 V-6 Z"/>' : '<path d="M-24 -6 V-20 q0 -4 4 -4 H24 q4 0 4 4 V-6 Z"/>'}
+      ${range(head ? 4 : 6, i => `<rect x="${-20 + i * 7}" y="-20" width="4.5" height="5" class="s-hole"/>`)}
+      <rect x="-24" y="-12" width="${head ? 60 : 52}" height="1.6" class="s-acc"/>
+      ${wheel(-16, -3, 3, 0.5)}${wheel(head ? 22 : 20, -3, 3, 0.5)}</g>`;
+    return `${range(cars - 1, i => car(-56 * (i + 1), false))}${car(0, true)}
+      <path d="M-6 -24 l5 -8 l6 8 M-3 -28 h6" class="st" stroke-width=".8"/>`;
+  }
+
+  Object.assign(plates, {
+    // Скоростная линия: опоры контактной сети, поезд проносится, линии скорости
+    hsr() {
+      return stage(`
+        <g class="s-far">${hills(76, 10, 2)}${firs([20, 34, 206, 222], 80, 20)}</g>
+        <g class="s-mid"><path d="M0 104 L0 90 L240 86 V104 Z"/></g>
+        <g class="s-near">
+          ${ground()}<path d="M0 98 H240 V104 H0 Z"/>
+          ${range(5, i => `<path d="M${14 + i * 54} 98 V44 h14" class="st" stroke-width="1.6"/>`)}
+          <path d="M0 50 H240" class="st" stroke-width=".6"/>
+          <g>${still ? '' : '<animateTransform attributeName="transform" type="translate" values="-200 0;420 0" dur="4.5s" repeatCount="indefinite"/>'}
+            <g transform="translate(40 96) scale(.9)">${emu(3)}</g>
+            <g class="st s-speed" stroke-width=".8">${range(4, i => `<path d="M${-150 - i * 14} ${74 + i * 5} h-40"/>`)}</g>
+          </g>
+        </g>`, 'Скоростной электропоезд проносится мимо опор контактной сети', { sun: [0.22, 0.4] });
+    },
+    // Остановленная стройка: насыпь обрывается, рельсы кончаются, шлагбаум, бурьян
+    halt() {
+      return stage(`
+        <g class="s-far">${hills(74, 12, 5)}</g>
+        <g class="s-mid">${firs([190, 204, 218, 232], 90, 26)}</g>
+        <g class="s-near">
+          ${ground()}
+          <path d="M0 104 V90 H150 L176 104 Z"/>
+          ${rails(88, 0, 96)}
+          ${range(6, i => `<rect x="${104 + i * 8}" y="89.4" width="4" height="1.6"/>`)}
+          <path d="M92 88 V74 M92 76 H130" class="st" stroke-width="1.6"/>
+          ${range(4, i => `<rect x="${96 + i * 9}" y="74.6" width="4.5" height="2.8" class="s-acc"/>`)}
+          <path d="M140 104 q2 -10 -2 -16 M146 104 q-1 -8 4 -14 M152 104 q1 -7 -3 -11 M60 90 q2 -8 -1 -12 M66 90 q-2 -6 3 -10" class="st s-weed" stroke-width=".9"/>
+          ${figure(200, FLOOR, { dir: -1, hat: 'none', coat: 'coat', rod: false, k: 0.85, sway: 0.5, arms: [[[3, -28], [5, -22]]] })}
+        </g>`, 'Насыпь обрывается, рельсы кончаются у шлагбаума', { sun: [0.3, 0.7] });
+    },
+  });
+
   function draw(name, arg) {
     if (!plates[name]) return '';
     still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);

@@ -164,3 +164,34 @@ test('глава III: колея своя, обходы хребтов деше�
   const cb = ch3.balance.chapter3;
   assert.ok(E._internal.dateIndex(ch3, good.completedAt.year, good.completedAt.season) <= E._internal.dateIndex(ch3, cb.deadline.year, cb.deadline.season), 'стыковка к сроку');
 });
+
+test('эффект halt: стройку останавливают извне — глава завершается исходом halted, без звёзд', () => {
+  const ch = variant(c => {
+    c.events.push({ id: 'X3', type: 'historical', trigger: { atYear: 1850 }, title: 't', text: 't', choices: [{ id: 'ok', label: 'ok', effects: { unlock: 'quiz', halt: true } }], fact_refs: [] });
+  });
+  let s = intro(ch);
+  s.year = 1850;
+  s = E.applyAction(s, { type: 'SET_PAY', level: 'normal' }, ch).state;
+  while (s.pendingEvents[0] && s.pendingEvents[0] !== 'X3') {
+    const ev = ch.eventsById[s.pendingEvents[0]];
+    s = E.applyAction(s, { type: 'CHOOSE', eventId: ev.id, choiceId: ev.choices[0].id }, ch).state;
+  }
+  const r = E.applyAction(s, { type: 'CHOOSE', eventId: 'X3', choiceId: 'ok' }, ch);
+  assert.equal(r.state.finished, true);
+  assert.equal(r.state.outcome, 'halted');
+  assert.equal(r.state.score, null);
+  assert.ok(r.state.unlocked.quiz);
+  assert.ok(r.log.some(l => l.kind === 'finished' && l.outcome === 'halted'));
+});
+
+test('глава IV: пройти нельзя — при любой стратегии стройку останавливают осенью 1991 года', () => {
+  const { playGame } = require('../scripts/bots');
+  const ch4 = content.chapter('chapter4');
+  for (const strat of ['historical', 'cautious', 'random']) {
+    const g = playGame(ch4, 2, strat);
+    assert.equal(g.outcome, 'halted', strat);
+    assert.equal(g.year, 1991);
+    assert.ok(E.view(g, ch4).overallProgress < 100, 'дорогу не достроили');
+    assert.ok(g.firedEvents.includes('N18') && g.unlocked.quiz, 'эпилог показан, викторина открыта');
+  }
+});
