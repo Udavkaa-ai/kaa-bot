@@ -14,7 +14,8 @@ const E = require('../engine');
 
 const INIT_DATA_MAX_AGE_SEC = 24 * 60 * 60;
 const QUIZ_SIZE = 5;
-const CHAPTER_ORDER = ['prologue', 'chapter1'];
+// Порядок глав — из контента: глава появляется, как только в data/ есть её каталог
+const CHAPTER_ORDER = content.chapterIds();
 
 const MIGRATION = `
 CREATE TABLE IF NOT EXISTS koleya_players (
@@ -234,6 +235,7 @@ function createKoleya(deps) {
         if (g) saves[c] = { finished: g.state.finished, outcome: g.state.outcome, year: g.state.year, season: g.state.season };
       }
       return {
+        chapters: CHAPTER_ORDER,
         player: player ? { activeChapter: player.active_chapter, completed: player.completed, campaign: player.campaign } : null,
         saves,
         game: row ? gamePayload(chapter, row.state, { quiz: row.quiz ? quizView(chapter, row.quiz) : null }) : null,
@@ -245,7 +247,8 @@ function createKoleya(deps) {
       if (!CHAPTER_ORDER.includes(chapter)) throw new ApiError(400, 'Нет такой главы');
       return withLock(tgId, async () => {
         const ch = content.chapter(chapter);
-        const { state, log: lg } = E.createGame(chapter, ch, seedGen());
+        const player = await getPlayer(tgId);
+        const { state, log: lg } = E.createGame(chapter, ch, seedGen(), (player && player.campaign) || {});
         await saveGame(tgId, chapter, state, null);
         await upsertPlayer(tgId, name, { activeChapter: chapter });
         return gamePayload(chapter, state, { log: lg, quiz: null });
@@ -356,7 +359,9 @@ function createKoleya(deps) {
     if (state.outcome === 'won') {
       await upsertPlayer(tgId, name, {
         completed: { [chapter]: { stars: state.score?.total ?? null, max: state.score?.max ?? null } },
-        campaign: chapter === 'chapter1' ? { gauge: state.gauge, tracks: state.tracks, route: state.routeVariant } : undefined,
+        // Решения главы переходят в кампанию: колея главы I — во все следующие главы
+        campaign: chapter === 'chapter1' ? { gauge: state.gauge, tracks: state.tracks, route: state.routeVariant }
+          : chapter === 'prologue' ? undefined : { [`${chapter}Route`]: state.routeVariant },
       });
       const stars = state.score ? ` · звёзд ${state.score.total} из ${state.score.max}` : '';
       await notify(tgId, `🚂 «Пять футов»: ${ch.map.title} — глава пройдена${stars}. В игре ждёт викторина.`, { button: 'open_game' }).catch(() => {});

@@ -7,20 +7,33 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const CHAPTERS = ['prologue', 'chapter1'];
+// Порядок глав кампании. Глава без каталога в data/ просто пропускается.
+const CHAPTERS = ['prologue', 'chapter1', 'chapter2'];
+// Рельеф берётся из balance.terrain, этот список — только базовый минимум
 const TERRAINS = ['plain', 'forest', 'swamp', 'hills'];
+
+// Глубокое слияние: у главы в balance.<глава>.overrides могут быть свои terrain, crews, train и т.п.
+function deepMerge(base, over) {
+  if (!over || typeof over !== 'object' || Array.isArray(over)) return over === undefined ? base : over;
+  const out = Array.isArray(base) ? [...base] : { ...(base || {}) };
+  for (const [k, v] of Object.entries(over)) {
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) && base && typeof base[k] === 'object' ? deepMerge(base[k], v) : v;
+  }
+  return out;
+}
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
 const EVENT_TYPES = ['historical', 'decision', 'random'];
 const FACT_STATUSES = ['verified', 'to_verify', 'legend'];
 const TRIGGER_KEYS = new Set([
   'atTurn', 'afterEvent', 'segmentProgress', 'variant', 'season', 'chance', 'terrainActive',
   'moraleLte', 'favorLte', 'atYear', 'openedSegmentsGte', 'segment', 'overallProgressGte',
-  'allSegmentsOpened', 'firstRunReady',
+  'allSegmentsOpened', 'firstRunReady', 'segmentUnopened',
 ]);
 const EFFECT_KEYS = new Set([
   'treasury', 'favor', 'morale', 'set', 'flag', 'unlock', 'segmentFeature', 'addLengthKm',
-  'segmentWork', 'incidentRisk', 'skipSeason', 'runFirstTrain',
+  'segmentWork', 'incidentRisk', 'skipSeason', 'runFirstTrain', 'modifier', 'crews',
 ]);
+const MODIFIER_KEYS = new Set(['costMult', 'workMult', 'speedMult', 'incidentMult']);
 const SET_KEYS = new Set(['routeVariant', 'gauge', 'tracks', 'pay']);
 const UNLOCKS = new Set(['construction', 'rollingStock', 'quiz']);
 
@@ -40,6 +53,9 @@ function loadAll({ fresh = false } = {}) {
   const chapters = {};
   for (const id of CHAPTERS) {
     const dir = id;
+    if (!fs.existsSync(path.join(DATA_DIR, dir, 'map.json'))) continue;
+    // Глава-черновик ("draft": true в map.json) скрыта от игроков, пока её не доделали
+    if (JSON.parse(fs.readFileSync(path.join(DATA_DIR, dir, 'map.json'), 'utf8')).draft && process.env.KOLEYA_DRAFTS !== '1') continue;
     const read = (name) => {
       const p = path.join(DATA_DIR, dir, name);
       return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
@@ -63,8 +79,13 @@ function chapter(id) {
   const all = loadAll();
   const ch = all.chapters[id];
   if (!ch) throw new Error(`Нет главы ${id}`);
-  return { ...ch, facts: all.factsById, balance: all.balance };
+  // Баланс главы = общий баланс + её overrides (свой масштаб цен, выработки, поездов)
+  const overrides = all.balance[id] && all.balance[id].overrides;
+  return { ...ch, facts: all.factsById, balance: overrides ? deepMerge(all.balance, overrides) : all.balance };
 }
+
+// Список глав, которые реально есть в data/
+function chapterIds() { return CHAPTERS.filter(id => loadAll().chapters[id]); }
 
 // ---------- валидация ----------
 
@@ -94,7 +115,9 @@ function validate(all = loadAll({ fresh: true })) {
 
   // Баланс — минимальный набор полей, на которые опирается движок
   const b = all.balance;
-  for (const t of TERRAINS) {
+  const terrains = Object.keys(b.terrain || {});
+  for (const t of TERRAINS) if (!terrains.includes(t)) err('balance', `нет базового рельефа ${t}`);
+  for (const t of terrains) {
     if (!b.terrain?.[t] || !isNum(b.terrain[t].costPerKm) || !isNum(b.terrain[t].workPerKm)) err('balance', `terrain.${t}`);
     for (const s of SEASONS) if (!isNum(b.seasonMultiplier?.[t]?.[s])) err('balance', `seasonMultiplier.${t}.${s}`);
   }
@@ -102,7 +125,7 @@ function validate(all = loadAll({ fresh: true })) {
     if (!isNum(b.crews?.[k])) err('balance', `crews.${k}`);
   }
   for (const lvl of ['low', 'normal', 'high']) if (!isNum(b.crews?.pay?.[lvl]?.costPerCrew)) err('balance', `crews.pay.${lvl}`);
-  for (const ch of CHAPTERS) {
+  for (const ch of Object.keys(all.chapters)) {
     const cb = b[ch];
     if (!cb) { err('balance', `нет раздела ${ch}`); continue; }
     for (const k of ['startTreasury', 'startFavor', 'startMorale', 'startCrews', 'maxTurns']) {
@@ -125,7 +148,7 @@ function validate(all = loadAll({ fresh: true })) {
       const shares = Object.entries(s.terrain || {});
       if (!shares.length) err(w, 'нет рельефа');
       let sum = 0;
-      for (const [t, v] of shares) { if (!TERRAINS.includes(t)) err(w, `рельеф ${t}`); sum += v; }
+      for (const [t, v] of shares) { if (!terrains.includes(t)) err(w, `рельеф ${t}`); sum += v; }
       if (Math.abs(sum - 1) > 0.001) err(w, `доли рельефа в сумме ${sum}`);
       for (const f of s.features || []) if (!map.features?.[f]) err(w, `особенность ${f} не описана`);
       for (const r of s.fact_refs || []) factOk(w, r);
@@ -135,11 +158,15 @@ function validate(all = loadAll({ fresh: true })) {
       if (!Array.isArray(f.options) || !f.options.includes(f.default)) err(w, 'default не из options');
       if (f.kind === 'bridge') for (const o of f.options) if (!b.bridges?.[o]) err(w, `нет balance.bridges.${o}`);
       if (f.kind === 'grade') for (const o of f.options) if (!b.grade?.[o]) err(w, `нет balance.grade.${o}`);
+      if (f.kind === 'crossing') for (const o of f.options) if (!b.crossing?.[o]) err(w, `нет balance.crossing.${o}`);
+      if (!['bridge', 'grade', 'crossing'].includes(f.kind)) err(w, `неизвестный вид особенности ${f.kind}`);
       if (f.event && !ch.eventsById[f.event]) err(w, `событие ${f.event} не найдено`);
     }
     const fr = map.historical?.firstRun;
-    if (!fr || !nodeIds.has(fr.from) || !nodeIds.has(fr.to) || !isNum(fr.minutes)) err(`${chId}/map`, 'historical.firstRun {from,to,minutes}');
-    else factOk(`${chId}/map/historical.firstRun`, fr.fact_ref);
+    // minutes может быть null: тогда сравнения с историческим рейсом нет и шкалы «скорость» тоже
+    if (!fr || !nodeIds.has(fr.from) || !nodeIds.has(fr.to) || !(fr.minutes === null || isNum(fr.minutes))) err(`${chId}/map`, 'historical.firstRun {from,to,minutes}');
+    else if (fr.fact_ref) factOk(`${chId}/map/historical.firstRun`, fr.fact_ref);
+    for (const [id, d] of Object.entries(map.directorates || {})) if (!isStr(d)) err(`${chId}/map/directorates/${id}`, 'нужно название');
 
     // События
     const evIds = new Set();
@@ -151,7 +178,7 @@ function validate(all = loadAll({ fresh: true })) {
       if (!isStr(e.title) || !isStr(e.text)) err(w, 'нет title/text');
       for (const k of Object.keys(e.trigger || {})) if (!TRIGGER_KEYS.has(k)) err(w, `неизвестный триггер ${k}`);
       if (e.trigger?.afterEvent && !ch.eventsById[e.trigger.afterEvent]) err(w, `afterEvent ${e.trigger.afterEvent} не найден`);
-      const segRef = e.trigger?.segmentProgress?.segment || e.trigger?.segment;
+      const segRef = e.trigger?.segmentProgress?.segment || e.trigger?.segment || e.trigger?.segmentUnopened;
       if (segRef && !ch.segmentsById[segRef]) err(w, `сегмент ${segRef} не найден`);
       if (!Array.isArray(e.choices) || !e.choices.length) err(w, 'нет вариантов');
       for (const c of e.choices || []) {
@@ -168,6 +195,8 @@ function validate(all = loadAll({ fresh: true })) {
             else if (!map.features[v.feature].options.includes(v.value)) err(wc, `значение ${v.value}`);
           }
           if (k === 'addLengthKm' && !ch.segmentsById[v.segment]) err(wc, `сегмент ${v.segment}`);
+          if (k === 'modifier') for (const mk of Object.keys(v)) if (!MODIFIER_KEYS.has(mk) || !isNum(v[mk])) err(wc, `modifier.${mk}`);
+          if (k === 'crews' && !Number.isInteger(v)) err(wc, 'crews — целое число артелей');
         }
       }
       if (e.history && e.history.choiceId !== null && !(e.choices || []).some(c => c.id === e.history.choiceId)) {
@@ -220,4 +249,4 @@ function validate(all = loadAll({ fresh: true })) {
   return errors;
 }
 
-module.exports = { loadAll, chapter, validate, CHAPTERS, SEASONS, TERRAINS, DATA_DIR };
+module.exports = { loadAll, chapter, chapterIds, validate, deepMerge, CHAPTERS, SEASONS, TERRAINS, DATA_DIR };

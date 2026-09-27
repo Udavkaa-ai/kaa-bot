@@ -9,7 +9,7 @@ const N = parseInt(process.argv[2], 10) || 1000;
 const only = process.argv[3];
 const STRATEGIES = ['historical', 'cautious', 'shortcut', 'random'];
 
-for (const chId of content.CHAPTERS) {
+for (const chId of content.chapterIds()) {
   if (only && only !== chId) continue;
   const ch = content.chapter(chId);
   console.log(`\n=== ${chId}: ${N} прохождений на стратегию ===`);

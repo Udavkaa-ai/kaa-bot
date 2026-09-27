@@ -1,0 +1,576 @@
+{
+  "draft": true,
+  "chapterId": "chapter2",
+  "title": "Великий Сибирский путь",
+  "era": "lithograph",
+  "note": "Длины участков — игровые приближения, рельеф — игровая схема, координаты приблизительные. Трасса через Маньчжурию и Амурская трасса показаны как два варианта одного решения.",
+  "directorates": {
+    "west": "Западно-Сибирская",
+    "mid": "Средне-Сибирская",
+    "baikal": "Кругобайкальская",
+    "trans": "Забайкальская",
+    "kvzhd": "Китайская Восточная",
+    "amur": "Амурская",
+    "ussuri": "Уссурийская"
+  },
+  "nodes": [
+    {
+      "id": "chelyabinsk",
+      "name": "Челябинск",
+      "lat": 55.16,
+      "lon": 61.4,
+      "kind": "capital"
+    },
+    {
+      "id": "kurgan",
+      "name": "Курган",
+      "lat": 55.44,
+      "lon": 65.34,
+      "kind": "town"
+    },
+    {
+      "id": "petropavlovsk",
+      "name": "Петропавловск",
+      "lat": 54.87,
+      "lon": 69.14,
+      "kind": "station"
+    },
+    {
+      "id": "omsk",
+      "name": "Омск",
+      "lat": 54.99,
+      "lon": 73.37,
+      "kind": "town"
+    },
+    {
+      "id": "ob",
+      "name": "Обь (Новониколаевск)",
+      "lat": 55.03,
+      "lon": 82.92,
+      "kind": "town"
+    },
+    {
+      "id": "mariinsk",
+      "name": "Мариинск",
+      "lat": 56.21,
+      "lon": 87.75,
+      "kind": "station"
+    },
+    {
+      "id": "achinsk",
+      "name": "Ачинск",
+      "lat": 56.27,
+      "lon": 90.5,
+      "kind": "station"
+    },
+    {
+      "id": "krasnoyarsk",
+      "name": "Красноярск",
+      "lat": 56.01,
+      "lon": 92.87,
+      "kind": "town"
+    },
+    {
+      "id": "kansk",
+      "name": "Канск",
+      "lat": 56.2,
+      "lon": 95.7,
+      "kind": "station"
+    },
+    {
+      "id": "nizhneudinsk",
+      "name": "Нижнеудинск",
+      "lat": 54.9,
+      "lon": 99.03,
+      "kind": "station"
+    },
+    {
+      "id": "irkutsk",
+      "name": "Иркутск",
+      "lat": 52.29,
+      "lon": 104.28,
+      "kind": "town"
+    },
+    {
+      "id": "mysovaya",
+      "name": "Мысовая",
+      "lat": 51.72,
+      "lon": 105.86,
+      "kind": "station"
+    },
+    {
+      "id": "verkhneudinsk",
+      "name": "Верхнеудинск",
+      "lat": 51.83,
+      "lon": 107.58,
+      "kind": "town"
+    },
+    {
+      "id": "chita",
+      "name": "Чита",
+      "lat": 52.03,
+      "lon": 113.5,
+      "kind": "town"
+    },
+    {
+      "id": "karymskaya",
+      "name": "Карымская",
+      "lat": 51.62,
+      "lon": 114.35,
+      "kind": "station"
+    },
+    {
+      "id": "sretensk",
+      "name": "Сретенск",
+      "lat": 52.25,
+      "lon": 117.71,
+      "kind": "town",
+      "variant": "amur"
+    },
+    {
+      "id": "blagoveshchensk",
+      "name": "Благовещенск",
+      "lat": 50.26,
+      "lon": 127.53,
+      "kind": "town",
+      "variant": "amur"
+    },
+    {
+      "id": "khabarovsk",
+      "name": "Хабаровск",
+      "lat": 48.48,
+      "lon": 135.08,
+      "kind": "town",
+      "variant": "amur"
+    },
+    {
+      "id": "manchuria",
+      "name": "Маньчжурия",
+      "lat": 49.6,
+      "lon": 117.43,
+      "kind": "station",
+      "variant": "kvzhd"
+    },
+    {
+      "id": "harbin",
+      "name": "Харбин",
+      "lat": 45.75,
+      "lon": 126.65,
+      "kind": "town",
+      "variant": "kvzhd"
+    },
+    {
+      "id": "pogranichnaya",
+      "name": "Пограничная",
+      "lat": 44.4,
+      "lon": 131.15,
+      "kind": "station",
+      "variant": "kvzhd"
+    },
+    {
+      "id": "nikolsk",
+      "name": "Никольск-Уссурийский",
+      "lat": 43.8,
+      "lon": 131.95,
+      "kind": "station"
+    },
+    {
+      "id": "vladivostok",
+      "name": "Владивосток",
+      "lat": 43.12,
+      "lon": 131.89,
+      "kind": "capital"
+    }
+  ],
+  "segments": [
+    {
+      "id": "chel_kurgan",
+      "from": "chelyabinsk",
+      "to": "kurgan",
+      "length_km": 260,
+      "terrain": {
+        "plain": 0.9,
+        "swamp": 0.1
+      },
+      "features": [],
+      "directorate": "west",
+      "variant": "both"
+    },
+    {
+      "id": "kurgan_petro",
+      "from": "kurgan",
+      "to": "petropavlovsk",
+      "length_km": 270,
+      "terrain": {
+        "plain": 0.85,
+        "swamp": 0.15
+      },
+      "features": [],
+      "directorate": "west",
+      "variant": "both"
+    },
+    {
+      "id": "petro_omsk",
+      "from": "petropavlovsk",
+      "to": "omsk",
+      "length_km": 270,
+      "terrain": {
+        "plain": 0.8,
+        "swamp": 0.2
+      },
+      "features": [
+        "irtysh_bridge"
+      ],
+      "directorate": "west",
+      "variant": "both"
+    },
+    {
+      "id": "omsk_ob",
+      "from": "omsk",
+      "to": "ob",
+      "length_km": 630,
+      "terrain": {
+        "plain": 0.5,
+        "swamp": 0.3,
+        "forest": 0.2
+      },
+      "features": [
+        "ob_bridge"
+      ],
+      "directorate": "west",
+      "variant": "both"
+    },
+    {
+      "id": "ob_mariinsk",
+      "from": "ob",
+      "to": "mariinsk",
+      "length_km": 400,
+      "terrain": {
+        "forest": 0.6,
+        "swamp": 0.3,
+        "hills": 0.1
+      },
+      "features": [],
+      "directorate": "mid",
+      "variant": "both"
+    },
+    {
+      "id": "mariinsk_achinsk",
+      "from": "mariinsk",
+      "to": "achinsk",
+      "length_km": 180,
+      "terrain": {
+        "forest": 0.6,
+        "hills": 0.4
+      },
+      "features": [],
+      "directorate": "mid",
+      "variant": "both"
+    },
+    {
+      "id": "achinsk_krasnoyarsk",
+      "from": "achinsk",
+      "to": "krasnoyarsk",
+      "length_km": 180,
+      "terrain": {
+        "forest": 0.5,
+        "hills": 0.5
+      },
+      "features": [
+        "yenisei_bridge"
+      ],
+      "directorate": "mid",
+      "variant": "both"
+    },
+    {
+      "id": "krasnoyarsk_kansk",
+      "from": "krasnoyarsk",
+      "to": "kansk",
+      "length_km": 230,
+      "terrain": {
+        "forest": 0.6,
+        "hills": 0.4
+      },
+      "features": [],
+      "directorate": "mid",
+      "variant": "both"
+    },
+    {
+      "id": "kansk_nizhneudinsk",
+      "from": "kansk",
+      "to": "nizhneudinsk",
+      "length_km": 300,
+      "terrain": {
+        "forest": 0.7,
+        "swamp": 0.2,
+        "hills": 0.1
+      },
+      "features": [],
+      "directorate": "mid",
+      "variant": "both"
+    },
+    {
+      "id": "nizhneudinsk_irkutsk",
+      "from": "nizhneudinsk",
+      "to": "irkutsk",
+      "length_km": 500,
+      "terrain": {
+        "forest": 0.5,
+        "hills": 0.5
+      },
+      "features": [],
+      "directorate": "mid",
+      "variant": "both"
+    },
+    {
+      "id": "baikal",
+      "from": "irkutsk",
+      "to": "mysovaya",
+      "length_km": 300,
+      "terrain": {
+        "mountains": 0.8,
+        "forest": 0.2
+      },
+      "features": [
+        "baikal_crossing"
+      ],
+      "directorate": "baikal",
+      "variant": "both"
+    },
+    {
+      "id": "mysovaya_verkhneudinsk",
+      "from": "mysovaya",
+      "to": "verkhneudinsk",
+      "length_km": 120,
+      "terrain": {
+        "hills": 0.6,
+        "forest": 0.4
+      },
+      "features": [],
+      "directorate": "trans",
+      "variant": "both"
+    },
+    {
+      "id": "verkhneudinsk_chita",
+      "from": "verkhneudinsk",
+      "to": "chita",
+      "length_km": 550,
+      "terrain": {
+        "hills": 0.6,
+        "forest": 0.2,
+        "permafrost": 0.2
+      },
+      "features": [],
+      "directorate": "trans",
+      "variant": "both"
+    },
+    {
+      "id": "chita_karymskaya",
+      "from": "chita",
+      "to": "karymskaya",
+      "length_km": 100,
+      "terrain": {
+        "hills": 0.7,
+        "permafrost": 0.3
+      },
+      "features": [],
+      "directorate": "trans",
+      "variant": "both"
+    },
+    {
+      "id": "karymskaya_manchuria",
+      "from": "karymskaya",
+      "to": "manchuria",
+      "length_km": 360,
+      "terrain": {
+        "hills": 0.5,
+        "plain": 0.3,
+        "permafrost": 0.2
+      },
+      "features": [],
+      "directorate": "kvzhd",
+      "variant": "kvzhd"
+    },
+    {
+      "id": "manchuria_harbin",
+      "from": "manchuria",
+      "to": "harbin",
+      "length_km": 935,
+      "terrain": {
+        "plain": 0.6,
+        "hills": 0.4
+      },
+      "features": [
+        "sungari_bridge"
+      ],
+      "directorate": "kvzhd",
+      "variant": "kvzhd"
+    },
+    {
+      "id": "harbin_pogranichnaya",
+      "from": "harbin",
+      "to": "pogranichnaya",
+      "length_km": 550,
+      "terrain": {
+        "hills": 0.6,
+        "forest": 0.4
+      },
+      "features": [],
+      "directorate": "kvzhd",
+      "variant": "kvzhd"
+    },
+    {
+      "id": "pogranichnaya_nikolsk",
+      "from": "pogranichnaya",
+      "to": "nikolsk",
+      "length_km": 100,
+      "terrain": {
+        "hills": 0.5,
+        "forest": 0.5
+      },
+      "features": [],
+      "directorate": "kvzhd",
+      "variant": "kvzhd"
+    },
+    {
+      "id": "karymskaya_sretensk",
+      "from": "karymskaya",
+      "to": "sretensk",
+      "length_km": 250,
+      "terrain": {
+        "hills": 0.6,
+        "permafrost": 0.4
+      },
+      "features": [],
+      "directorate": "amur",
+      "variant": "amur"
+    },
+    {
+      "id": "sretensk_blagoveshchensk",
+      "from": "sretensk",
+      "to": "blagoveshchensk",
+      "length_km": 1150,
+      "terrain": {
+        "permafrost": 0.5,
+        "forest": 0.3,
+        "swamp": 0.2
+      },
+      "features": [],
+      "directorate": "amur",
+      "variant": "amur"
+    },
+    {
+      "id": "blagoveshchensk_khabarovsk",
+      "from": "blagoveshchensk",
+      "to": "khabarovsk",
+      "length_km": 850,
+      "terrain": {
+        "swamp": 0.4,
+        "forest": 0.4,
+        "permafrost": 0.2
+      },
+      "features": [
+        "amur_bridge"
+      ],
+      "directorate": "amur",
+      "variant": "amur"
+    },
+    {
+      "id": "khabarovsk_nikolsk",
+      "from": "khabarovsk",
+      "to": "nikolsk",
+      "length_km": 660,
+      "terrain": {
+        "forest": 0.5,
+        "swamp": 0.3,
+        "hills": 0.2
+      },
+      "features": [],
+      "directorate": "ussuri",
+      "variant": "amur"
+    },
+    {
+      "id": "nikolsk_vladivostok",
+      "from": "nikolsk",
+      "to": "vladivostok",
+      "length_km": 110,
+      "terrain": {
+        "hills": 0.6,
+        "forest": 0.4
+      },
+      "features": [],
+      "directorate": "ussuri",
+      "variant": "both"
+    }
+  ],
+  "features": {
+    "irtysh_bridge": {
+      "name": "Мост через Иртыш",
+      "kind": "bridge",
+      "options": [
+        "wooden",
+        "iron"
+      ],
+      "default": "iron"
+    },
+    "ob_bridge": {
+      "name": "Мост через Обь",
+      "kind": "bridge",
+      "options": [
+        "wooden",
+        "iron"
+      ],
+      "default": "iron"
+    },
+    "yenisei_bridge": {
+      "name": "Мост через Енисей",
+      "kind": "bridge",
+      "options": [
+        "wooden",
+        "iron"
+      ],
+      "default": "iron"
+    },
+    "sungari_bridge": {
+      "name": "Мост через Сунгари",
+      "kind": "bridge",
+      "options": [
+        "wooden",
+        "iron"
+      ],
+      "default": "iron"
+    },
+    "amur_bridge": {
+      "name": "Мост через Амур",
+      "kind": "bridge",
+      "options": [
+        "wooden",
+        "iron"
+      ],
+      "default": "iron"
+    },
+    "baikal_crossing": {
+      "name": "Переправа через Байкал",
+      "kind": "crossing",
+      "options": [
+        "ferry",
+        "circum"
+      ],
+      "default": "circum",
+      "event": "T05"
+    }
+  },
+  "historical": {
+    "route": "kvzhd",
+    "gauge_mm": 1524,
+    "tracks": 1,
+    "baikal_crossing": "ferry",
+    "firstRun": {
+      "from": "chelyabinsk",
+      "to": "vladivostok",
+      "minutes": null,
+      "fact_ref": null,
+      "comment": "Исторического времени сквозного рейса Челябинск — Владивосток в базе фактов нет, поэтому шкалы «скорость» в этой главе нет."
+    }
+  }
+}

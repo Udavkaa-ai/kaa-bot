@@ -58,6 +58,10 @@ function segmentTotals(state, ch, seg) {
   }
   cost *= gauge.costMult * tracks.costMult;
   work *= tracks.workMult;
+  // Решения на всю главу (например, облегчённые технические условия)
+  const mod = state.modifiers || {};
+  cost *= mod.costMult || 1;
+  work *= mod.workMult || 1;
   for (const fid of seg.features || []) {
     const f = ch.map.features[fid];
     if (f.kind === 'bridge') {
@@ -65,6 +69,14 @@ function segmentTotals(state, ch, seg) {
       cost += br.cost;
       work += br.work;
     }
+  }
+  // Переправа (паром или обходная дорога) меняет весь участок целиком
+  for (const fid of seg.features || []) {
+    const f = ch.map.features[fid];
+    if (f.kind !== 'crossing') continue;
+    const cr = b.crossing[featureValue(state, ch, seg, fid)];
+    cost = cost * (cr.costMult ?? 1) + (cr.extraCost || 0);
+    work *= cr.workMult ?? 1;
   }
   return { cost, work };
 }
@@ -123,7 +135,8 @@ function hasRollingStock(state, ch) {
 
 // ---------------- создание игры ----------------
 
-function createGame(chapterId, ch, seed) {
+// campaign — итоги прошлых глав (например, колея главы I переходит в следующие)
+function createGame(chapterId, ch, seed, campaign = {}) {
   if (ch.id !== chapterId) fail('Контент не той главы');
   const cb = chapterBalance(ch);
   const hasGaugeDecision = ch.events.some(e => e.choices.some(c => c.effects?.set?.gauge));
@@ -148,7 +161,8 @@ function createGame(chapterId, ch, seed) {
     flags: [],
     unlocked: { construction: false, rollingStock: false, quiz: false },
     routeVariant: null,
-    gauge: hasGaugeDecision ? null : ch.map.historical.gauge_mm,
+    modifiers: { costMult: 1, workMult: 1, speedMult: 1, incidentMult: 1 },
+    gauge: hasGaugeDecision ? null : (campaign.gauge || ch.map.historical.gauge_mm),
     tracks: hasGaugeDecision ? null : ch.map.historical.tracks,
     segments,
     rollingStock: { locomotives: {}, carriages: 0 },
@@ -207,6 +221,10 @@ function triggerMet(state, ch, ev, ctx, rng) {
   }
   if (t.moraleLte !== undefined && !(state.morale <= t.moraleLte)) return false;
   if (t.favorLte !== undefined && !(state.favor <= t.favorLte)) return false;
+  if (t.segmentUnopened) {
+    const seg = ch.segmentsById[t.segmentUnopened];
+    if (!seg || !segmentIsActive(state, seg) || state.segments[seg.id].opened) return false;
+  }
   if (t.segmentProgress) {
     const seg = ch.segmentsById[t.segmentProgress.segment];
     if (!seg || !segmentIsActive(state, seg)) return false;
@@ -288,6 +306,14 @@ function applyEffects(state, ch, effects, rng, log) {
         break;
       }
       case 'incidentRisk': state.extraRunRisk += v; break;
+      case 'modifier':
+        state.modifiers = state.modifiers || { costMult: 1, workMult: 1, speedMult: 1, incidentMult: 1 };
+        for (const [mk, mv] of Object.entries(v)) state.modifiers[mk] = (state.modifiers[mk] || 1) * mv;
+        break;
+      case 'crews':
+        state.crewsTotal = Math.max(0, state.crewsTotal + v);
+        log.push({ kind: 'crews', amount: v });
+        break;
       case 'skipSeason': state.skipNextSeason = true; break;
       case 'runFirstTrain': {
         const run = simulateFirstTrain(state, ch, rng);
@@ -653,7 +679,8 @@ function simulateFirstTrain(state, ch, rng) {
   const locoId = owned.sort((a, bb) => b.train.locomotives[bb].baseSpeedKmh - b.train.locomotives[a].baseSpeedKmh)[0];
   const loco = b.train.locomotives[locoId];
   const tracks = String(currentTracks(state, ch));
-  const speed = loco.baseSpeedKmh * b.gauge[String(currentGauge(state, ch))].speedMult;
+  const mod = state.modifiers || {};
+  const speed = loco.baseSpeedKmh * b.gauge[String(currentGauge(state, ch))].speedMult * (mod.speedMult || 1);
 
   let minutes = 0, km = 0, incidents = 0;
   const legs = [];
@@ -667,7 +694,17 @@ function simulateFirstTrain(state, ch, rng) {
       if (g.speedCapKmh) { capped += Math.min(len, g.cappedKm || 0); cap = Math.min(cap, g.speedCapKmh); }
       risk += (g.incidentRiskPerRun || 0) * b.tracks[tracks].incidentMult;
     }
+    risk *= mod.incidentMult || 1;
     let legMin = ((len - capped) / speed + capped / cap) * 60;
+    for (const fid of seg.features || []) {
+      const f = ch.map.features[fid];
+      if (f.kind !== 'crossing') continue;
+      const cr = b.crossing[featureValue(state, ch, seg, fid)];
+      legMin += cr.extraRunMinutes || 0;
+      if (cr.incidentRiskPerRun && rng.next() < cr.incidentRiskPerRun * (mod.incidentMult || 1)) {
+        incidents++; legMin += b.train.incidentDelayMinutes;
+      }
+    }
     let incident = false;
     if (risk > 0 && rng.next() < risk) {
       incident = true;
@@ -717,7 +754,7 @@ function scoreChapter(state, ch) {
   const plan = b.score.treasuryPlan[ch.id];
   if (plan) scales.push({ id: 'treasury', stars: starsFor(spent / plan, th.treasurySpentToPlan), value: Math.round(spent), plan });
   scales.push({ id: 'reliability', stars: starsFor(state.incidents, th.incidents), value: state.incidents });
-  if (state.firstRun) {
+  if (state.firstRun && state.firstRun.historicalMinutes) {
     const ratio = state.firstRun.minutes / state.firstRun.historicalMinutes;
     scales.push({ id: 'speed', stars: starsFor(ratio, th.trainTimeToHistorical), value: state.firstRun.minutes, historical: state.firstRun.historicalMinutes });
   }

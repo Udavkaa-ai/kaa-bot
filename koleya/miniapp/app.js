@@ -121,11 +121,15 @@
   // ================= утилиты =================
   const SEASON_RU = { spring: 'Весна', summer: 'Лето', autumn: 'Осень', winter: 'Зима' };
   const SEASON_GEN = { spring: 'весны', summer: 'лета', autumn: 'осени', winter: 'зимы' };
-  const TERRAIN_RU = { plain: 'равнина', forest: 'лес', swamp: 'болото', hills: 'холмы' };
+  const TERRAIN_RU = { plain: 'равнина', forest: 'лес', swamp: 'болото', hills: 'холмы', steppe: 'степь', taiga: 'тайга', mountains: 'горы', permafrost: 'мерзлота' };
   const PAY_RU = { low: 'скудно', normal: 'как положено', high: 'щедро' };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = v => `${Math.round(v).toLocaleString('ru-RU')}`;
-  const hm = min => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? `${h} ч ${m} мин` : `${m} мин`; };
+  const hm = min => {
+    const d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = Math.round(min % 60);
+    if (d) return `${d} сут ${h} ч`;
+    return h ? `${h} ч ${m} мин` : `${m} мин`;
+  };
   const pluralCrews = n => { const a = Math.abs(n) % 100, b = a % 10; if (a > 10 && a < 20) return 'артелей'; if (b === 1) return 'артель'; if (b >= 2 && b <= 4) return 'артели'; return 'артелей'; };
 
   function toast(text, ms = 2600) {
@@ -228,14 +232,26 @@
   const CHAPTER_INFO = {
     prologue: { title: 'Пролог. Царскосельская дорога', years: '1836–1838', desc: 'Обучение: два коротких участка, первый паровоз и первый рейс для публики.' },
     chapter1: { title: 'Глава I. Петербург — Москва', years: '1842–1851', desc: 'Трасса, колея, два пути, болота, Валдай, мосты и сроки. Главная дорога империи.' },
+    chapter2: { title: 'Глава II. Великий Сибирский путь', years: '1891–1904', desc: 'Через всю Сибирь к Тихому океану: стройка с двух концов, Байкал, выбор между Маньчжурией и Амуром.' },
   };
+  const CHAPTER_ORDER = Object.keys(CHAPTER_INFO);
+  const nextChapter = ch => {
+    const ready = (S.home && S.home.chapters) || CHAPTER_ORDER;
+    const n = CHAPTER_ORDER[CHAPTER_ORDER.indexOf(ch) + 1];
+    return n && ready.includes(n) ? n : null;
+  };
+  // Эпоха оформления: тема берётся из карты главы (data-era), на титуле — гравюра
+  function setEra(era) { document.documentElement.setAttribute('data-era', era || 'engraving'); }
 
   async function openHome() {
     show('s-home');
     try { S.home = await api('GET', '/game'); } catch (err) { $('home-note').textContent = err.message; return; }
     const saves = S.home.saves || {};
     const done = (S.home.player && S.home.player.completed) || {};
-    $('chapters').innerHTML = ['prologue', 'chapter1'].map(ch => {
+    setEra('engraving');
+    // Показываем только главы, которые сервер считает готовыми
+    const ready = (S.home && S.home.chapters) || CHAPTER_ORDER;
+    $('chapters').innerHTML = CHAPTER_ORDER.filter(ch => ready.includes(ch)).map(ch => {
       const info = CHAPTER_INFO[ch];
       const sv = saves[ch];
       let status = '';
@@ -293,6 +309,7 @@
 
   function enterGame(r) {
     S.chapter = r.chapter;
+    setEra(S.content[r.chapter] && S.content[r.chapter].map.era);
     S.state = r.state;
     S.view = r.view;
     S.quiz = r.quiz || null;
@@ -739,6 +756,10 @@
       <pattern id="p-forest" patternTransform="scale(${inv})" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M1 6 L3 2 M5 7 L7 3" class="hatch-forest"/></pattern>
       <pattern id="p-swamp" patternTransform="scale(${inv})" width="10" height="6" patternUnits="userSpaceOnUse"><path d="M0 3 H4 M6 3 H9" class="hatch-swamp"/></pattern>
       <pattern id="p-hills" patternTransform="scale(${inv})" width="10" height="8" patternUnits="userSpaceOnUse"><path d="M1 6 Q5 0 9 6" class="hatch-hills"/></pattern>
+      <pattern id="p-steppe" patternTransform="scale(${inv})" width="14" height="8" patternUnits="userSpaceOnUse"><path d="M1 6 l2 -3 l2 3 M8 6 l2 -3 l2 3" class="hatch-plain-l"/></pattern>
+      <pattern id="p-taiga" patternTransform="scale(${inv})" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M3 8 L5 2 L7 8 Z" class="hatch-forest"/></pattern>
+      <pattern id="p-mountains" patternTransform="scale(${inv})" width="14" height="10" patternUnits="userSpaceOnUse"><path d="M1 9 L5 2 L9 9 M6 9 L10 4 L13 9" class="hatch-hills"/></pattern>
+      <pattern id="p-permafrost" patternTransform="scale(${inv})" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M5 2 V8 M2 5 H8 M3 3 L7 7 M7 3 L3 7" class="hatch-frost"/></pattern>
       <pattern id="p-plain" patternTransform="scale(${inv})" width="12" height="12" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="0.6" class="hatch-plain"/></pattern>
     </defs>`);
     // Рамка — двойная линия
@@ -774,6 +795,10 @@
           parts.push(`<path d="M${r0[0]} ${r0[1]} Q${m[0] + dx / L * 7} ${m[1] + dy / L * 7} ${r1[0]} ${r1[1]}" class="river"/>`);
           const iron = sv.features[fid] === 'iron';
           parts.push(`<path d="M${m[0] - dx / L * 5 + nx * 3} ${m[1] - dy / L * 5 + ny * 3} l${dx / L * 10} ${dy / L * 10} M${m[0] - dx / L * 5 - nx * 3} ${m[1] - dy / L * 5 - ny * 3} l${dx / L * 10} ${dy / L * 10}" class="bridge${iron ? ' iron' : ''}"/>`);
+        } else if (f.kind === 'crossing') {
+          // Озеро поперёк трассы; паром — пунктир по воде, обходная дорога — дуга по берегу
+          parts.push(`<ellipse cx="${m[0] + nx * 10}" cy="${m[1] + ny * 10}" rx="${Math.min(40, L * 0.35)}" ry="14" transform="rotate(${Math.atan2(dy, dx) * 180 / Math.PI} ${m[0] + nx * 10} ${m[1] + ny * 10})" class="lake"/>`);
+          if (sv.features[fid] === 'ferry') parts.push(`<path d="M${m[0] - dx / L * 22} ${m[1] - dy / L * 22} L${m[0] + dx / L * 22} ${m[1] + dy / L * 22}" class="ferry-line"/>`);
         } else if (f.kind === 'grade') {
           const val = sv.features[fid];
           if (val === 'bypass') {
@@ -904,7 +929,7 @@
         const g = seg.directorate || 'main';
         (groups[g] = groups[g] || []).push(seg);
       }
-      const gName = { north: 'Северная дирекция · Мельников', south: 'Южная дирекция · Крафт', main: 'Участки' };
+      const gName = { main: 'Участки', ...(c.map.directorates || {}) };
       for (const [g, list] of Object.entries(groups)) {
         const crews = list.reduce((a, x) => a + v.segments[x.id].crews, 0);
         parts.push(`<div class="sect"><div class="sect-title fleur">${gName[g]} · ${crews} ${pluralCrews(crews)}</div><div class="scheme">`);
@@ -1101,7 +1126,7 @@
       for (const fid of feats) {
         const f = c.map.features[fid];
         const val = sv.features[fid];
-        const label = { wooden: 'деревянный', iron: 'железный', steep: 'крутой уклон', bypass: 'обход' };
+        const label = { wooden: 'деревянный', iron: 'железный', steep: 'крутой уклон', bypass: 'обход', ferry: 'паром-ледокол', circum: 'обходная дорога' };
         if (f.event || sv.featureLocked || !s.unlocked.construction) {
           parts.push(`<div class="kv"><span>${esc(f.name)}</span><span>${label[val] || val}${f.event && !s.firedEvents.includes(f.event) ? ' · решится депешей' : ''}</span></div>`);
         } else {
@@ -1331,7 +1356,7 @@
     openModal(`<div class="kicker">Первый поезд</div>
       <h2>${esc(c.nodesById[c.map.historical.firstRun.from].name.replace(/\s*\(.+\)/, ''))} — ${esc(c.nodesById[c.map.historical.firstRun.to].name)}</h2>
       <div class="bigtime">${hm(run.minutes)}</div>
-      <div class="compare">Исторически — ${hm(run.historicalMinutes)}. ${diff === 0 ? 'Ровно как тогда.' : diff < 0 ? `Вы быстрее на ${hm(-diff)}.` : `Вы медленнее на ${hm(diff)}.`} Путь ${run.km} км, стоянок ${run.stops}.</div>
+      <div class="compare">${run.historicalMinutes ? `Исторически — ${hm(run.historicalMinutes)}. ${diff === 0 ? 'Ровно как тогда.' : diff < 0 ? `Вы быстрее на ${hm(-diff)}.` : `Вы медленнее на ${hm(diff)}.`} ` : ''}Путь ${run.km} км, стоянок ${run.stops}.</div>
       <div style="margin-top:10px">${legs}</div>${extra}
       <div class="facts">${factsHtml([c.map.historical.firstRun.fact_ref])}</div>
       <button class="btn" data-next>Далее</button>`, d => d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); }));
@@ -1375,9 +1400,8 @@
         <h3 class="sheet-title" style="font-size:21px;margin-top:18px">Как было на самом деле</h3>
         ${comparisonHtml()}
         ${epilogueHtml()}
-        ${S.chapter === 'prologue'
-          ? '<button class="btn route" data-next-chapter>К главе I: Петербург — Москва</button>'
-          : `<button class="btn route" data-quiz>${S.quiz && S.quiz.done ? 'Итоги викторины' : 'Викторина главы'}</button>`}
+        ${S.chapter === 'prologue' ? '' : `<button class="btn route" data-quiz>${S.quiz && S.quiz.done ? 'Итоги викторины' : 'Викторина главы'}</button>`}
+        ${nextChapter(S.chapter) ? `<button class="btn${S.chapter === 'prologue' ? ' route' : ' ghost'}" data-next-chapter>К следующей главе: ${esc(CHAPTER_INFO[nextChapter(S.chapter)].title)}</button>` : ''}
         <button class="btn ghost" data-museum>Музей</button>
         <button class="btn ghost" data-home>В меню</button>`;
     }
@@ -1385,7 +1409,7 @@
     el.querySelectorAll('[data-restart]').forEach(b => b.addEventListener('click', () => startChapter(S.chapter)));
     el.querySelectorAll('[data-quiz]').forEach(b => b.addEventListener('click', openQuiz));
     el.querySelectorAll('[data-museum]').forEach(b => b.addEventListener('click', openMuseum));
-    el.querySelectorAll('[data-next-chapter]').forEach(b => b.addEventListener('click', () => startChapter('chapter1')));
+    el.querySelectorAll('[data-next-chapter]').forEach(b => b.addEventListener('click', () => startChapter(nextChapter(S.chapter))));
   }
 
   function comparisonHtml() {

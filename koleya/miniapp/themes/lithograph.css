@@ -1,0 +1,24 @@
+/* Эпоха 2: «Литография и открытка» (docs/DESIGN.md) — Транссиб.
+   Тоновая литография с ручной подкраской: тёплая бумага, трасса — стальная синева. */
+[data-era="lithograph"] {
+  --paper: #EEE4CF;
+  --paper-deep: #E2D3B4;
+  --ink: #2F2A26;
+  --ink-faded: #6F665C;
+  --route: #2E5E7E;
+  --wash-water: #7FA7C2;
+  --wash-marsh: #8A9A5E;
+
+  --ink-hair: rgba(47, 42, 38, 0.16);
+  --ink-soft: rgba(47, 42, 38, 0.62);
+  --route-wash: rgba(46, 94, 126, 0.10);
+  --ok: #3F6B3A;
+  --scrim: rgba(47, 42, 38, 0.38);
+  --wax: #7E2A1E;
+  --wax-dark: #4E1710;
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.18 0 0 0 0 0.15 0 0 0 0 0.12 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-vignette: radial-gradient(ellipse at 50% 35%, rgba(238, 228, 207, 0) 50%, rgba(170, 140, 100, 0.38) 100%);
+
+  --font-display: 'Playfair Display', 'Old Standard TT', 'Times New Roman', Georgia, serif;
+  --font-ui: 'PT Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
