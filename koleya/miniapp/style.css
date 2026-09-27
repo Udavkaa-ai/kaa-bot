@@ -395,3 +395,25 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
 .bar .proj-h { background: var(--route-wash); border-right: 1px dashed var(--route); }
 #map .seg-pct { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; fill: var(--route); paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }
 #map .seg-pct.done { fill: var(--ink); font-weight: 400; }
+
+/* ---------- календарь: клетка — сезон ---------- */
+.calendar { padding: 13px 2px 2px; }
+.cal-strip { display: flex; gap: 3px; }
+.cy { flex: 1 1 0; min-width: 0; }
+.cy .cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; }
+.cy .yl { font-size: 9px; text-align: center; color: var(--ink-faded); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.cy.cur .yl { color: var(--ink); font-weight: 700; }
+.cc { display: block; height: 9px; border: 1px solid var(--ink-hair); background: var(--paper); }
+.cc.out { border-color: transparent; background: transparent; }
+.cc.past { background: var(--ink-faded); border-color: var(--ink-faded); }
+.cc.now { background: var(--route); border-color: var(--route); }
+.cc.late { background: repeating-linear-gradient(135deg, var(--route-wash) 0 2px, var(--paper) 2px 4px); border-color: var(--route); }
+.cc.late.past { background: repeating-linear-gradient(135deg, var(--route) 0 2px, var(--ink-faded) 2px 4px); }
+.cc.deadline { position: relative; border: 2px solid var(--route); }
+.cc.deadline::after { content: '⚑'; position: absolute; left: 50%; top: -12px; transform: translateX(-50%); font-size: 10px; color: var(--route); }
+.cc.limit { border: 1px dashed var(--ink); }
+.cal-line { font-size: 12px; margin-top: 4px; line-height: 1.35; color: var(--ink); }
+.cal-line .bad { color: var(--route); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 3px; font-size: 10px; color: var(--ink-faded); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 3px; }
+.cal-legend .cc { display: inline-block; width: 9px; height: 8px; }

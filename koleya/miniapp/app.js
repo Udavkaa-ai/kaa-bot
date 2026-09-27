@@ -297,9 +297,76 @@
     const f = Math.round(v / 100 * cells);
     return `<span class="meter${v <= 25 ? ' low' : ''}">${Array.from({ length: cells }, (_, i) => `<i class="${i < f ? 'f' : ''}"></i>`).join('')}</span>`;
   }
+  // ---- календарь: сезон за клеткой от начала работ до крайнего срока ----
+  const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+  const SEASON_ICON = { spring: 'в', summer: 'л', autumn: 'о', winter: 'з' };
+  const di = (y, season) => y * 4 + SEASONS.indexOf(season);
+  const fromDi = i => ({ year: Math.floor(i / 4), season: SEASONS[((i % 4) + 4) % 4] });
+  function seasonsWord(n) { const a = n % 100, b = n % 10; if (a > 10 && a < 20) return 'сезонов'; if (b === 1) return 'сезон'; if (b >= 2 && b <= 4) return 'сезона'; return 'сезонов'; }
+  function spanText(n) {
+    const y = Math.floor(n / 4), r = n % 4;
+    const yw = y % 10 === 1 && y % 100 !== 11 ? 'год' : (y % 10 >= 2 && y % 10 <= 4 && (y % 100 < 10 || y % 100 >= 20)) ? 'года' : 'лет';
+    return y ? `${y} ${yw}${r ? ` ${r} ${seasonsWord(r)}` : ''}` : `${n} ${seasonsWord(n)}`;
+  }
+
+  function renderCalendar() {
+    const s = S.state, v = S.view, b = C().balance, cb = b[S.chapter];
+    const el = $('calendar');
+    if (!s) return;
+    const now = di(s.year, s.season);
+    const startCfg = cb.constructionStart || { year: cb.startYear, season: cb.startSeason };
+    const start = Math.min(now, di(startCfg.year, startCfg.season));
+    const deadline = cb.deadline ? di(cb.deadline.year, cb.deadline.season) : null;
+    // Крайний срок игры: после maxTurns ходов — отставка «сроки вышли»
+    const limit = now + Math.max(0, cb.maxTurns - s.turn);
+    const done = !!s.completedAt;
+    // Лента целыми годами: от года начала до года отставки
+    const y0 = fromDi(start).year, y1 = fromDi(limit).year;
+    const years = [];
+    for (let y = y0; y <= y1; y++) {
+      const cells = SEASONS.map(season => {
+        const i = di(y, season);
+        const cls = ['cc'];
+        if (i < start || i > limit) cls.push('out');
+        else if (i < now) cls.push('past');
+        else if (i === now) cls.push('now');
+        if (deadline !== null && i > deadline && i <= limit) cls.push('late');
+        if (i === deadline) cls.push('deadline');
+        if (i === limit && !done) cls.push('limit');
+        return `<i class="${cls.join(' ')}" title="${SEASON_RU[season]} ${y}"></i>`;
+      }).join('');
+      years.push(`<div class="cy${y === s.year ? ' cur' : ''}"><div class="cells">${cells}</div><div class="yl">${String(y).slice(2)}</div></div>`);
+    }
+    // Подпись: сколько осталось и где мы относительно графика
+    let line;
+    if (done) {
+      line = `Трасса открыта: ${SEASON_RU[s.completedAt.season].toLowerCase()} ${s.completedAt.year}.`;
+    } else if (deadline !== null) {
+      const left = deadline - now;
+      const dl = `${SEASON_RU[cb.deadline.season].toLowerCase()} ${cb.deadline.year}`;
+      if (left > 0) line = `До срока (${dl}) — <b>${spanText(left)}</b>.`;
+      else if (left === 0) line = `<b>Срок — этот сезон</b> (${dl}).`;
+      else line = `<span class="bad">Опоздание ${spanText(-left)}.</span> До отставки — ${spanText(limit - now)}.`;
+      if (left > 0 && s.unlocked.construction && cb.behindSchedule) {
+        const cs = di(cb.constructionStart.year, cb.constructionStart.season);
+        const expected = Math.max(0, Math.min(1, (now - cs) / Math.max(1, deadline - cs))) * 100;
+        const behind = v.overallProgress < expected - cb.behindSchedule.lagShare * 100;
+        line += ` По графику ≈${Math.round(expected)}%, построено ${Math.round(v.overallProgress)}%${behind ? ' — <span class="bad">отстаём, благоволение падает</span>' : ''}.`;
+      }
+    } else {
+      line = `Срока нет, но на пролог осталось <b>${spanText(limit - now)}</b>.`;
+    }
+    const legend = `<div class="cal-legend">
+      <span><i class="cc past"></i>прошло</span><span><i class="cc now"></i>сейчас</span>
+      ${deadline !== null ? '<span><i class="cc deadline"></i>срок</span><span><i class="cc late"></i>опоздание</span>' : ''}
+      <span><i class="cc limit"></i>отставка</span><span>клетка — сезон</span></div>`;
+    el.innerHTML = `<div class="cal-strip">${years.join('')}</div>${legend}<div class="cal-line">${line}</div>`;
+  }
+
   function renderRes() {
     const s = S.state, v = S.view;
     if (!s) return;
+    renderCalendar();
     $('resbar').innerHTML = `
       <div class="res"><span class="lbl">${esc(C().map.title)}</span><span class="date">${SEASON_RU[s.season]} ${s.year}</span></div>
       <div class="res"><span class="lbl">Казна, тыс. руб.</span><span class="val${s.treasury < 0 ? ' neg' : ''}">${money(s.treasury)}</span></div>
