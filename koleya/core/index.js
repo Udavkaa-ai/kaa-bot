@@ -179,6 +179,8 @@ function createKoleya(deps) {
       facts: all.facts.filter(f => factIds.has(f.id)),
       balance: ch.balance,
       order: CHAPTER_ORDER,
+      // Викторина есть, только если есть вопросы по проверенным фактам
+      quizAvailable: ch.quiz.some(q => all.factsById[q.fact_ref]?.status === 'verified'),
     };
   }
 

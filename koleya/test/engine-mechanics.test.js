@@ -106,3 +106,44 @@ test('баланс главы: overrides сливаются с общим бал
   const merged = content.deepMerge({ a: 1, b: { c: 2, d: 3 } }, { b: { d: 4 }, e: 5 });
   assert.deepEqual(merged, { a: 1, b: { c: 2, d: 4 }, e: 5 });
 });
+
+test('segmentWork active:<рельеф>: бьёт по строящемуся участку с этим рельефом', () => {
+  const ch = variant(c => {
+    c.events.push({ id: 'X2', type: 'historical', trigger: { atYear: 1850 }, title: 't', text: 't', choices: [{ id: 'ok', label: 'ok', effects: { segmentWork: { target: 'active:hills', delta: -10 } } }], fact_refs: [] });
+  });
+  let s = intro(ch);
+  s.segments.vishera_okulovka.workDone = 50; s.segments.vishera_okulovka.crews = 3;
+  s.segments.spb_kolpino.workDone = 50; // равнина и болото — не задето
+  s.year = 1850;
+  s = E.applyAction(s, { type: 'SET_PAY', level: 'normal' }, ch).state;
+  while (s.pendingEvents[0] && s.pendingEvents[0] !== 'X2') {
+    const ev = ch.eventsById[s.pendingEvents[0]];
+    s = E.applyAction(s, { type: 'CHOOSE', eventId: ev.id, choiceId: ev.choices[0].id }, ch).state;
+  }
+  s.segments.vishera_okulovka.workDone = 50;
+  s = E.applyAction(s, { type: 'CHOOSE', eventId: 'X2', choiceId: 'ok' }, ch).state;
+  assert.equal(s.segments.vishera_okulovka.workDone, 40);
+  assert.equal(s.segments.spb_kolpino.workDone, 50);
+});
+
+test('глава II: проходится хорошим планом, проваливается без него, трасса выбирается депешей', () => {
+  const { playGame } = require('../scripts/bots');
+  const ch2 = content.chapter('chapter2');
+  const good = playGame(ch2, 1, 'historical');
+  assert.equal(good.outcome, 'won');
+  assert.equal(good.routeVariant, 'kvzhd');
+  assert.equal(good.segments.baikal.features.baikal_crossing, 'ferry');
+  assert.ok(good.modifiers.costMult < 1, 'облегчённые условия действуют');
+  assert.ok(!good.score.scales.some(x => x.id === 'speed'), 'без исторического времени рейса шкалы скорости нет');
+  const outs = new Set();
+  for (let seed = 1; seed <= 20; seed++) outs.add(playGame(ch2, seed, 'random').outcome);
+  assert.ok(outs.has('removed') || outs.has('timeout'));
+  // Амурский вариант: участки через Маньчжурию выключены
+  let { state } = E.createGame('chapter2', ch2, 5, { gauge: 1524 });
+  assert.equal(state.gauge, 1524);
+  state.year = 1896; state.unlocked.construction = true;
+  state.pendingEvents = ['T06'];
+  state = E.applyAction(state, { type: 'CHOOSE', eventId: 'T06', choiceId: 'amur' }, ch2).state;
+  const ids = E._internal.activeSegments(state, ch2).map(s => s.id);
+  assert.ok(ids.includes('sretensk_blagoveshchensk') && !ids.includes('manchuria_harbin'));
+});

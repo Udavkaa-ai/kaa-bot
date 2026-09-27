@@ -330,10 +330,13 @@ function applyEffects(state, ch, effects, rng, log) {
   }
 }
 
+// target: id участка, 'activeSwamp' или 'active:<рельеф>' — строящийся участок с этим рельефом,
+// где больше всего людей (там беда и случается)
 function pickSegmentForWork(state, ch, target) {
-  if (target !== 'activeSwamp') return ch.segmentsById[target] || null;
-  const cands = activeSegments(state, ch).filter(s => !state.segments[s.id].opened && (s.terrain.swamp || 0) > 0);
-  cands.sort((a, b) => state.segments[b.id].crews - state.segments[a.id].crews || (b.terrain.swamp - a.terrain.swamp));
+  const terr = target === 'activeSwamp' ? 'swamp' : (String(target).startsWith('active:') ? target.slice(7) : null);
+  if (!terr) return ch.segmentsById[target] || null;
+  const cands = activeSegments(state, ch).filter(s => !state.segments[s.id].opened && (s.terrain[terr] || 0) > 0);
+  cands.sort((a, b) => state.segments[b.id].crews - state.segments[a.id].crews || ((b.terrain[terr] || 0) - (a.terrain[terr] || 0)));
   return cands[0] || null;
 }
 

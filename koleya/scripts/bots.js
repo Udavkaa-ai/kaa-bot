@@ -26,7 +26,7 @@ function tryAct(state, ch, action) {
 function chooseFor(strategy, ev, rnd) {
   if (strategy === 'random') return ev.choices[Math.floor(rnd() * ev.choices.length)].id;
   if (strategy === 'shortcut') {
-    const pref = { E03: 'direct', E04: '1435', E05: '1', E10: 'steep', E12: 'wooden', P01b: 'public' };
+    const pref = { E03: 'direct', E04: '1435', E05: '1', E10: 'steep', E12: 'wooden', P01b: 'public', T02: 'light', T05: 'ferry', T06: 'kvzhd' };
     if (pref[ev.id]) return pref[ev.id];
   }
   if (ev.history && ev.history.choiceId) return ev.history.choiceId;
@@ -78,7 +78,12 @@ function playTurn(state, ch, strategy, rnd) {
   }
   if (state.finished) return state;
 
+  // Настрой: поднимать оплату, когда он проседает, и возвращать обычную, когда восстановился
   if (strategy === 'cautious' && state.pay !== 'high' && state.morale < 60) state = tryAct(state, ch, { type: 'SET_PAY', level: 'high' });
+  if (strategy === 'historical') {
+    if (state.pay !== 'high' && state.morale < 75) state = tryAct(state, ch, { type: 'SET_PAY', level: 'high' });
+    else if (state.pay === 'high' && state.morale > 95) state = tryAct(state, ch, { type: 'SET_PAY', level: 'normal' });
+  }
   if (strategy === 'random' && rnd() < 0.1) state = tryAct(state, ch, { type: 'SET_PAY', level: ['low', 'normal', 'high'][Math.floor(rnd() * 3)] });
 
   if (state.unlocked.construction) {

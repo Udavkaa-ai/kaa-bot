@@ -846,15 +846,28 @@
       }
       if (!alt) parts.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="seg-hit" style="stroke-width:${(22 * inv).toFixed(2)}px" data-seg="${seg.id}"/>`);
     }
-    // Станции
+    // Станции. Подписи раскладываем: если рядом уже есть подпись с той же стороны — переносим
+    // на другую сторону, а если тесно с обеих — прячем подпись мелкой станции.
     const fs = Math.max(10, Math.min(13, W / 34));
-    for (const n of c.map.nodes) {
-      if (decided && n.variant && n.variant !== s.routeVariant) continue;
-      const [x, y] = P(n);
+    const placed = [];
+    const nodesToDraw = c.map.nodes.filter(n => !(decided && n.variant && n.variant !== s.routeVariant))
+      .map(n => ({ n, p: P(n), rank: n.kind === 'capital' ? 0 : n.kind === 'town' ? 1 : 2 }))
+      .sort((a, b) => a.rank - b.rank);
+    const clash = (sx, sy, right, w) => placed.some(q => Math.abs(q.y - sy) < fs * 1.15 && (right ? sx < q.x2 && sx + w > q.x1 : sx - w < q.x2 && sx > q.x1));
+    for (const { n, p: [x, y] } of nodesToDraw) {
       if (n.kind === 'capital') parts.push(`<circle cx="${x}" cy="${y}" r="${6.5 * inv}" class="node"/><circle cx="${x}" cy="${y}" r="${3 * inv}" class="node inner"/>`);
       else parts.push(`<circle cx="${x}" cy="${y}" r="${(n.kind === 'town' ? 4 : 3) * inv}" class="node${n.kind === 'station' ? ' small' : ''}"/>`);
-      const right = (x - Z.x) * zk < W * 0.62;
-      parts.push(`<text x="${x + (right ? 9 : -9) * inv}" y="${y + 4 * inv}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${((n.kind === 'station' ? fs - 1 : fs + 1) * inv).toFixed(2)}">${esc(n.name.replace(/\s*\(.+\)/, ''))}</text>`);
+      const name = n.name.replace(/\s*\(.+\)/, '');
+      const size = n.kind === 'station' ? fs - 1 : fs + 1;
+      const w = name.length * size * 0.52;
+      // экранные координаты для проверки наложений
+      const sx = (x - Z.x) * zk, sy = (y - Z.y) * zk;
+      let right = sx < W * 0.62;
+      if (clash(sx + (right ? 9 : -9), sy, right, w)) right = !right;
+      if (clash(sx + (right ? 9 : -9), sy, right, w) && n.kind === 'station') continue;
+      const lx = sx + (right ? 9 : -9);
+      placed.push({ y: sy, x1: right ? lx : lx - w, x2: right ? lx + w : lx });
+      parts.push(`<text x="${x + (right ? 9 : -9) * inv}" y="${y + 4 * inv}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${(size * inv).toFixed(2)}">${esc(name)}</text>`);
     }
     parts.push(`</g></g>`);
     // Роза ветров и масштабная линейка в вёрстах (1 верста = 1,0668 км)
@@ -863,8 +876,8 @@
       const a0 = c.map.nodes[0], a1 = c.map.nodes[c.map.nodes.length - 1];
       const pxPerKm = zk * Math.hypot(P(a1)[0] - P(a0)[0], P(a1)[1] - P(a0)[1]) /
         (Math.hypot((a1.lon - a0.lon) * Math.cos((a0.lat + a1.lat) / 2 * Math.PI / 180), a1.lat - a0.lat) * 111.32 || 1);
-      const steps = [1, 2, 5, 10, 20, 50, 100];
-      const versts = steps.find(v => v * 1.0668 * pxPerKm >= 72) || 100;
+      const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+      const versts = steps.find(v => v * 1.0668 * pxPerKm >= 72) || steps[steps.length - 1];
       const L = versts * 1.0668 * pxPerKm;
       const x0 = 20, y0 = H - 24;
       const ticks = [0, 1, 2, 3].map(i => `<rect x="${x0 + i * L / 4}" y="${y0 - 3}" width="${L / 4}" height="4" class="${i % 2 ? 'scale-w' : 'scale-b'}"/>`).join('');
@@ -1162,9 +1175,10 @@
     return out;
   }
   function factBody(f) {
-    const tag = f.status === 'to_verify' ? '<span class="tag">версия · уточняется</span> ' : f.status === 'legend' ? '<span class="tag legend">легенда</span> ' : '';
+    const tag = f.status === 'to_verify' ? '<span class="tag">уточняется</span> ' : f.status === 'legend' ? '<span class="tag legend">легенда</span> ' : '';
     const src = (f.sources || []).map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join('; ');
-    return `${tag}<div class="ft">${esc(f.text)}</div>${src ? `<div class="src">Источник: ${src}</div>` : ''}`;
+    const note = f.status !== 'verified' && f.note ? `<div class="src">Примечание: ${esc(f.note)}</div>` : '';
+    return `${tag}<div class="ft">${esc(f.text)}</div>${src ? `<div class="src">Источник: ${src}</div>` : ''}${note}`;
   }
   function factsHtml(refs, { open = false } = {}) {
     const c = C();
@@ -1260,10 +1274,11 @@
   }
 
   function advisorActive(a) {
-    if (!a.active_until) return true;
     const order = ['spring', 'summer', 'autumn', 'winter'];
     const now = S.state.year * 4 + order.indexOf(S.state.season);
-    return now < a.active_until.year * 4 + order.indexOf(a.active_until.season);
+    if (a.active_from && now < a.active_from.year * 4 + order.indexOf(a.active_from.season)) return false;
+    if (a.active_until && now >= a.active_until.year * 4 + order.indexOf(a.active_until.season)) return false;
+    return true;
   }
   function advisorLine(key) {
     const c = C();
@@ -1285,7 +1300,7 @@
     return bits.length ? ` <span class="cost">(${bits.join(', ')})</span>` : '';
   }
 
-  const EVENT_ADVISOR_KEY = { E18: 'revision' };
+  const EVENT_ADVISOR_KEY = { E18: 'revision', T14: 'revision' };
 
   function showDispatch(evId) {
     const c = C();
@@ -1374,7 +1389,7 @@
     treasury: ['Казна', sc => `Израсходовано ${money(sc.value)} при плане ${money(sc.plan)}`],
     reliability: ['Надёжность', sc => sc.value ? `Происшествий: ${sc.value}` : 'Без происшествий'],
     speed: ['Скорость', sc => `Первый поезд: ${hm(sc.value)} против ${hm(sc.historical)}`],
-    history: ['Как у Мельникова', sc => `Совпало ключевых решений: ${sc.value} из ${sc.of}`],
+    history: ['Как в истории', sc => `Совпало ключевых решений: ${sc.value} из ${sc.of}`],
   };
   const starsHtml = n => `<span class="stars">${'★'.repeat(n)}<span class="off">${'★'.repeat(5 - n)}</span></span>`;
 
@@ -1393,14 +1408,15 @@
         <button class="btn ghost" data-home>В меню</button>`;
     } else {
       const sc = s.score;
-      const scales = sc.scales.map(x => `<div class="scale"><span>${SCALE_RU[x.id][0]}</span>${starsHtml(x.stars)}<span class="sd">${esc(SCALE_RU[x.id][1](x))}</span></div>`).join('');
+      const scaleName = x => (x.id === 'history' && c.map.historyScaleLabel) || SCALE_RU[x.id][0];
+      const scales = sc.scales.map(x => `<div class="scale"><span>${scaleName(x)}</span>${starsHtml(x.stars)}<span class="sd">${esc(SCALE_RU[x.id][1](x))}</span></div>`).join('');
       el.innerHTML = `<h2 class="sheet-title">${esc(c.map.title)}: глава пройдена</h2>
         <div class="kv"><span>Итог</span><span>${sc.total} из ${sc.max} ★</span></div>
         ${scales}
         <h3 class="sheet-title" style="font-size:21px;margin-top:18px">Как было на самом деле</h3>
         ${comparisonHtml()}
         ${epilogueHtml()}
-        ${S.chapter === 'prologue' ? '' : `<button class="btn route" data-quiz>${S.quiz && S.quiz.done ? 'Итоги викторины' : 'Викторина главы'}</button>`}
+        ${S.chapter === 'prologue' || !c.quizAvailable ? '' : `<button class="btn route" data-quiz>${S.quiz && S.quiz.done ? 'Итоги викторины' : 'Викторина главы'}</button>`}
         ${nextChapter(S.chapter) ? `<button class="btn${S.chapter === 'prologue' ? ' route' : ' ghost'}" data-next-chapter>К следующей главе: ${esc(CHAPTER_INFO[nextChapter(S.chapter)].title)}</button>` : ''}
         <button class="btn ghost" data-museum>Музей</button>
         <button class="btn ghost" data-home>В меню</button>`;
