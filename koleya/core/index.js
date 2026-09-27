@@ -150,6 +150,13 @@ function createKoleya(deps) {
     return r.rows;
   }
 
+  async function chapterUnlocked(tgId, player, chapter) {
+    if (chapter === CHAPTER_ORDER[0]) return true;
+    const done = (player && player.completed) || {};
+    if (done[CHAPTER_ORDER[0]] || Object.keys(done).length) return true;
+    return !!(await getGame(tgId, chapter));
+  }
+
   // ---- представление для клиента ----
   function publicState(state) {
     const { rngState, seed, ...rest } = state; // генератор клиенту не нужен
@@ -236,8 +243,11 @@ function createKoleya(deps) {
         const g = c === chapter ? row : await getGame(tgId, c);
         if (g) saves[c] = { finished: g.state.finished, outcome: g.state.outcome, year: g.state.year, season: g.state.season };
       }
+      const unlocked = [];
+      for (const c of CHAPTER_ORDER) if (await chapterUnlocked(tgId, player, c)) unlocked.push(c);
       return {
         chapters: CHAPTER_ORDER,
+        unlocked,
         player: player ? { activeChapter: player.active_chapter, completed: player.completed, campaign: player.campaign } : null,
         saves,
         game: row ? gamePayload(chapter, row.state, { quiz: row.quiz ? quizView(chapter, row.quiz) : null }) : null,
@@ -250,6 +260,10 @@ function createKoleya(deps) {
       return withLock(tgId, async () => {
         const ch = content.chapter(chapter);
         const player = await getPlayer(tgId);
+        // Пролог обязателен: он учит игре. Уже начатые главы можно продолжать и перезапускать.
+        if (!(await chapterUnlocked(tgId, player, chapter))) {
+          throw new ApiError(409, 'Сначала пройдите пролог: он за несколько минут учит, как играть.');
+        }
         const { state, log: lg } = E.createGame(chapter, ch, seedGen(), (player && player.campaign) || {});
         await saveGame(tgId, chapter, state, null);
         await upsertPlayer(tgId, name, { activeChapter: chapter });

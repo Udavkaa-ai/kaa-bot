@@ -195,7 +195,8 @@
 
   function syncTelegramButtons() {
     const inGame = S.screen === 's-game' && S.state && !S.state.finished;
-    const canEnd = inGame && !modalOpen() && !mapOpen() && !S.state.pendingEvents.length;
+    const canEnd = inGame && !modalOpen() && !mapOpen() && !S.state.pendingEvents.length && !tutBlocksEnd();
+    coachUpdate();
     $('btn-season').classList.toggle('hidden', !inGame || !!tg);
     $('btn-season').disabled = !canEnd || S.busy;
     if (!tg) return;
@@ -226,6 +227,111 @@
     if (S.screen === 's-game' && S.selected) { S.selected = null; renderPanel(); syncTelegramButtons(); return; }
     if (S.screen === 's-quiz' || S.screen === 's-museum') { if (S.state && S.state.finished && S.screen === 's-quiz') { renderFinal(); show('s-final'); } else openHome(); return; }
     openHome();
+  }
+
+  // ================= наставник пролога =================
+  // Пролог — обязательное обучение. Шаг — это условие показа, условие выполнения,
+  // подсвечиваемый элемент и (иногда) запрет завершать сезон, пока шаг не сделан.
+  const TUT_KEY = 'koleya-tutorial';
+  const TUT = (() => { try { return JSON.parse(localStorage.getItem(TUT_KEY)) || { step: 0, off: false, acked: {} }; } catch (_) { return { step: 0, off: false, acked: {} }; } })();
+  function tutSave() { try { localStorage.setItem(TUT_KEY, JSON.stringify(TUT)); } catch (_) {} }
+  function tutReset() { TUT.step = 0; TUT.off = false; TUT.acked = {}; tutSave(); }
+
+  function tutSteps() {
+    const b = C().balance, cr = b.crews, cb = b[S.chapter];
+    const pay = cr.pay.normal.costPerCrew;
+    const seg = id => S.state.segments[id];
+    const anyOpened = s => Object.values(s.segments).some(x => x.opened);
+    return [
+      { id: 'dispatch', onModal: true, show: s => s.pendingEvents.includes('P01'), done: s => s.firedEvents.includes('P01'),
+        title: 'Добро пожаловать, главный инженер',
+        text: 'Это обучение на первой русской железной дороге — Царскосельской. Я проведу вас по шагам. Сначала депеша: так приходят события и решения. Прочтите её и нажмите кнопку под текстом.' },
+      { id: 'resources', ack: true, target: () => $('resbar'),
+        title: 'Ваши ресурсы',
+        text: 'Казна — деньги на жалованье и материалы. Благоволение — доверие начальства: кончится — отставка. Настрой — от него зависит скорость работ. Нажмите на любой показатель, чтобы увидеть точные числа.' },
+      { id: 'calendar', ack: true, target: () => $('calendar'),
+        title: 'Календарь',
+        text: `Одна клетка — один сезон. Один ход игры — тоже сезон. У пролога нет срока, но сезонов всего ${cb.maxTurns}: если не успеть, работы передадут другому.` },
+      { id: 'hire', blockEnd: true, target: () => $('panel').querySelector('.crewbar [data-hire]:last-of-type'),
+        done: s => s.crewsTotal >= cb.startCrews + 5 || s.turn > 0,
+        title: 'Наймите людей',
+        text: `Строят артели — бригады рабочих. Сейчас их ${cb.startCrews}, этого мало. Нажмите «+5»: найм стоит ${cr.hireCostPerCrew} за артель, а потом каждый сезон жалованье — ${pay} за артель.` },
+      { id: 'assign', blockEnd: true, target: () => $('panel').querySelector('[data-slider="spb_tsarskoye"]'),
+        done: s => seg('spb_tsarskoye').crews >= 5 || seg('spb_tsarskoye').opened || s.turn > 0,
+        title: 'Поставьте людей на участок',
+        text: 'Потяните бегунок у участка «Петербург — Царское Село» вправо. Чем больше артелей, тем быстрее стройка: справа видно, сколько процентов участка сделают за сезон.' },
+      { id: 'second', blockEnd: true, target: () => $('panel').querySelector('[data-slider="tsarskoye_pavlovsk"]'),
+        done: (s, v) => v.freeCrews === 0 || seg('tsarskoye_pavlovsk').crews > 0 || s.turn > 0,
+        title: 'Второй участок',
+        text: 'Короткий участок до Павловска можно строить одновременно с главным. Поставьте на него оставшихся людей: свободная артель получает жалованье, но ничего не строит.' },
+      { id: 'endSeason', target: () => $('btn-season'), done: s => s.turn >= 1,
+        title: 'Завершите сезон',
+        text: 'Всё готово. Нажмите «Завершить сезон» внизу экрана: артели поработают, казна заплатит жалованье и за материалы, и придёт доклад.' },
+      { id: 'report', ack: true, show: s => s.turn >= 1, target: () => $('panel').querySelector('.scheme'),
+        title: 'Что произошло за сезон',
+        text: 'Доклад показал расходы и сколько сделано. Красная заливка на схеме — готовность участка, светлая полоска — прогноз на следующий сезон. Зимой и весной работы идут медленнее.' },
+      { id: 'rhythm', ack: true, show: s => s.turn >= 1,
+        title: 'Дальше — сами',
+        text: 'Завершайте сезоны и следите: хватает ли казны, не падает ли настрой. Если настрой проседает — поднимите оплату в разделе «Оплата артелей» ниже. Когда участок откроется, придёт депеша.' },
+      { id: 'opened', ack: true, show: s => anyOpened(s), target: () => $('panel').querySelector('.crewbar'),
+        title: 'Участок открыт',
+        text: 'Его артели освободились. Поставьте их бегунком на другой участок или распустите кнопкой «−»: иначе вы платите им зря.' },
+      { id: 'stock', show: s => s.unlocked.rollingStock, done: (s, v) => v.hasRollingStock, target: () => $('panel').querySelector('[data-buy]'),
+        title: 'Паровоз и вагон',
+        text: 'Для первого рейса нужен паровоз и хотя бы один вагон. Купите их в разделе «Подвижной состав» ниже. Когда трасса будет готова, поезд можно будет отправить.' },
+      { id: 'run', onModal: true, show: s => s.pendingEvents.includes('P03'), done: s => s.finished,
+        title: 'Первый рейс',
+        text: 'Всё готово. Отправьте поезд: игра посчитает время в пути и сравнит его с историческим. Потом — итог главы.' },
+    ];
+  }
+  function tutActive() { return S.chapter === 'prologue' && S.state && !S.state.finished && !TUT.off && S.screen === 's-game'; }
+  function tutCurrent() {
+    if (!tutActive()) return null;
+    const steps = tutSteps();
+    const s = S.state, v = S.view;
+    // Пропускаем выполненные шаги, в том числе сделанные раньше подсказки
+    while (TUT.step < steps.length) {
+      const st = steps[TUT.step];
+      const finished = st.ack ? TUT.acked[st.id] : (st.done ? st.done(s, v) : false);
+      if (!finished) break;
+      TUT.step++; tutSave();
+    }
+    if (TUT.step >= steps.length) return null;
+    return { st: steps[TUT.step], n: TUT.step + 1, total: steps.length };
+  }
+  function tutBlocksEnd() {
+    const cur = tutCurrent();
+    return !!(cur && cur.st.blockEnd && (!cur.st.show || cur.st.show(S.state, S.view)));
+  }
+  let tutScrolled = null;
+  function coachUpdate() {
+    const el = $('coach');
+    document.querySelectorAll('.coach-hl').forEach(x => x.classList.remove('coach-hl'));
+    const cur = tutCurrent();
+    const visible = cur && (!cur.st.show || cur.st.show(S.state, S.view)) && (cur.st.onModal ? modalOpen() : !modalOpen()) && !mapOpen();
+    el.classList.toggle('hidden', !visible);
+    document.body.classList.toggle('coach-on', !!visible);
+    if (!visible) return;
+    const st = cur.st;
+    el.classList.toggle('top', !!st.onModal);
+    el.innerHTML = `<div class="coach-kicker">Обучение · шаг ${cur.n} из ${cur.total}</div>
+      <div class="coach-title">${esc(st.title)}</div>
+      <div class="coach-text">${esc(st.text)}</div>
+      <div class="coach-row">
+        ${st.ack ? '<button class="btn coach-ok" type="button" data-coach-ok>Понятно</button>' : '<span class="coach-wait">сделайте это, и подсказка сменится</span>'}
+        <button class="link coach-off" type="button" data-coach-off>выключить подсказки</button>
+      </div>`;
+    const ok = el.querySelector('[data-coach-ok]');
+    if (ok) ok.addEventListener('click', () => { haptic('tap'); TUT.acked[st.id] = true; tutSave(); coachUpdate(); syncTelegramButtons(); });
+    el.querySelector('[data-coach-off]').addEventListener('click', async () => {
+      if (!(await confirmBox('Выключить подсказки обучения? Их можно вернуть, начав пролог заново.'))) return;
+      TUT.off = true; tutSave(); coachUpdate(); syncTelegramButtons();
+    });
+    const target = st.target && st.target();
+    if (target) {
+      target.classList.add('coach-hl');
+      if (tutScrolled !== st.id) { tutScrolled = st.id; try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {} }
+    }
   }
 
   // ================= титул =================
@@ -260,6 +366,15 @@
       else if (sv && sv.finished) status = sv.outcome === 'won' ? 'Пройдена' : 'Проиграна';
       const cont = sv && !sv.finished;
       const review = sv && sv.finished && sv.outcome === 'won';
+      const locked = S.home.unlocked && !S.home.unlocked.includes(ch);
+      if (locked) {
+        return `<div class="chapter-card locked"><i class="corner tl">✥</i><i class="corner tr">✥</i><i class="corner bl">✥</i><i class="corner br">✥</i>
+          <div class="years">${info.years}</div>
+          <h3>${esc(info.title)}</h3>
+          <div class="desc">${esc(info.desc)}</div>
+          <div class="status">Откроется после пролога</div>
+        </div>`;
+      }
       return `<div class="chapter-card"><i class="corner tl">✥</i><i class="corner tr">✥</i><i class="corner bl">✥</i><i class="corner br">✥</i>
         <div class="years">${info.years}</div>
         <h3>${esc(info.title)}</h3>
@@ -272,7 +387,7 @@
         </div>
       </div>`;
     }).join('');
-    $('home-note').textContent = done.prologue || saves.chapter1 ? '' : 'Советуем начать с пролога: он учит механике за пару минут.';
+    $('home-note').textContent = done.prologue || saves.chapter1 ? '' : 'Начните с пролога: это обучение, на каждом шаге подскажем, что делать и зачем.';
     $('chapters').querySelectorAll('[data-start]').forEach(b => b.addEventListener('click', () => startChapter(b.dataset.start)));
     $('chapters').querySelectorAll('[data-resume]').forEach(b => b.addEventListener('click', () => resumeChapter(b.dataset.resume)));
   }
@@ -284,6 +399,7 @@
     await withBusy(async () => {
       await loadContent(ch);
       const r = await api('POST', '/game/start', { chapter: ch });
+      if (ch === 'prologue') tutReset();
       enterGame(r);
     });
   }
@@ -923,6 +1039,7 @@
       el.innerHTML = (s.unlocked.construction ? crewBar() : '') + segmentPanel(c.segById[S.selected]);
       bindSegmentPanel();
       bindCrewBar(el);
+      syncTelegramButtons();
       return;
     }
 
@@ -958,6 +1075,8 @@
     el.querySelectorAll('[data-seg]').forEach(b => b.addEventListener('click', () => selectSeg(b.dataset.seg)));
     bindSliders(el);
     bindCommon();
+    // Кнопка сезона и наставник зависят от того, что игрок только что сделал на панели
+    syncTelegramButtons();
   }
 
   function stationRow(nodeId) {
@@ -1212,7 +1331,7 @@
     if (jump) S.modalQueue.push(() => showTimeJump(jump));
     if (log.some(l => l.kind === 'firstRun')) S.modalQueue.push(() => showFirstRunThenFinal());
     for (const fn of extra) S.modalQueue.push(fn);
-    if (S.state && S.state.unlocked.construction && !S.state.finished && !memoSeen() && !S.modalQueue.memo) {
+    if (S.state && S.chapter !== 'prologue' && S.state.unlocked.construction && !S.state.finished && !memoSeen() && !S.modalQueue.memo) {
       S.modalQueue.memo = true;
       S.modalQueue.push(() => { S.modalQueue.memo = false; showMemo(); });
     }
@@ -1414,6 +1533,7 @@
         <div class="kv"><span>Итог</span><span>${sc.total} из ${sc.max} ★</span></div>
         ${scales}
         <h3 class="sheet-title" style="font-size:21px;margin-top:18px">Как было на самом деле</h3>
+        ${S.chapter === 'prologue' ? `<div class="history" style="margin-top:14px"><div class="h">Обучение пройдено</div><div class="t">В главе I всё то же, но крупнее: двенадцать участков и две дирекции, срок — осень 1851 года, решения о трассе, колее и мостах. Следите за календарём и не держите артели без дела.</div></div>` : ''}
         ${comparisonHtml()}
         ${epilogueHtml()}
         ${S.chapter === 'prologue' || !c.quizAvailable ? '' : `<button class="btn route" data-quiz>${S.quiz && S.quiz.done ? 'Итоги викторины' : 'Викторина главы'}</button>`}

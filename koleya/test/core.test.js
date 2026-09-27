@@ -52,6 +52,10 @@ test('API: полный путь пролога через HTTP-контракт
   assert.ok(r.body.map.segments.length > 10);
   assert.equal(r.body.quiz, undefined, 'ответы викторины клиенту не отдаются');
 
+  r = await call('POST', '/game/start', { chapter: 'chapter1' });
+  assert.equal(r.status, 409, 'без пролога глава I закрыта');
+  assert.match(r.body.error, /пролог/);
+
   r = await call('POST', '/game/start', { chapter: 'prologue' });
   assert.equal(r.status, 200);
   assert.deepEqual(r.body.state.pendingEvents, ['P01']);
@@ -98,6 +102,10 @@ test('API: полный путь пролога через HTTP-контракт
   r = await call('GET', '/game', null, 888);
   assert.equal(r.body.game, null);
 
+  // После пролога глава I открыта
+  r = await call('GET', '/game');
+  assert.ok(r.body.unlocked.includes('chapter1'));
+
   // Прогресс для /koleya
   assert.match(await k.progressText(777), /глава пройдена/);
   await pool.end();
@@ -115,6 +123,7 @@ test('API: викторина главы 1 открывает факты в «М
   // Готовую победную партию кладём в базу напрямую — прохождение через API проверено выше
   const won = playGame(ch, 3, 'historical');
   assert.equal(won.outcome, 'won');
+  await pool.query(`INSERT INTO koleya_players (tg_id, completed) VALUES (555, '{"prologue":{}}') ON CONFLICT (tg_id) DO UPDATE SET completed = '{"prologue":{}}'`);
   await call('POST', '/game/start', { chapter: 'chapter1' });
   await pool.query('UPDATE koleya_games SET state = $1 WHERE tg_id = 555 AND chapter = $2', [JSON.stringify(won), 'chapter1']);
 
