@@ -29,9 +29,84 @@
 
   // ================= украшения (гравюра и казённая бумага) =================
   // Цвета — только классы, которые красятся токенами темы в style.css.
+  // ================= эпоха и её словарь =================
+  // В главах советской эпохи интерфейс говорит языком своего времени: артели — бригады,
+  // благоволение — доверие министерства и т. д. Замены того же рода, чтобы не ломать согласование.
+  const SOVIET_ERAS = new Set(['constructivist']);
+  function isSovietEra() { return SOVIET_ERAS.has(document.documentElement.getAttribute('data-era')); }
+  const LEX_SOVIET = (() => {
+    const forms = (from, to) => from.map((f, i) => [f, to[i]]);
+    const pairs = [
+      ['Высочайшее благоволение', 'Доверие министерства'],
+      ['Высочайшим повелением вы отстранены от руководства работами', 'Приказом министерства вы сняты с руководства стройкой'],
+      ['Канцелярия строительства', 'Штаб стройки'],
+      ['Прошение о средствах', 'Ходатайство о финансировании'],
+      ['Жалованье выплачено не полностью', 'Зарплата выплачена не полностью'],
+      ['за артель', 'за бригаду'],
+      ['арт.', 'бр.'],
+      ...forms(['артелями', 'артелям', 'артелях', 'артелей', 'артелью', 'артели', 'артель'], ['бригадами', 'бригадам', 'бригадах', 'бригад', 'бригадой', 'бригады', 'бригада']),
+      ...forms(['благоволением', 'благоволению', 'благоволении', 'благоволения', 'благоволение'], ['доверием', 'доверию', 'доверии', 'доверия', 'доверие']),
+      ...forms(['депешами', 'депешам', 'депешах', 'депешей', 'депешу', 'депеше', 'депеши', 'депеш', 'депеша'], ['телеграммами', 'телеграммам', 'телеграммах', 'телеграммой', 'телеграмму', 'телеграмме', 'телеграммы', 'телеграмм', 'телеграмма']),
+      ...forms(['прошениями', 'прошениям', 'прошениях', 'прошением', 'прошению', 'прошений', 'прошения', 'прошение'], ['ходатайствами', 'ходатайствам', 'ходатайствах', 'ходатайством', 'ходатайству', 'ходатайств', 'ходатайства', 'ходатайство']),
+      ...forms(['ревизией', 'ревизию', 'ревизии', 'ревизия'], ['проверкой', 'проверку', 'проверки', 'проверка']),
+      ...forms(['казной', 'казну', 'казне', 'казны', 'казна'], ['кассой', 'кассу', 'кассе', 'кассы', 'касса']),
+      ...forms(['жалованьем', 'жалованью', 'жалованья', 'жалованье'], ['заработком', 'заработку', 'заработка', 'заработок']),
+    ];
+    const cap = w => w[0].toUpperCase() + w.slice(1);
+    const all = [];
+    for (const [a, b] of pairs) { all.push([a, b]); if (a[0] !== a[0].toUpperCase()) all.push([cap(a), cap(b)]); }
+    // Длинные формы раньше коротких; только целые слова
+    all.sort((x, y) => y[0].length - x[0].length);
+    const map = new Map(all);
+    const esc = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(^|[^а-яё])(${all.map(x => esc(x[0])).join('|')})(?=$|[^а-яё])`, 'g');
+    return str => str.replace(re, (m, pre, w) => pre + map.get(w));
+  })();
+  function lexify(root) {
+    if (!root || !isSovietEra()) return;
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const t = LEX_SOVIET(n.nodeValue);
+      if (t !== n.nodeValue) n.nodeValue = t;
+    }
+  }
+  // Всё, что отрисовывается в советской главе, проходит через словарь
+  new MutationObserver(recs => {
+    if (!isSovietEra()) return;
+    for (const r of recs) {
+      if (r.type === 'characterData') { const t = LEX_SOVIET(r.target.nodeValue); if (t !== r.target.nodeValue) r.target.nodeValue = t; }
+      else r.addedNodes.forEach(n => n.nodeType === 3 ? (n.nodeValue = LEX_SOVIET(n.nodeValue)) : lexify(n));
+    }
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+
   const DECOR = {
+    // Тепловоз для глав советской эпохи: кузов-капот, кабина, двухосные тележки
+    diesel() {
+      const wheel = (cx, cls) => `<g class="wheel ${cls}"><circle cx="${cx}" cy="73" r="7" class="d-paper"/>${Array.from({ length: 6 }, (_, i) => {
+        const a = Math.PI * i / 3;
+        return `<line x1="${cx}" y1="73" x2="${(cx + Math.cos(a) * 7).toFixed(1)}" y2="${(73 + Math.sin(a) * 7).toFixed(1)}"/>`;
+      }).join('')}<circle cx="${cx}" cy="73" r="1.6" class="d-fill"/></g>`;
+      const sleepers = Array.from({ length: 27 }, (_, i) => `<line x1="${-14 + i * 9.4}" y1="82" x2="${-10 + i * 9.4}" y2="86"/>`).join('');
+      return `<svg class="deco-loco deco-diesel" viewBox="0 0 220 90" aria-hidden="true">
+        <g class="d-smoke"><circle class="puff p1" cx="96" cy="26" r="4"/><circle class="puff p2" cx="96" cy="26" r="4"/><circle class="puff p3" cx="96" cy="26" r="4"/><circle class="puff p4" cx="96" cy="26" r="4"/></g>
+        <g class="d-ink">
+          <g class="d-body">
+            <path d="M14 64 V40 L26 30 H194 L206 40 V64 Z" class="d-paper"/>
+            <path d="M14 52 H206" class="d-stripe"/>
+            <rect x="30" y="35" width="16" height="10" class="d-fill"/><rect x="174" y="35" width="16" height="10" class="d-fill"/>
+            ${Array.from({ length: 9 }, (_, i) => `<rect x="${58 + i * 12}" y="36" width="8" height="12" class="d-paper"/>`).join('')}
+            <rect x="92" y="26" width="10" height="4" class="d-fill"/>
+            <line x1="8" y1="66" x2="212" y2="66"/>
+          </g>
+          ${wheel(34, 'small')}${wheel(54, 'small')}${wheel(166, 'small')}${wheel(186, 'small')}
+          <line x1="0" y1="81" x2="220" y2="81"/>
+          <g class="d-thin d-sleepers">${sleepers}</g>
+        </g>
+      </svg>`;
+    },
     // Виньетка: ранний паровоз с тендером, штриховка котла, клубы дыма
     loco() {
+      if (isSovietEra()) return DECOR.diesel();
       const hatch = Array.from({ length: 11 }, (_, i) => `<line x1="${26 + i * 7}" y1="42" x2="${26 + i * 7}" y2="58"/>`).join('');
       const wheel = (cx, cy, r, n, cls) => `<g class="wheel ${cls}"><circle cx="${cx}" cy="${cy}" r="${r}" class="d-paper"/>${Array.from({ length: n }, (_, i) => {
         const a = Math.PI * 2 * i / n;
@@ -66,8 +141,18 @@
         </g>
       </svg>`;
     },
-    // Сургучная печать с колесом и номером
+    // Сургучная печать с колесом и номером; в советской эпохе — красная звезда-штамп
     seal(label) {
+      if (isSovietEra()) {
+        const pts = Array.from({ length: 10 }, (_, i) => {
+          const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 9 : 21;
+          return `${(30 + Math.cos(a) * r).toFixed(1)},${(30 + Math.sin(a) * r).toFixed(1)}`;
+        }).join(' ');
+        return `<svg class="deco-seal deco-star" viewBox="0 0 60 60" aria-hidden="true">
+          <circle cx="30" cy="30" r="27" class="st-ring"/><polygon points="${pts}" class="st-star"/>
+          ${label ? `<text x="30" y="57" text-anchor="middle" class="s-text">${label}</text>` : ''}
+        </svg>`;
+      }
       const spokes = Array.from({ length: 8 }, (_, i) => {
         const a = Math.PI * 2 * i / 8;
         return `<line x1="30" y1="30" x2="${(30 + Math.cos(a) * 11).toFixed(1)}" y2="${(30 + Math.sin(a) * 11).toFixed(1)}"/>`;
@@ -354,6 +439,7 @@
     prologue: { level: 1, levelLabel: 'обучение', title: 'Пролог. Царскосельская дорога', years: '1836–1838', desc: 'Обучение: два коротких участка, первый паровоз и первый рейс для публики.' },
     chapter1: { level: 2, levelLabel: 'умеренная', title: 'Глава I. Петербург — Москва', years: '1842–1851', desc: 'Трасса, колея, два пути, болота, Валдай, мосты и сроки. Главная дорога империи.' },
     chapter2: { level: 3, levelLabel: 'высокая', title: 'Глава II. Великий Сибирский путь', years: '1891–1904', desc: 'Через всю Сибирь к Тихому океану: стройка с двух концов, Байкал, выбор между Маньчжурией и Амуром.' },
+    chapter3: { level: 4, levelLabel: 'очень высокая', title: 'Глава III. Байкало-Амурская магистраль', years: '1974–1984', desc: 'Стройка века: от Лены до Тынды через хребты и вечную мерзлоту, обходы и тоннели, «золотое звено».' },
   };
   const CHAPTER_ORDER = Object.keys(CHAPTER_INFO);
   // Сложность главы: пять делений, закрашенных по уровню
@@ -364,7 +450,10 @@
     return n && ready.includes(n) ? n : null;
   };
   // Эпоха оформления: тема берётся из карты главы (data-era), на титуле — гравюра
-  function setEra(era) { document.documentElement.setAttribute('data-era', era || 'engraving'); }
+  function setEra(era) {
+    document.documentElement.setAttribute('data-era', era || 'engraving');
+    if (isSovietEra()) lexify(document.body);
+  }
 
   async function openHome() {
     show('s-home');
@@ -1005,18 +1094,19 @@
       parts.push(`<text x="${x + (right ? 9 : -9) * inv}" y="${y + 4 * inv}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${(size * inv).toFixed(2)}">${esc(name)}</text>`);
     }
     parts.push(`</g></g>`);
-    // Роза ветров и масштабная линейка в вёрстах (1 верста = 1,0668 км)
+    // Роза ветров и масштабная линейка: в вёрстах (1 верста = 1,0668 км), в советских главах — в км
     parts.push(DECOR.rose(W - 44, H - 58, 26, P.northDeg));
     {
       const a0 = c.map.nodes[0], a1 = c.map.nodes[c.map.nodes.length - 1];
       const pxPerKm = zk * Math.hypot(P(a1)[0] - P(a0)[0], P(a1)[1] - P(a0)[1]) /
         (Math.hypot((a1.lon - a0.lon) * Math.cos((a0.lat + a1.lat) / 2 * Math.PI / 180), a1.lat - a0.lat) * 111.32 || 1);
       const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
-      const versts = steps.find(v => v * 1.0668 * pxPerKm >= 72) || steps[steps.length - 1];
-      const L = versts * 1.0668 * pxPerKm;
+      const unitKm = isSovietEra() ? 1 : 1.0668;
+      const versts = steps.find(v => v * unitKm * pxPerKm >= 72) || steps[steps.length - 1];
+      const L = versts * unitKm * pxPerKm;
       const x0 = 20, y0 = H - 24;
       const ticks = [0, 1, 2, 3].map(i => `<rect x="${x0 + i * L / 4}" y="${y0 - 3}" width="${L / 4}" height="4" class="${i % 2 ? 'scale-w' : 'scale-b'}"/>`).join('');
-      parts.push(`<g class="scale">${ticks}<text x="${x0}" y="${y0 + 11}" class="scale-t">0</text><text x="${x0 + L}" y="${y0 + 11}" text-anchor="end" class="scale-t">${versts} вёрст</text></g>`);
+      parts.push(`<g class="scale">${ticks}<text x="${x0}" y="${y0 + 11}" class="scale-t">0</text><text x="${x0 + L}" y="${y0 + 11}" text-anchor="end" class="scale-t">${versts} ${isSovietEra() ? 'км' : 'вёрст'}</text></g>`);
     }
     // Картуш
     parts.push(`<g class="cartouche"><rect x="14" y="14" width="${Math.min(W - 28, 230)}" height="36" class="cartouche-box"/>

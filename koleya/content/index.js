@@ -8,7 +8,7 @@ const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 // Порядок глав кампании. Глава без каталога в data/ просто пропускается.
-const CHAPTERS = ['prologue', 'chapter1', 'chapter2'];
+const CHAPTERS = ['prologue', 'chapter1', 'chapter2', 'chapter3'];
 // Рельеф берётся из balance.terrain, этот список — только базовый минимум
 const TERRAINS = ['plain', 'forest', 'swamp', 'hills'];
 
@@ -213,7 +213,7 @@ function validate(all = loadAll({ fresh: true })) {
       for (const r of a.fact_refs || []) factOk(w, r);
       for (const key of Object.keys(a.lines || {})) {
         const [evId, choiceId] = key.split('.');
-        if (/^[EP]\d/.test(evId)) {
+        if (/^[A-Z]\d/.test(evId)) {
           const ev = ch.eventsById[evId];
           if (!ev) err(w, `реплика к несуществующему событию ${key}`);
           else if (choiceId && !ev.choices.some(c => c.id === choiceId)) err(w, `реплика к несуществующему варианту ${key}`);

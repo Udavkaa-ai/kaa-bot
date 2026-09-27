@@ -162,7 +162,8 @@ function createGame(chapterId, ch, seed, campaign = {}) {
     unlocked: { construction: false, rollingStock: false, quiz: false },
     routeVariant: null,
     modifiers: { costMult: 1, workMult: 1, speedMult: 1, incidentMult: 1 },
-    gauge: hasGaugeDecision ? null : (campaign.gauge || ch.map.historical.gauge_mm),
+    // Колея из кампании (решение главы I) действует, пока глава не задаёт свою (gaugeFixed)
+    gauge: hasGaugeDecision ? null : (ch.map.historical.gaugeFixed ? ch.map.historical.gauge_mm : (campaign.gauge || ch.map.historical.gauge_mm)),
     tracks: hasGaugeDecision ? null : ch.map.historical.tracks,
     segments,
     rollingStock: { locomotives: {}, carriages: 0 },

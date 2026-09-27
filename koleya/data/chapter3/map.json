@@ -1,0 +1,293 @@
+{
+  "chapterId": "chapter3",
+  "title": "Байкало-Амурская магистраль",
+  "era": "constructivist",
+  "note": "Длины участков — игровые приближения, рельеф — игровая схема, координаты приблизительные. В главе — центральная часть трассы: от станции Лена до Тынды, со стыковкой на разъезде Балбухта.",
+  "directorates": {
+    "west": "Западный участок",
+    "central": "Центральный участок"
+  },
+  "nodes": [
+    {
+      "id": "lena",
+      "name": "Лена (Усть-Кут)",
+      "lat": 56.79,
+      "lon": 105.77,
+      "kind": "capital"
+    },
+    {
+      "id": "zvezdny",
+      "name": "Звёздный",
+      "lat": 56.66,
+      "lon": 106.33,
+      "kind": "station"
+    },
+    {
+      "id": "magistralny",
+      "name": "Магистральный",
+      "lat": 56.17,
+      "lon": 107.45,
+      "kind": "station"
+    },
+    {
+      "id": "kunerma",
+      "name": "Кунерма",
+      "lat": 55.83,
+      "lon": 108.35,
+      "kind": "station"
+    },
+    {
+      "id": "severobaikalsk",
+      "name": "Северобайкальск",
+      "lat": 55.63,
+      "lon": 109.32,
+      "kind": "town"
+    },
+    {
+      "id": "uoyan",
+      "name": "Новый Уоян",
+      "lat": 56.13,
+      "lon": 111.73,
+      "kind": "station"
+    },
+    {
+      "id": "taksimo",
+      "name": "Таксимо",
+      "lat": 56.34,
+      "lon": 114.88,
+      "kind": "town"
+    },
+    {
+      "id": "kuanda",
+      "name": "Куанда",
+      "lat": 56.32,
+      "lon": 116.08,
+      "kind": "station"
+    },
+    {
+      "id": "balbukhta",
+      "name": "Балбухта",
+      "lat": 56.42,
+      "lon": 116.55,
+      "kind": "station"
+    },
+    {
+      "id": "chara",
+      "name": "Новая Чара",
+      "lat": 56.81,
+      "lon": 118.27,
+      "kind": "station"
+    },
+    {
+      "id": "khani",
+      "name": "Хани",
+      "lat": 56.93,
+      "lon": 119.97,
+      "kind": "station"
+    },
+    {
+      "id": "tynda",
+      "name": "Тында",
+      "lat": 55.15,
+      "lon": 124.72,
+      "kind": "capital"
+    }
+  ],
+  "segments": [
+    {
+      "id": "lena_zvezdny",
+      "from": "lena",
+      "to": "zvezdny",
+      "length_km": 110,
+      "terrain": {
+        "forest": 0.6,
+        "hills": 0.3,
+        "swamp": 0.1
+      },
+      "features": [],
+      "directorate": "west"
+    },
+    {
+      "id": "zvezdny_magistralny",
+      "from": "zvezdny",
+      "to": "magistralny",
+      "length_km": 180,
+      "terrain": {
+        "forest": 0.5,
+        "hills": 0.3,
+        "permafrost": 0.2
+      },
+      "features": [],
+      "directorate": "west"
+    },
+    {
+      "id": "magistralny_kunerma",
+      "from": "magistralny",
+      "to": "kunerma",
+      "length_km": 150,
+      "terrain": {
+        "hills": 0.4,
+        "mountains": 0.3,
+        "permafrost": 0.3
+      },
+      "features": [],
+      "directorate": "west"
+    },
+    {
+      "id": "kunerma_severobaikalsk",
+      "from": "kunerma",
+      "to": "severobaikalsk",
+      "length_km": 70,
+      "terrain": {
+        "mountains": 0.8,
+        "permafrost": 0.2
+      },
+      "features": [
+        "baikal_tunnel"
+      ],
+      "directorate": "west",
+      "fact_refs": [
+        "B23"
+      ]
+    },
+    {
+      "id": "severobaikalsk_uoyan",
+      "from": "severobaikalsk",
+      "to": "uoyan",
+      "length_km": 270,
+      "terrain": {
+        "permafrost": 0.4,
+        "hills": 0.3,
+        "swamp": 0.2,
+        "forest": 0.1
+      },
+      "features": [],
+      "directorate": "west"
+    },
+    {
+      "id": "uoyan_taksimo",
+      "from": "uoyan",
+      "to": "taksimo",
+      "length_km": 200,
+      "terrain": {
+        "mountains": 0.6,
+        "permafrost": 0.4
+      },
+      "features": [
+        "severomuya"
+      ],
+      "directorate": "west",
+      "fact_refs": [
+        "B25",
+        "B27"
+      ]
+    },
+    {
+      "id": "taksimo_kuanda",
+      "from": "taksimo",
+      "to": "kuanda",
+      "length_km": 90,
+      "terrain": {
+        "permafrost": 0.5,
+        "forest": 0.3,
+        "swamp": 0.2
+      },
+      "features": [],
+      "directorate": "west"
+    },
+    {
+      "id": "kuanda_balbukhta",
+      "from": "kuanda",
+      "to": "balbukhta",
+      "length_km": 40,
+      "terrain": {
+        "permafrost": 0.6,
+        "hills": 0.4
+      },
+      "features": [],
+      "directorate": "west",
+      "fact_refs": [
+        "B30",
+        "B31"
+      ]
+    },
+    {
+      "id": "tynda_khani",
+      "from": "tynda",
+      "to": "khani",
+      "length_km": 400,
+      "terrain": {
+        "permafrost": 0.5,
+        "hills": 0.3,
+        "forest": 0.2
+      },
+      "features": [],
+      "directorate": "central"
+    },
+    {
+      "id": "khani_chara",
+      "from": "khani",
+      "to": "chara",
+      "length_km": 150,
+      "terrain": {
+        "mountains": 0.5,
+        "permafrost": 0.5
+      },
+      "features": [],
+      "directorate": "central"
+    },
+    {
+      "id": "chara_balbukhta",
+      "from": "chara",
+      "to": "balbukhta",
+      "length_km": 180,
+      "terrain": {
+        "mountains": 0.4,
+        "permafrost": 0.4,
+        "hills": 0.2
+      },
+      "features": [],
+      "directorate": "central",
+      "fact_refs": [
+        "B24"
+      ]
+    }
+  ],
+  "features": {
+    "baikal_tunnel": {
+      "name": "Байкальский хребет",
+      "kind": "crossing",
+      "options": [
+        "bypass_line",
+        "tunnel"
+      ],
+      "default": "tunnel",
+      "event": "M06"
+    },
+    "severomuya": {
+      "name": "Северо-Муйский хребет",
+      "kind": "crossing",
+      "options": [
+        "bypass_line",
+        "tunnel"
+      ],
+      "default": "tunnel",
+      "event": "M08"
+    }
+  },
+  "historical": {
+    "gauge_mm": 1520,
+    "gaugeFixed": true,
+    "tracks": 1,
+    "baikal_tunnel": "bypass_line",
+    "severomuya": "bypass_line",
+    "firstRun": {
+      "from": "lena",
+      "to": "tynda",
+      "minutes": null,
+      "fact_ref": null,
+      "comment": "Исторического времени сквозного рейса Лена — Тында в базе фактов нет, поэтому шкалы «скорость» в этой главе нет."
+    }
+  },
+  "historyScaleLabel": "Как было в истории"
+}

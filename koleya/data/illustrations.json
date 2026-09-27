@@ -81,7 +81,8 @@
       "plate": "winter",
       "events": [
         "E08",
-        "T11"
+        "T11",
+        "M10"
       ]
     },
     {
@@ -99,6 +100,74 @@
         "E04",
         "E05",
         "T02"
+      ]
+    },
+    {
+      "id": "d-rally",
+      "plate": "rally",
+      "events": [
+        "M01",
+        "M12"
+      ]
+    },
+    {
+      "id": "d-plane",
+      "plate": "plane",
+      "events": [
+        "M02"
+      ]
+    },
+    {
+      "id": "d-camp",
+      "plate": "camp",
+      "events": [
+        "M03",
+        "M05",
+        "M13"
+      ]
+    },
+    {
+      "id": "d-tracklayer",
+      "plate": "tracklayer",
+      "events": [
+        "M04",
+        "M14",
+        "M17"
+      ]
+    },
+    {
+      "id": "d-tunnel",
+      "plate": "tunnel",
+      "events": [
+        "M06",
+        "M08",
+        "M09",
+        "M15",
+        "M16"
+      ]
+    },
+    {
+      "id": "d-town",
+      "plate": "town",
+      "events": [
+        "M07",
+        "M11"
+      ]
+    },
+    {
+      "id": "d-goldlink",
+      "plate": "goldlink",
+      "events": [
+        "M19"
+      ]
+    },
+    {
+      "id": "d-bridge-bam",
+      "plate": "bridge",
+      "arg": "bam",
+      "events": [
+        "M18",
+        "M20"
       ]
     }
   ],
@@ -370,6 +439,81 @@
       "source": {
         "title": "Wikimedia Commons",
         "url": "https://commons.wikimedia.org/wiki/File:080_%D0%9B%D0%B8%D0%BD%D0%B8%D1%8F_%D0%B6%D0%B5%D0%BB%D0%B5%D0%B7%D0%BD%D0%BE%D0%B9_%D0%B4%D0%BE%D1%80%D0%BE%D0%B3%D0%B8_%D0%B2%D0%B4%D0%BE%D0%BB%D1%8C_%D0%B1%D0%B5%D1%80%D0%B5%D0%B3%D0%B0_%D1%80_%D0%9A%D0%B5%D0%BC%D1%87%D1%83%D0%B3%D0%B0_(cropped).jpg"
+      }
+    },
+    {
+      "id": "a-bam-congress",
+      "file": "img/bam-congress.jpg",
+      "events": [
+        "M01"
+      ],
+      "title": "Строители БАМа на XVII съезде ВЛКСМ в Кремлёвском Дворце съездов. Фото РИА Новости",
+      "author": "Олег Иванов",
+      "year": "1974",
+      "license": "CC-BY-SA",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:RIAN_archive_590249_Group_of_builders.jpg"
+      }
+    },
+    {
+      "id": "a-bam-departure",
+      "file": "img/bam-departure.jpg",
+      "events": [
+        "M03"
+      ],
+      "title": "Добровольцы-комсомольцы на Ярославском вокзале перед отъездом на стройку БАМа. Фото РИА Новости",
+      "author": "Э. Котляков",
+      "year": "1974",
+      "license": "CC-BY-SA",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:RIAN_archive_717507_Leaving_for_Baikal-Amur_Railroad_constrcution.jpg"
+      }
+    },
+    {
+      "id": "a-bam-students",
+      "file": "img/bam-students.jpg",
+      "events": [
+        "M04"
+      ],
+      "title": "Студенческий строительный отряд на строительстве БАМа. Фото РИА Новости",
+      "author": "Игорь Виноградов",
+      "year": "1975",
+      "license": "CC-BY-SA",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:RIAN_archive_596802_Construction_of_Baikal-Amur_Mainline.jpg"
+      }
+    },
+    {
+      "id": "a-bam-ustkut-cooks",
+      "file": "img/bam-ustkut-cooks.jpg",
+      "events": [
+        "M05"
+      ],
+      "title": "Студентки из стройотряда «Ровесник» — повара на Западном участке БАМа, Усть-Кут. Фото РИА Новости",
+      "author": "Владимир Родионов",
+      "year": "1981",
+      "license": "CC-BY-SA",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:RIAN_archive_801744_BAM%27s_western_section.jpg"
+      }
+    },
+    {
+      "id": "a-bam-rally-ustilimsk",
+      "file": "img/bam-rally-ustilimsk.jpg",
+      "events": [
+        "M12"
+      ],
+      "title": "Митинг в Усть-Илимске по случаю прибытия строительного отряда БАМа. Фото РИА Новости",
+      "author": "Пётр Малиновский",
+      "year": "1979",
+      "license": "CC-BY-SA",
+      "source": {
+        "title": "Wikimedia Commons",
+        "url": "https://commons.wikimedia.org/wiki/File:RIAN_archive_463353_Rally_on_occasion_of_arrival_of_construction_team.jpg"
       }
     }
   ]

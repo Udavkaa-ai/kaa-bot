@@ -1,0 +1,135 @@
+/* Эпоха 3: «Технический буклет и плакат» (docs/DESIGN.md) — БАМ.
+   Советский конструктивизм: газетная бумага, чёрный и красный, рубленый шрифт,
+   прямые углы, плашки, диагонали и растровая точка вместо зерна бумаги. */
+[data-era="constructivist"] {
+  --paper: #EFE8D8;
+  --paper-deep: #E3D9C3;
+  --ink: #1D1B19;
+  --ink-faded: #5E5850;
+  --route: #C4262E;
+  --wash-water: #6C8CA3;
+  --wash-marsh: #7E8A58;
+
+  --ink-hair: rgba(29, 27, 25, 0.16);
+  --ink-soft: rgba(29, 27, 25, 0.62);
+  --route-wash: rgba(196, 38, 46, 0.09);
+  --ok: #2F6B3A;
+  --scrim: rgba(29, 27, 25, 0.45);
+  --wax: #C4262E;
+  --wax-dark: #7A1419;
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Ccircle cx='3' cy='3' r='0.7' fill='%231D1B19' fill-opacity='0.07'/%3E%3C/svg%3E");
+  --paper-vignette: linear-gradient(118deg, rgba(196, 38, 46, 0) 0 84%, rgba(196, 38, 46, 0.10) 84% 90%, rgba(196, 38, 46, 0) 90%);
+
+  --font-display: 'Oswald', 'PT Sans Narrow', 'Arial Narrow', 'PT Sans', sans-serif;
+  --font-ui: 'PT Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- типографика: рубленый заголовок, текст — гротеском ---------- */
+[data-era="constructivist"] .dispatch h2,
+[data-era="constructivist"] .sheet-title,
+[data-era="constructivist"] .panel h3,
+[data-era="constructivist"] .map-toggle-title,
+[data-era="constructivist"] .resbar .date {
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+[data-era="constructivist"] .dispatch h2 { font-size: 25px; line-height: 1.1; }
+[data-era="constructivist"] .dispatch .text,
+[data-era="constructivist"] .history .t,
+[data-era="constructivist"] .advisor,
+[data-era="constructivist"] .signature,
+[data-era="constructivist"] .chapter-card .status,
+[data-era="constructivist"] .plate figcaption { font-family: var(--font-ui); font-style: normal; }
+[data-era="constructivist"] .advisor { border-left: 3px solid var(--ink); padding-left: 8px; }
+
+/* ---------- телеграмма: чёрная плашка, красный край, диагональный клин ---------- */
+[data-era="constructivist"] .dispatch {
+  position: relative;
+  background-color: var(--paper);
+  border: none;
+  border-top: 10px solid var(--ink);
+  border-left: 6px solid var(--route);
+  outline: none;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+[data-era="constructivist"] .dispatch::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 92px; height: 92px;
+  background: linear-gradient(45deg, transparent 0 58%, var(--ink) 58% 70%, transparent 70% 76%, var(--route) 76% 86%, transparent 86%);
+  pointer-events: none;
+}
+[data-era="constructivist"] .dispatch .kicker {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 3px 8px 2px;
+  letter-spacing: 2px;
+  font-family: var(--font-display);
+}
+[data-era="constructivist"] .stamp {
+  border: 2px solid var(--route);
+  border-radius: 0;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+[data-era="constructivist"] .deco-seal { transform: rotate(0); position: relative; z-index: 1; }
+[data-era="constructivist"] .deco-star .st-ring { fill: var(--paper); stroke: var(--route); stroke-width: 2.5; }
+[data-era="constructivist"] .deco-star .st-star { fill: var(--route); }
+[data-era="constructivist"] .deco-star .s-text { fill: var(--ink); font-family: var(--font-display); font-size: 7px; }
+
+/* Орнамент заменён двухцветной линейкой: красный и чёрный брусок */
+[data-era="constructivist"] .orn span { display: none; }
+[data-era="constructivist"] .orn::before { height: 6px; border: none; background: var(--route); flex: 2; }
+[data-era="constructivist"] .orn::after { height: 6px; border: none; background: var(--ink); flex: 1; }
+[data-era="constructivist"] .signature i svg { display: none; }
+[data-era="constructivist"] .signature i { border-bottom: 2px solid var(--ink); }
+
+[data-era="constructivist"] .history {
+  background: none;
+  border-left: 8px solid var(--route);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+[data-era="constructivist"] .dispatch .tag.legend { background: var(--route); color: var(--paper); border-color: var(--route); }
+
+/* ---------- кнопки: прямые углы, капитель, красная тень ---------- */
+[data-era="constructivist"] .btn,
+[data-era="constructivist"] .btn-season {
+  border-radius: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 4px 4px 0 var(--route);
+}
+[data-era="constructivist"] .btn.ghost { border: 2px solid var(--ink); box-shadow: none; }
+[data-era="constructivist"] .btn.route,
+[data-era="constructivist"] .btn-season { box-shadow: 4px 4px 0 var(--ink); }
+[data-era="constructivist"] .choice .btn { text-transform: none; letter-spacing: 0.3px; font-family: var(--font-ui); font-weight: 700; }
+
+/* ---------- экран игры ---------- */
+[data-era="constructivist"] .resbar { border-bottom: 6px solid var(--ink); box-shadow: 0 4px 0 var(--route); }
+[data-era="constructivist"] .res .lbl { color: var(--ink); font-weight: 700; }
+[data-era="constructivist"] .map-toggle { border-radius: 0; border: 2px solid var(--ink); outline: none; box-shadow: 4px 4px 0 var(--route); }
+[data-era="constructivist"] .map-toggle-title::before { content: '▶ '; }
+[data-era="constructivist"] .panel .sect-title { color: var(--paper); background: var(--ink); display: inline-block; padding: 2px 6px; letter-spacing: 1.5px; }
+
+/* ---------- рисунки: плакат вместо театра теней ---------- */
+[data-era="constructivist"] .plate { border: 2px solid var(--ink); outline: none; }
+[data-era="constructivist"] .plate.drawing { background: var(--paper); }
+[data-era="constructivist"] .plate-svg .s-curtain,
+[data-era="constructivist"] .plate-svg .s-fold,
+[data-era="constructivist"] .plate-svg .s-pin,
+[data-era="constructivist"] .plate-svg .s-rod { display: none; }
+[data-era="constructivist"] .plate-svg .s-poster { display: inline; }
+[data-era="constructivist"] .plate-svg .s-sky0 { stop-color: var(--paper); }
+[data-era="constructivist"] .plate-svg .s-sky1 { stop-color: var(--paper-deep); }
+[data-era="constructivist"] .plate-svg .s-lamp1 { stop-opacity: 0.12; }
+[data-era="constructivist"] .plate-svg .s-far { opacity: 0.14; }
+[data-era="constructivist"] .plate-svg .s-mid { opacity: 0.34; }
+
+/* ---------- тепловоз на ленте рейса и в загрузке ---------- */
+[data-era="constructivist"] .deco-diesel .d-stripe { stroke: var(--route); stroke-width: 3; }

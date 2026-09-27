@@ -147,3 +147,20 @@ test('глава II: проходится хорошим планом, пров�
   const ids = E._internal.activeSegments(state, ch2).map(s => s.id);
   assert.ok(ids.includes('sretensk_blagoveshchensk') && !ids.includes('manchuria_harbin'));
 });
+
+test('глава III: колея своя, обходы хребтов дешевле тоннелей, хороший план успевает к стыковке', () => {
+  const { playGame } = require('../scripts/bots');
+  const ch3 = content.chapter('chapter3');
+  // Колея главы задана картой (gaugeFixed): решение главы I на неё не влияет
+  const { state } = E.createGame('chapter3', ch3, 7, { gauge: 1435 });
+  assert.equal(state.gauge, 1520);
+  const seg = ch3.segmentsById.uoyan_taksimo;
+  const withFeature = v => { const s = structuredClone(state); s.segments.uoyan_taksimo.features.severomuya = v; return E._internal.segmentTotals(s, ch3, seg); };
+  const bypass = withFeature('bypass_line'), tunnel = withFeature('tunnel');
+  assert.ok(bypass.work < tunnel.work && bypass.cost < tunnel.cost, 'обход строится быстрее и дешевле тоннеля');
+  const good = playGame(ch3, 1, 'historical');
+  assert.equal(good.outcome, 'won');
+  assert.equal(good.segments.uoyan_taksimo.features.severomuya, 'bypass_line');
+  const cb = ch3.balance.chapter3;
+  assert.ok(E._internal.dateIndex(ch3, good.completedAt.year, good.completedAt.season) <= E._internal.dateIndex(ch3, cb.deadline.year, cb.deadline.season), 'стыковка к сроку');
+});

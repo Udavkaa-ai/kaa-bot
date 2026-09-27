@@ -9,13 +9,13 @@
   "seasonMultiplier": {
     "plain": {
       "spring": 0.8,
-      "summer": 1.0,
+      "summer": 1,
       "autumn": 0.8,
       "winter": 0.3
     },
     "forest": {
       "spring": 0.7,
-      "summer": 1.0,
+      "summer": 1,
       "autumn": 0.8,
       "winter": 0.4
     },
@@ -27,13 +27,13 @@
     },
     "hills": {
       "spring": 0.7,
-      "summer": 1.0,
+      "summer": 1,
       "autumn": 0.8,
       "winter": 0.3
     },
     "mountains": {
       "spring": 0.6,
-      "summer": 1.0,
+      "summer": 1,
       "autumn": 0.7,
       "winter": 0.2
     },
@@ -73,11 +73,17 @@
   "gauge": {
     "1435": {
       "costMult": 0.95,
-      "capacityMult": 1.0,
-      "speedMult": 1.0
+      "capacityMult": 1,
+      "speedMult": 1
+    },
+    "1520": {
+      "costMult": 1,
+      "capacityMult": 1.1,
+      "speedMult": 1.02,
+      "comment": "советская колея с 1970-х"
     },
     "1524": {
-      "costMult": 1.0,
+      "costMult": 1,
       "capacityMult": 1.1,
       "speedMult": 1.02
     },
@@ -89,16 +95,16 @@
   },
   "tracks": {
     "1": {
-      "costMult": 1.0,
-      "workMult": 1.0,
+      "costMult": 1,
+      "workMult": 1,
       "incidentMult": 1.5,
       "revenueMult": 0.7
     },
     "2": {
       "costMult": 1.35,
       "workMult": 1.3,
-      "incidentMult": 1.0,
-      "revenueMult": 1.0
+      "incidentMult": 1,
+      "revenueMult": 1
     }
   },
   "bridges": {
@@ -110,7 +116,7 @@
     "iron": {
       "cost": 2200,
       "work": 200,
-      "fireRiskPerSeason": 0.0
+      "fireRiskPerSeason": 0
     }
   },
   "grade": {
@@ -122,7 +128,7 @@
     },
     "bypass": {
       "speedCapKmh": null,
-      "incidentRiskPerRun": 0.0,
+      "incidentRiskPerRun": 0,
       "extraCost": 1500,
       "cappedKm": 0
     }
@@ -177,7 +183,7 @@
       "incidentPenalty": 5,
       "revisionThreshold": 20
     },
-    "revenuePerOpenKmPerSeason": 2.0,
+    "revenuePerOpenKmPerSeason": 2,
     "novgorodRevenueBonus": 1.25,
     "maxTurns": 44,
     "behindSchedule": {
@@ -219,6 +225,12 @@
         "baseSpeedKmh": 30,
         "cost": 180,
         "chapter": "chapter2"
+      },
+      "diesel_1970s": {
+        "name": "Тепловоз",
+        "baseSpeedKmh": 55,
+        "cost": 400,
+        "chapter": "chapter3"
       }
     },
     "carriageCost": 15,
@@ -244,7 +256,13 @@
       "T02",
       "T05",
       "T06",
-      "T12"
+      "T12",
+      "M03",
+      "M05",
+      "M06",
+      "M08",
+      "M16",
+      "M17"
     ],
     "thresholds": {
       "deadlineLateSeasons": [
@@ -256,7 +274,7 @@
       ],
       "treasurySpentToPlan": [
         0.9,
-        1.0,
+        1,
         1.15,
         1.3,
         1.5
@@ -279,7 +297,8 @@
     "treasuryPlan": {
       "chapter1": 120000,
       "prologue": 3200,
-      "chapter2": 145000
+      "chapter2": 145000,
+      "chapter3": 145000
     },
     "comment": "Звёзды: 5 минус число порогов, которые игрок не уложил. Пороги — игровые, не исторические."
   },
@@ -296,7 +315,12 @@
       "T10",
       "T11",
       "T13",
-      "T14"
+      "T14",
+      "M09",
+      "M10",
+      "M13",
+      "M14",
+      "M15"
     ],
     "repeatCooldownTurns": 4
   },
@@ -311,10 +335,25 @@
       "comment": "паромная переправа: быстро и дёшево, но рейс ждёт парома"
     },
     "circum": {
-      "costMult": 1.0,
-      "workMult": 1.0,
+      "costMult": 1,
+      "workMult": 1,
       "extraCost": 0,
       "extraRunMinutes": 0
+    },
+    "bypass_line": {
+      "costMult": 0.45,
+      "workMult": 0.4,
+      "extraCost": 0,
+      "extraRunMinutes": 90,
+      "incidentRiskPerRun": 0.05,
+      "comment": "временный обход через хребет: строится быстро, но круто и медленно"
+    },
+    "tunnel": {
+      "costMult": 1.5,
+      "workMult": 2.1,
+      "extraCost": 0,
+      "extraRunMinutes": 0,
+      "comment": "тоннель сразу: долго и дорого, зато поезда идут без обхода"
     }
   },
   "chapter2": {
@@ -399,5 +438,88 @@
       }
     },
     "comment": "Масштаб Транссиба — тысячи вёрст: цены и объём работ на км свои (overrides), чтобы числа казны остались в привычном порядке."
+  },
+  "chapter3": {
+    "startYear": 1974,
+    "startSeason": "spring",
+    "constructionStart": {
+      "year": 1974,
+      "season": "summer"
+    },
+    "deadline": {
+      "year": 1984,
+      "season": "autumn"
+    },
+    "startTreasury": 30000,
+    "yearlyAllocation": 8500,
+    "petition": {
+      "amount": 6000,
+      "favorCost": 15,
+      "cooldownSeasons": 4
+    },
+    "startFavor": 60,
+    "startMorale": 65,
+    "startCrews": 0,
+    "favor": {
+      "milestoneBonus": 4,
+      "seasonLatePenalty": 4,
+      "incidentPenalty": 5,
+      "revisionThreshold": 20
+    },
+    "revenuePerOpenKmPerSeason": 0.25,
+    "maxTurns": 64,
+    "behindSchedule": {
+      "lagShare": 0.12,
+      "favorPenalty": 1
+    },
+    "overrides": {
+      "terrain": {
+        "plain": {
+          "costPerKm": 15.41,
+          "workPerKm": 2.9
+        },
+        "forest": {
+          "costPerKm": 19.81,
+          "workPerKm": 4.02
+        },
+        "swamp": {
+          "costPerKm": 28.61,
+          "workPerKm": 6.25
+        },
+        "hills": {
+          "costPerKm": 24.21,
+          "workPerKm": 5.13
+        },
+        "mountains": {
+          "costPerKm": 52.82,
+          "workPerKm": 12.28
+        },
+        "permafrost": {
+          "costPerKm": 33.02,
+          "workPerKm": 8.04
+        }
+      },
+      "crews": {
+        "maxCrewsPerKm": 0.08
+      },
+      "bridges": {
+        "wooden": {
+          "cost": 500,
+          "work": 70,
+          "fireRiskPerSeason": 0.01
+        },
+        "iron": {
+          "cost": 1200,
+          "work": 120,
+          "fireRiskPerSeason": 0
+        }
+      },
+      "train": {
+        "minCarriages": {
+          "chapter3": 5
+        }
+      }
+    },
+    "comment": "БАМ короче Транссиба, но почти весь в горах и мерзлоте: объём работ на км свой (overrides)."
   }
 }

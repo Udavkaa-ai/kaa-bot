@@ -26,7 +26,7 @@
     `<animate attributeName="opacity" values="${vals}" dur="${dur}s" begin="${begin}s" repeatCount="indefinite"/>`;
 
   // ---------- сцена ----------
-  function stage(body, label, { lamp = [0.55, 0.35] } = {}) {
+  function stage(body, label, { lamp = [0.55, 0.35], sun = [0.78, 0.42] } = {}) {
     const id = `kp${++uid}`;
     const valance = `M0 0 H240 V5 ${range(16, () => 'q-7.5 7 -15 0')} Z`;
     return `<svg class="plate-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">
@@ -35,9 +35,13 @@
         <radialGradient id="${id}l" cx="${lamp[0]}" cy="${lamp[1]}" r=".75"><stop offset="0" class="s-lamp0"/><stop offset=".55" class="s-lamp0"/><stop offset="1" class="s-lamp1"/></radialGradient>
       </defs>
       <rect width="${W}" height="${H}" fill="url(#${id}s)"/>
+      <g class="s-poster">
+        <path d="M${f(W * sun[0])} ${f(H * sun[1])} L240 0 H196 Z M${f(W * sun[0])} ${f(H * sun[1])} L240 60 V30 Z M${f(W * sun[0])} ${f(H * sun[1])} L150 0 H120 Z" class="s-ray"/>
+        <circle cx="${f(W * sun[0])}" cy="${f(H * sun[1])}" r="30" class="s-sun"/>
+      </g>
       ${body}
       <rect width="${W}" height="${H}" fill="url(#${id}l)"/>
-      <g class="s-near">
+      <g class="s-near s-curtain">
         <path d="${valance}"/>
         <path d="M0 0 H14 C9 30 13 70 7 120 H0 Z"/><path d="M240 0 H226 C231 30 227 70 233 120 H240 Z"/>
         <path d="M0 116 H240 V120 H0 Z"/>
@@ -96,6 +100,7 @@
       top: `M${f(hx - 3.6)} ${hy - 3} h7.4 l-.4 -7 h-6.6 Z M${f(hx - 5.6)} ${hy - 3.4} h11.4 v1.4 h-11.4 Z`,
       cap: `M${f(hx - 4.3)} ${hy - 2.4} q0 -4.8 4.4 -4.8 q4.4 0 4.6 4.8 Z M${f(hx + 2.5)} ${hy - 3.1} h5 v1.2 h-5 Z`,
       fur: `M${f(hx - 5)} ${hy - 1} q0 -6.5 5 -6.5 q5 0 5 6.5 v2 h-10 Z`,
+      helmet: `M${f(hx - 4.6)} ${hy - 1.6} q0 -5.6 4.6 -5.6 q4.6 0 4.6 5.6 Z M${f(hx - 5.8)} ${hy - 2} h11.8 v1.3 h-11.8 Z`,
       shako: `M${f(hx - 3.8)} ${hy - 3} l.6 -6 h6.4 l.6 6 Z M${f(hx + 2)} ${hy - 3.2} h4.6 v1.1 h-4.6 Z`,
       none: '',
     }[hat];
@@ -138,6 +143,25 @@
       ${wheel(-12, -6, 6, turn)}${wheel(4, -6, 6, turn)}${wheel(20, -3.8, 3.8, turn)}${wheel(28, -3.8, 3.8, turn)}
       ${smoke ? puffs(23.5, -36, 4) : ''}`;
   }
+  // Тепловоз советской эпохи: капотный кузов, кабины с окнами, красная полоса, две тележки
+  function diesel(turn = 1.6) {
+    return `
+      <path d="M-42 -8 V-20 L-36 -26 H34 L42 -20 V-8 Z"/>
+      <rect x="31" y="-23.5" width="6" height="5" class="s-hole"/><rect x="-37" y="-23.5" width="6" height="5" class="s-hole"/>
+      ${range(8, i => `<rect x="${-26 + i * 7}" y="-22" width="3" height="6" class="s-hole" opacity=".55"/>`)}
+      <rect x="-42" y="-14" width="84" height="1.8" class="s-acc"/>
+      <rect x="-3" y="-29" width="6" height="3"/>
+      <path d="M-40 -8 h80 v2.5 h-80 Z"/>
+      ${wheel(-31, -3.6, 3.6, turn)}${wheel(-22, -3.6, 3.6, turn)}${wheel(22, -3.6, 3.6, turn)}${wheel(31, -3.6, 3.6, turn)}
+      <circle cx="41" cy="-11" r="1.4" class="s-acc">${flicker('1;.4;1', 1.6)}</circle>
+      ${puffs(0, -30, 3, 0.7)}`;
+  }
+  function wagon(x) {
+    return `<g transform="translate(${x} 0)"><path d="M-21 -22 h42 v14 h-42 Z"/>${range(4, i => `<rect x="${-17 + i * 9.5}" y="-19" width="6" height="5" class="s-hole"/>`)}
+      <path d="M-22 -8 h44 v2 h-44 Z"/>${wheel(-14, -3.6, 3.6)}${wheel(-7, -3.6, 3.6)}${wheel(7, -3.6, 3.6)}${wheel(14, -3.6, 3.6)}</g>`;
+  }
+  // Пятиэтажка: коробка с сеткой окон, часть светится
+  const block = (x, y, w, h, floors) => `<path d="M${x} ${y} h${w} v${-h} h${-w} Z"/>${range(floors, r => range(Math.floor(w / 7), c => `<rect x="${x + 2.5 + c * 7}" y="${f(y - h + 3 + r * (h - 4) / floors)}" width="3.4" height="${f((h - 4) / floors - 2.4)}" class="s-hole" opacity="${(r * 3 + c) % 4 ? 0.35 : 1}"/>`))}`;
   function carriage(x) {
     return `<g transform="translate(${x} 0)">
       <path d="M-20 -22 q20 -5 40 0 v14 h-40 Z"/>
@@ -225,7 +249,7 @@
 
     // Мост через реку; по нему идёт поезд. wooden — деревянные фермы на ряжах, iron — металл на каменных быках
     bridge(kind = 'wooden') {
-      const iron = kind === 'iron';
+      const iron = kind === 'iron' || kind === 'bam';
       const DECK = 62, L = 22, R = 218, spans = iron ? 3 : 4, sw = (R - L) / spans;
       let truss = '';
       for (let s = 0; s < spans; s++) {
@@ -257,7 +281,7 @@
         <g class="s-near">
           <path d="M0 ${DECK} H${L} L${L - 4} 120 H0 Z M240 ${DECK} H${R} L${R + 4} 120 H240 Z"/>
           ${piers}${truss}${rails(DECK - 3, 0, 240)}
-          <g>${slide('-120 0', '380 0', 11)}<g transform="translate(0 ${DECK - 3}) scale(.72)">${loco(true, 0.9)}${carriage(-66)}${carriage(-112)}</g></g>
+          <g>${slide('-120 0', '380 0', 11)}<g transform="translate(0 ${DECK - 3}) scale(.72)">${kind === 'bam' ? `${diesel(0.9)}${wagon(-66)}${wagon(-112)}` : `${loco(true, 0.9)}${carriage(-66)}${carriage(-112)}`}</g></g>
         </g>
         ${waves(104, 2.4, 3.6, 's-water')}`, iron ? 'Поезд идёт по металлическому мосту на каменных быках' : 'Поезд идёт по деревянному мосту на ряжах', { lamp: [0.5, 0.3] });
     },
@@ -384,6 +408,150 @@
         </g>`, 'Рельсы в разрезе на шпале и ширина колеи', { lamp: [0.5, 0.45] });
     },
   };
+
+  Object.assign(plates, {
+    // Стройка века: митинг, красные флаги, транспарант с названием стройки
+    rally() {
+      const flag = (x, h, d) => `<path d="M${x} ${FLOOR - 26} V${FLOOR - 26 - h}" class="st" stroke-width="1"/>${still ? `<path d="M${x} ${FLOOR - 26 - h} h14 v8 h-14 Z" class="s-acc"/>` : `<path class="s-acc" d="M${x} ${FLOOR - 26 - h} q7 -2 14 1 v8 q-7 -3 -14 -1 Z"><animate attributeName="d" values="M${x} ${FLOOR - 26 - h} q7 -2 14 1 v8 q-7 -3 -14 -1 Z;M${x} ${FLOOR - 26 - h} q7 3 14 0 v8 q-7 2 -14 1 Z;M${x} ${FLOOR - 26 - h} q7 -2 14 1 v8 q-7 -3 -14 -1 Z" dur="${1.2 + d}s" repeatCount="indefinite"/></path>`}`;
+      return stage(`
+        <g class="s-far">${hills(76, 10, 3)}${firs([22, 36, 200, 214, 228], 80, 22)}</g>
+        <g class="s-near">
+          ${ground()}
+          <path d="M60 26 h120 v18 h-120 Z" class="s-acc"/>
+          <text x="120" y="40" text-anchor="middle" class="s-banner">БАМ</text>
+          <path d="M64 44 V78 M176 44 V78" class="st" stroke-width="1.4"/>
+          ${flag(30, 34, 0)}${flag(46, 26, 0.3)}${flag(192, 30, 0.2)}${flag(212, 38, 0.4)}
+          ${range(9, i => figure(30 + i * 22, FLOOR, { dir: i % 3 ? 1 : -1, k: 0.78 + (i % 3) * 0.06, hat: ['cap', 'none', 'helmet'][i % 3], coat: i % 2 ? 'shirt' : 'coat', rod: false, sway: 0.8,
+            arms: i % 4 === 1 ? [[[5, -34], [9, -46]]] : [[[3, -28], [5, -22]]] }))}
+        </g>`, 'Митинг строителей с красными флагами и транспарантом «БАМ»', { lamp: [0.5, 0.35], sun: [0.5, 0.62] });
+    },
+
+    // Разведка с воздуха: гидросамолёт над тайгой и озером
+    plane() {
+      return stage(`
+        <g class="s-far">${hills(70, 16, 2)}</g>
+        <g class="s-mid">${firs([12, 26, 40, 54, 180, 196, 212, 228], 92, 26)}</g>
+        ${waves(94, 1.4, 6, 's-water-far')}
+        <g class="s-near">
+          <g>${still ? '' : `<animateTransform attributeName="transform" type="translate" values="-60 6;300 -8" dur="12s" repeatCount="indefinite"/>`}
+            <g transform="translate(0 40)">
+              <path d="M-26 0 q4 -6 20 -6 h24 l8 4 l-8 4 h-40 Z"/>
+              <path d="M-4 -6 l6 -2 h30 l2 2 Z M-30 -8 l6 0 l4 6 h-8 Z"/>
+              <path d="M-40 -9 h64 v2 h-64 Z" />
+              <path d="M-14 3 l-4 8 M6 3 l4 8" class="st" stroke-width="1"/>
+              <path d="M-24 11 h18 q3 0 3 2 h-24 Z M0 11 h18 q3 0 3 2 h-24 Z"/>
+              <g class="s-rotor"><rect x="30" y="-8" width="1.2" height="12">${still ? '' : '<animate attributeName="height" values="12;2;12" dur=".15s" repeatCount="indefinite"/>'}</rect></g>
+            </g>
+          </g>
+          ${ground(108)}
+        </g>
+        ${waves(110, 1.8, 3.4, 's-water')}`, 'Гидросамолёт снимает трассу с воздуха над тайгой', { sun: [0.2, 0.3] });
+    },
+
+    // Палаточный городок: палатки, вагончики со светом, костёр, гитарист
+    camp() {
+      const flame = still ? '<path d="M120 96 q-5 -8 0 -16 q5 8 0 16 Z" class="s-acc"/>'
+        : `<path class="s-acc" d="M120 96 q-5 -8 0 -16 q5 8 0 16 Z"><animate attributeName="d" values="M120 96 q-5 -8 0 -16 q5 8 0 16 Z;M120 96 q-6 -6 -1 -13 q7 6 1 13 Z;M120 96 q-5 -8 0 -16 q5 8 0 16 Z" dur=".8s" repeatCount="indefinite"/></path>`;
+      return stage(`
+        <circle cx="200" cy="24" r="8" class="s-moon"/>
+        <g class="s-far">${hills(72, 10, 4)}${firs([14, 28, 42, 170, 184, 198, 212, 226], 76, 24)}</g>
+        <g class="s-near">
+          ${ground()}
+          <path d="M18 104 L40 74 L62 104 Z M70 104 L88 80 L106 104 Z"/>
+          <path d="M40 74 V104 M88 80 V104" class="st s-hole-line" stroke-width=".8"/>
+          <path d="M150 104 V78 q0 -6 6 -6 h52 q6 0 6 6 V104 Z"/>
+          ${[160, 176, 192].map((x, i) => `<rect x="${x}" y="82" width="9" height="8" class="s-hole">${flicker('1;.6;1', 2.2 + i * 0.4, i * 0.3)}</rect>`).join('')}
+          <path d="M112 100 l16 -6 M112 94 l16 6" class="st" stroke-width="2"/>
+          ${flame}${puffs(121, 78, 3, 0.8)}
+          ${figure(100, FLOOR, { hat: 'none', coat: 'shirt', legs: 'kneel', rod: false, k: 0.9, arms: [[[6, -30], [12, -26], '<path d="M4 -28 l12 -4 l2 3 l-12 4 Z M14 -32 l6 -6" class="st" stroke-width="1.4"/>', swing(0, 6, 0, -38, 0.6)], [[4, -26], [10, -24]]] })}
+          ${figure(138, FLOOR, { dir: -1, hat: 'cap', coat: 'shirt', rod: false, k: 0.9, sway: 1 })}
+        </g>`, 'Палатки и вагончики первых строителей, костёр и гитара', { lamp: [0.5, 0.75], sun: [0.8, 0.5] });
+    },
+
+    // Портал тоннеля в скале: облицовка, путь, проходчик с перфоратором, тепловоз выходит на свет
+    tunnel() {
+      return stage(`
+        <g class="s-far">${hills(56, 20, 6)}</g>
+        <g class="s-mid"><path d="M0 104 L0 60 L40 30 L80 44 L120 14 L170 40 L210 26 L240 48 V104 Z"/></g>
+        <g class="s-near">
+          <path d="M60 104 V58 q60 -38 120 0 V104 Z"/>
+          <path d="M86 104 V70 a34 30 0 0 1 68 0 V104 Z" class="s-portal"/>
+          <path d="M86 70 a34 30 0 0 1 68 0" class="st s-lining" stroke-width="2.2"/>
+          <path d="M80 104 V68 a40 36 0 0 1 80 0 V104" class="st s-lining" stroke-width=".8"/>
+          <path d="M92 50 h56 v8 h-56 Z" class="s-acc"/>
+          ${ground()}
+          <path d="M104 104 L96 120 M136 104 L144 120" class="st" stroke-width="1.6"/>
+          <g>${still ? '' : '<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 14;0 14" keyTimes="0;.4;.9;1" dur="7s" repeatCount="indefinite"/>'}
+            <g transform="translate(120 100) scale(.6)"><path d="M-30 -2 V-30 q0 -8 8 -8 h44 q8 0 8 8 V-2 Z"/><rect x="-22" y="-32" width="14" height="10" class="s-hole"/><rect x="8" y="-32" width="14" height="10" class="s-hole"/>
+              <circle cx="0" cy="-12" r="3" class="s-acc">${flicker('1;.5;1', 1.2)}</circle><rect x="-30" y="-20" width="60" height="2" class="s-acc"/></g>
+          </g>
+          ${figure(46, FLOOR, { hat: 'helmet', coat: 'coat', legs: 'brace', rod: false, lean: 4, arms: [[[7, -30], [14, -24], `<g>${drift(0.6, 0.4, 0.12)}<path d="M13 -26 l12 3 l-1 3 l-12 -3 Z M24 -23 l6 1" class="st" stroke-width="1.4"/></g>`], [[6, -27], [12, -22]]] })}
+          ${figure(194, FLOOR, { dir: -1, hat: 'helmet', coat: 'coat', rod: false, sway: 0.8, arms: [[[6, -33], [11, -40]]] })}
+        </g>`, 'Портал тоннеля в скале, проходчик с перфоратором, тепловоз выходит на свет', { lamp: [0.5, 0.5], sun: [0.84, 0.3] });
+    },
+
+    // Посёлок-город: пятиэтажки, кран, вокзал, флаг
+    town() {
+      return stage(`
+        <g class="s-far">${hills(70, 14, 1)}${firs([14, 30, 214, 228], 74, 22)}</g>
+        <g class="s-mid">${block(20, 96, 44, 36, 5)}${block(176, 96, 44, 30, 4)}</g>
+        <g class="s-near">
+          ${ground()}
+          <path d="M150 104 V30 M150 32 H206 M150 32 L140 40 M206 32 V40" class="st" stroke-width="1.6"/>
+          <path d="M146 104 h8 v-4 h-8 Z M136 40 h8 v6 h-8 Z"/>
+          <g>${swing(-3, 3, 196, 32, 3.6)}<path d="M196 32 V56" class="st" stroke-width=".6"/><rect x="189" y="56" width="14" height="10"/></g>
+          <path d="M72 104 V70 h66 V104 Z M68 70 h74 v-5 h-74 Z"/>
+          ${range(5, i => `<rect x="${77 + i * 12}" y="76" width="7" height="14" class="s-hole">${flicker('1;.7;1', 2.5 + i * 0.3, i * 0.5)}</rect>`)}
+          <path d="M105 65 V40" class="st" stroke-width="1"/>
+          ${still ? '<path d="M105 40 h14 v8 h-14 Z" class="s-acc"/>' : '<path class="s-acc" d="M105 40 q7 -2 14 1 v8 q-7 -3 -14 -1 Z"><animate attributeName="d" values="M105 40 q7 -2 14 1 v8 q-7 -3 -14 -1 Z;M105 40 q7 3 14 0 v8 q-7 2 -14 1 Z;M105 40 q7 -2 14 1 v8 q-7 -3 -14 -1 Z" dur="1.4s" repeatCount="indefinite"/></path>'}
+          ${figure(40, FLOOR, { hat: 'fur', coat: 'coat', rod: false, k: 0.85, sway: 0.8 })}
+          ${figure(56, FLOOR, { dir: -1, hat: 'none', coat: 'coat', rod: false, k: 0.8, arms: [[[5, -32], [9, -40]]] })}
+        </g>`, 'Новый город на БАМе: пятиэтажки, кран и вокзал', { sun: [0.72, 0.38] });
+    },
+
+    // Путеукладчик опускает звено на насыпь, монтёры принимают рельсы
+    tracklayer() {
+      return stage(`
+        <g class="s-far">${hills(66, 14, 5)}${firs([16, 30, 44, 58, 190, 206, 222], 72, 24)}</g>
+        <g class="s-mid"><path d="M0 104 L0 92 L240 86 V104 Z"/></g>
+        <g class="s-near">
+          ${ground()}
+          <path d="M0 98 H240 V104 H0 Z"/>
+          ${rails(96, 0, 132)}
+          <g transform="translate(64 96)">${diesel(0)}</g>
+          <path d="M100 74 L170 40 M104 88 L170 40" class="st" stroke-width="2"/>
+          <path d="M96 70 h16 v26 h-16 Z"/>
+          <g>${still ? '' : '<animateTransform attributeName="transform" type="translate" values="0 0;0 18;0 18;0 0" keyTimes="0;.45;.7;1" dur="6s" repeatCount="indefinite"/>'}
+            <path d="M160 42 V70 M180 42 V70" class="st" stroke-width=".6"/>
+            <path d="M136 70 h64 v2 h-64 Z M136 75 h64 v2 h-64 Z"/>
+            ${range(8, i => `<rect x="${139 + i * 8}" y="72" width="4" height="4"/>`)}
+          </g>
+          ${figure(146, 98, { hat: 'helmet', coat: 'shirt', legs: 'brace', rod: false, k: 0.85, arms: [[[4, -32], [8, -38]], [[5, -30], [10, -36]]] })}
+          ${figure(212, 98, { dir: -1, hat: 'cap', coat: 'shirt', rod: false, k: 0.85, arms: [[[6, -32], [12, -40]]], sway: 0.8 })}
+        </g>`, 'Путеукладчик опускает рельсовое звено на насыпь', { sun: [0.85, 0.4] });
+    },
+
+    // Золотое звено: две бригады навстречу, последнее звено, транспарант
+    goldlink() {
+      return stage(`
+        <g class="s-far">${hills(66, 18, 7)}${firs([14, 28, 212, 226], 72, 22)}</g>
+        <g class="s-near">
+          ${ground()}
+          <path d="M0 98 H240 V104 H0 Z"/>
+          ${rails(96, 0, 100)}${rails(96, 140, 240)}
+          <g>${still ? '' : '<animateTransform attributeName="transform" type="translate" values="0 -14;0 -14;0 0;0 0" keyTimes="0;.3;.7;1" dur="5s" repeatCount="indefinite"/>'}
+            <path d="M100 96 H140 V97.6 H100 Z" class="s-acc"/>${range(5, i => `<rect x="${102 + i * 8}" y="97.6" width="4" height="1.6" class="s-acc"/>`)}
+          </g>
+          <path d="M64 22 h112 v14 h-112 Z" class="s-acc"/>
+          <text x="120" y="32.5" text-anchor="middle" class="s-banner s-banner-sm">ЗОЛОТОЕ ЗВЕНО</text>
+          <path d="M68 36 V60 M172 36 V60" class="st" stroke-width="1"/>
+          ${figure(84, 98, { hat: 'helmet', coat: 'shirt', legs: 'brace', rod: false, k: 0.85, lean: 3, arms: [[[6, -30], [14, -26]], [[5, -28], [13, -24]]] })}
+          ${figure(156, 98, { dir: -1, hat: 'helmet', coat: 'shirt', legs: 'brace', rod: false, k: 0.85, lean: 3, arms: [[[6, -30], [14, -26]], [[5, -28], [13, -24]]] })}
+          ${range(3, i => figure(22 + i * 16, 98, { hat: ['cap', 'none', 'fur'][i], coat: 'coat', rod: false, k: 0.7, sway: 1, arms: i === 1 ? [[[4, -34], [8, -46]]] : [] }))}
+          ${range(3, i => figure(186 + i * 16, 98, { dir: -1, hat: ['none', 'cap', 'helmet'][i], coat: 'coat', rod: false, k: 0.7, sway: 1, arms: i === 0 ? [[[4, -34], [8, -46]]] : [] }))}
+        </g>`, 'Две бригады укладывают последнее звено под транспарантом', { sun: [0.5, 0.5] });
+    },
+  });
 
   function draw(name, arg) {
     if (!plates[name]) return '';
