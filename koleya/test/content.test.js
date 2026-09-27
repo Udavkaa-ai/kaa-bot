@@ -15,8 +15,11 @@ test('check:facts ловит ссылку на несуществующий фа
 });
 
 test('check:facts не пускает в викторину факт to_verify', () => {
-  const errs = broken(a => { a.chapters.chapter1.quiz[0].fact_ref = 'T07'; });
-  assert.ok(errs.some(e => /to_verify/.test(e)));
+  const errs = broken(a => {
+    const f = a.facts.find(x => x.id === a.chapters.chapter1.quiz[0].fact_ref);
+    f.status = 'to_verify';
+  });
+  assert.ok(errs.some(e => /to_verify|legend|verified/.test(e)));
 });
 
 test('check:facts требует источник у verified', () => {

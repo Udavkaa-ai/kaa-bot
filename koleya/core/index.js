@@ -176,8 +176,8 @@ function createKoleya(deps) {
     for (const a of ch.advisors) for (const r of a.fact_refs || []) factIds.add(r);
     for (const s of ch.map.segments) for (const r of s.fact_refs || []) factIds.add(r);
     if (ch.map.historical.firstRun?.fact_ref) factIds.add(ch.map.historical.firstRun.fact_ref);
-    // Версии рядом с фактами, на которые они ссылаются (T07 — рядом с F008)
-    for (const f of all.facts) if (f.status === 'to_verify' && /F\d+/.test(f.note || '')) factIds.add(f.id);
+    // Легенды-версии рядом с фактами, к которым они относятся (shownWith)
+    for (const f of all.facts) if ((f.shownWith || []).some(r => factIds.has(r))) factIds.add(f.id);
     return {
       chapter,
       map: ch.map,

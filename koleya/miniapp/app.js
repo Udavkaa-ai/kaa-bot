@@ -1305,12 +1305,12 @@
   }
 
   // ================= факты =================
-  // Версии (to_verify) показываем рядом с фактами, на которые они ссылаются в примечании
+  // Легенды-версии (shownWith) показываем рядом с фактами, к которым они относятся
   function withVersions(refs) {
     const c = C();
     const out = [...refs];
     for (const f of c.facts) {
-      if (f.status === 'to_verify' && !out.includes(f.id) && refs.some(r => (f.note || '').includes(r))) out.push(f.id);
+      if (!out.includes(f.id) && (f.shownWith || []).some(r => refs.includes(r))) out.push(f.id);
     }
     return out;
   }

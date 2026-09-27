@@ -113,6 +113,7 @@ function validate(all = loadAll({ fresh: true })) {
     }
   }
   const factOk = (w, ref) => { if (!all.factsById[ref]) err(w, `ссылка на несуществующий факт ${ref}`); };
+  for (const f of all.facts) for (const r of f.shownWith || []) factOk(`facts/${f.id}/shownWith`, r);
 
   // Баланс — минимальный набор полей, на которые опирается движок
   const b = all.balance;
