@@ -1,0 +1,106 @@
+{
+  "comment": "Иллюстрации игры. drawings — собственные гравированные рисунки (miniapp/plates.js), привязанные к событиям. archive — архивные изображения: только общественное достояние или свободные лицензии, с автором, годом, источником и лицензией (docs/FACTS_POLICY.md, п. 6). Файлы архивных изображений кладутся в miniapp/img/.",
+  "drawings": [
+    {
+      "id": "d-decree",
+      "plate": "decree",
+      "events": [
+        "P01",
+        "E01",
+        "E17",
+        "E18",
+        "T01",
+        "T03",
+        "T14"
+      ]
+    },
+    {
+      "id": "d-survey",
+      "plate": "survey",
+      "events": [
+        "E03",
+        "E10",
+        "E11",
+        "T06",
+        "T09"
+      ]
+    },
+    {
+      "id": "d-navvies",
+      "plate": "navvies",
+      "events": [
+        "E06",
+        "E09",
+        "T04",
+        "T13"
+      ]
+    },
+    {
+      "id": "d-bridge-wood",
+      "plate": "bridge",
+      "arg": "wooden",
+      "events": [
+        "E12"
+      ]
+    },
+    {
+      "id": "d-bridge-iron",
+      "plate": "bridge",
+      "arg": "iron",
+      "events": [
+        "T07",
+        "T08"
+      ]
+    },
+    {
+      "id": "d-station",
+      "plate": "station",
+      "events": [
+        "P01b",
+        "P02",
+        "P03",
+        "E13",
+        "E14",
+        "E15",
+        "E16",
+        "T15",
+        "T16",
+        "T17"
+      ]
+    },
+    {
+      "id": "d-ferry",
+      "plate": "ferry",
+      "events": [
+        "T05",
+        "T12"
+      ]
+    },
+    {
+      "id": "d-winter",
+      "plate": "winter",
+      "events": [
+        "E08",
+        "T11"
+      ]
+    },
+    {
+      "id": "d-flood",
+      "plate": "flood",
+      "events": [
+        "E07",
+        "T10"
+      ]
+    },
+    {
+      "id": "d-gauge",
+      "plate": "gauge",
+      "events": [
+        "E04",
+        "E05",
+        "T02"
+      ]
+    }
+  ],
+  "archive": []
+}

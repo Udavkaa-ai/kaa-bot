@@ -186,6 +186,15 @@ function createKoleya(deps) {
       facts: all.facts.filter(f => factIds.has(f.id)),
       balance: ch.balance,
       order: CHAPTER_ORDER,
+      // Иллюстрации к событиям главы: рисунки игры и архивные изображения
+      illustrations: (() => {
+        const evs = new Set(ch.events.map(e => e.id));
+        const ill = all.illustrations || { drawings: [], archive: [] };
+        return {
+          drawings: (ill.drawings || []).filter(d => (d.events || []).some(e => evs.has(e))),
+          archive: (ill.archive || []).filter(a => (a.events || []).some(e => evs.has(e)) || (a.fact_refs || []).some(r => factIds.has(r))),
+        };
+      })(),
       // Викторина есть, только если есть вопросы по проверенным фактам
       quizAvailable: ch.quiz.some(q => all.factsById[q.fact_ref]?.status === 'verified'),
     };

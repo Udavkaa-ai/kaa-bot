@@ -50,6 +50,7 @@ function loadAll({ fresh = false } = {}) {
   const factsById = Object.fromEntries(facts.map(f => [f.id, f]));
   const balance = readJson('balance.json');
   const forbidden = readJson('forbidden_terms.json');
+  const illustrations = fs.existsSync(path.join(DATA_DIR, 'illustrations.json')) ? readJson('illustrations.json') : { drawings: [], archive: [] };
   const chapters = {};
   for (const id of CHAPTERS) {
     const dir = id;
@@ -71,7 +72,7 @@ function loadAll({ fresh = false } = {}) {
       nodesById: Object.fromEntries((map?.nodes || []).map(n => [n.id, n])),
     };
   }
-  cache = { facts, factsById, balance, forbidden, chapters };
+  cache = { facts, factsById, balance, forbidden, chapters, illustrations };
   return cache;
 }
 
@@ -228,6 +229,26 @@ function validate(all = loadAll({ fresh: true })) {
       if (!Array.isArray(q.options) || q.options.length < 2) err(w, 'варианты');
       if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= (q.options || []).length) err(w, 'answer');
     }
+  }
+
+  // Иллюстрации: у рисунка — существующие события; у архивного изображения — файл,
+  // автор, год, источник и свободная лицензия (docs/FACTS_POLICY.md, п. 6)
+  const LICENSES = new Set(['public-domain', 'CC0', 'CC-BY', 'CC-BY-SA']);
+  const allEvents = new Set(Object.values(all.chapters).flatMap(c => c.events.map(e => e.id)));
+  const ill = all.illustrations || { drawings: [], archive: [] };
+  for (const d of ill.drawings || []) {
+    const w = `illustrations/${d.id}`;
+    if (!isStr(d.plate)) err(w, 'нет plate');
+    for (const e of d.events || []) if (!allEvents.has(e)) err(w, `событие ${e} не найдено`);
+  }
+  for (const a of ill.archive || []) {
+    const w = `illustrations/${a.id}`;
+    if (!isStr(a.file) || !fs.existsSync(path.join(DATA_DIR, '..', 'miniapp', a.file))) err(w, `нет файла ${a.file}`);
+    if (!isStr(a.title) || !isStr(a.author)) err(w, 'нужны title и author');
+    if (!LICENSES.has(a.license)) err(w, `лицензия ${a.license} не из свободных`);
+    if (!a.source || !isStr(a.source.url) || !isStr(a.source.title)) err(w, 'нужен источник {title, url}');
+    for (const e of a.events || []) if (!allEvents.has(e)) err(w, `событие ${e} не найдено`);
+    for (const r of a.fact_refs || []) factOk(w, r);
   }
 
   // Запрещённые слова — целыми словами, без учёта регистра, по всему data/

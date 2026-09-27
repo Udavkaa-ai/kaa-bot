@@ -592,3 +592,85 @@ body.coach-on .panel { padding-bottom: 180px; }
 .difficulty { font-size: 12px; color: var(--ink-faded); margin-top: 6px; letter-spacing: 0.3px; }
 .difficulty .dots { color: var(--route); letter-spacing: 2px; font-size: 11px; }
 .difficulty .dots .off { color: var(--ink-hair); }
+
+/* ================= рисунки игры (plates.js) ================= */
+.plate { margin: 10px 0 6px; border: 1px solid var(--ink); outline: 1px solid var(--ink); outline-offset: 3px; background: var(--paper); padding: 6px; }
+.plate .plate-svg { width: 100%; height: auto; display: block; }
+.plate img { width: 100%; height: auto; display: block; filter: sepia(0.35) contrast(1.05); }
+.plate figcaption { font-family: var(--font-display); font-style: italic; font-size: 12px; color: var(--ink-faded); margin-top: 4px; }
+.plate figcaption a { color: var(--ink-faded); }
+.plate-svg .p-ink { stroke: var(--ink); stroke-width: 1.1; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.plate-svg .p-thin { stroke-width: 0.6; }
+.plate-svg .p-thick { stroke-width: 2; }
+.plate-svg .p-paper { fill: var(--paper); }
+.plate-svg .p-fill { fill: var(--ink); stroke: none; }
+.plate-svg .p-route { stroke: var(--route); stroke-width: 1.4; fill: none; }
+.plate-svg .p-route-fill { fill: var(--route); }
+.plate-svg .p-dash { stroke: var(--ink-faded); stroke-width: 0.8; stroke-dasharray: 3 3; fill: none; }
+.plate-svg .p-water { stroke: var(--wash-water); stroke-width: 1.2; fill: none; }
+.plate-svg .p-water-fill { fill: var(--wash-water); opacity: 0.22; }
+.plate-svg .p-wax { fill: var(--wax); }
+.plate-svg .p-wax-ring { fill: none; stroke: var(--paper-deep); stroke-width: 1; }
+.plate-svg .p-label { font-family: var(--font-display); font-style: italic; font-size: 11px; fill: var(--route); }
+.plate-svg .p-smoke circle { fill: var(--paper); stroke: var(--ink-faded); stroke-width: 0.8; stroke-dasharray: 2 2; }
+.plate-svg .p-snow circle { fill: var(--wash-water); opacity: 0.8; }
+.plate-svg .p-rain line { stroke: var(--wash-water); stroke-width: 0.8; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .plate-svg .p-waves { animation: pWaves 3.2s linear infinite; }
+  .plate-svg .p-waves:nth-of-type(2n) { animation-duration: 4.4s; animation-direction: reverse; }
+  .plate-svg .p-wheel { transform-box: fill-box; transform-origin: center; animation: wspin 1.4s linear infinite; }
+  .plate-svg .p-smoke .puff { transform-box: fill-box; transform-origin: center; opacity: 0; animation: pSmoke 2.4s ease-out infinite; }
+  .plate-svg .p-smoke .q2 { animation-delay: 0.6s; } .plate-svg .p-smoke .q3 { animation-delay: 1.2s; } .plate-svg .p-smoke .q4 { animation-delay: 1.8s; }
+  .plate-svg .p-snow .flake { animation: pSnow 5s linear infinite; }
+  .plate-svg .p-snow .f1 { animation-duration: 6.5s; animation-delay: -2s; } .plate-svg .p-snow .f2 { animation-duration: 4.2s; animation-delay: -1s; } .plate-svg .p-snow .f3 { animation-duration: 7s; animation-delay: -3s; }
+  .plate-svg .p-rain .drop { animation: pRain 0.9s linear infinite; }
+  .plate-svg .p-rain .d1 { animation-delay: -0.3s; } .plate-svg .p-rain .d2 { animation-delay: -0.6s; }
+  .plate-svg .p-flag { transform-box: fill-box; transform-origin: left center; animation: pFlag 1.2s ease-in-out infinite alternate; }
+  .plate-svg .p-window { animation: pWindow 2.6s ease-in-out infinite; }
+  .plate-svg .p-ship { animation: pBob 3s ease-in-out infinite alternate; }
+}
+@keyframes pWaves { from { transform: translateX(0); } to { transform: translateX(34px); } }
+@keyframes pSmoke { 0% { opacity: 0.9; transform: translate(0, 0) scale(0.4); } 100% { opacity: 0; transform: translate(26px, -26px) scale(2); } }
+@keyframes pSnow { from { transform: translateY(-20px); } to { transform: translateY(110px); } }
+@keyframes pRain { from { transform: translate(0, -10px); opacity: 0; } 30% { opacity: 1; } to { transform: translate(-6px, 40px); opacity: 0; } }
+@keyframes pFlag { from { transform: skewY(0deg); } to { transform: skewY(-10deg) scaleX(0.9); } }
+@keyframes pWindow { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes pBob { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(1.5px) rotate(-0.6deg); } }
+
+/* ================= анимации документов ================= */
+@media (prefers-reduced-motion: no-preference) {
+  .modal:not(.hidden) .dispatch { animation: unfold 0.42s cubic-bezier(.2,.8,.2,1); transform-origin: 50% 100%; }
+  .modal:not(.hidden) .deco-seal { animation: stamp 0.5s cubic-bezier(.3,1.6,.5,1) 0.25s both; }
+  .modal:not(.hidden) .stamp { animation: stampSoft 0.4s ease-out 0.45s both; }
+  .modal:not(.hidden) .ledger .report-line { animation: lineIn 0.35s ease-out both; }
+  .modal:not(.hidden) .ledger .report-line:nth-child(2) { animation-delay: 0.12s; }
+  .modal:not(.hidden) .ledger .report-line:nth-child(3) { animation-delay: 0.24s; }
+  .modal:not(.hidden) .ledger .report-line:nth-child(4) { animation-delay: 0.36s; }
+  .modal:not(.hidden) .plate { animation: lineIn 0.5s ease-out 0.15s both; }
+  .cc.now { animation: nowPulse 2.2s ease-in-out infinite; }
+}
+@keyframes unfold { from { opacity: 0; transform: translateY(24px) scaleY(0.94); } to { opacity: 1; transform: none; } }
+@keyframes stamp { from { opacity: 0; transform: rotate(-40deg) scale(2); } to { opacity: 1; transform: rotate(-12deg) scale(1); } }
+@keyframes stampSoft { from { opacity: 0; transform: rotate(-2deg) scale(1.4); } to { opacity: 0.85; transform: rotate(-2deg) scale(1); } }
+@keyframes lineIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@keyframes nowPulse { 0%, 100% { box-shadow: 0 0 0 0 var(--route-wash); } 50% { box-shadow: 0 0 0 3px var(--route-wash); } }
+
+/* ================= первый рейс: поезд едет по ленте пути ================= */
+.ride { position: relative; height: 70px; margin: 14px 4px 4px; }
+.rt-line { position: absolute; left: 0; right: 0; top: 44px; height: 3px; background: var(--route); }
+.rt-line::after { content: ''; position: absolute; left: 0; right: 0; top: 4px; height: 3px; background: repeating-linear-gradient(90deg, var(--ink) 0 1px, transparent 1px 7px); }
+.rt-stop { position: absolute; top: 40px; width: 9px; height: 9px; margin-left: -5px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--paper); }
+.rt-stop span { position: absolute; top: 12px; left: 50%; transform: translateX(-50%) rotate(-35deg); transform-origin: top center; font-family: var(--font-display); font-style: italic; font-size: 9px; white-space: nowrap; color: var(--ink-faded); }
+.rt-stop:not(:last-child) span { opacity: 0; }
+.rt-train { position: absolute; top: 4px; left: 0; width: 70px; margin-left: -60px; }
+.rt-train .deco-loco { width: 70px; transform: scaleX(-1); }
+@media (prefers-reduced-motion: no-preference) {
+  .modal:not(.hidden) .rt-train { animation: ride 3.2s cubic-bezier(.45,.05,.35,1) both; }
+  .modal:not(.hidden) .rt-stop:last-child span { animation: showName 3.2s linear both; }
+}
+@media (prefers-reduced-motion: reduce) { .rt-train { left: 100%; } }
+@keyframes ride { from { left: 0; } to { left: 100%; } }
+@keyframes showName { 0%, 90% { opacity: 0; } 100% { opacity: 1; } }
+.bigtime.arrived { color: var(--route); transition: color 0.4s; }
+.ride { margin-bottom: 30px; }

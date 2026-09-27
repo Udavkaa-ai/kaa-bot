@@ -1442,6 +1442,20 @@
 
   const EVENT_ADVISOR_KEY = { E18: 'revision', T14: 'revision' };
 
+  // Иллюстрация к событию: архивное изображение (если есть) или рисунок игры
+  function plateHtml(evId) {
+    const ill = C().illustrations || { drawings: [], archive: [] };
+    const arch = (ill.archive || []).find(a => (a.events || []).includes(evId));
+    if (arch) {
+      const lic = { 'public-domain': 'общественное достояние', CC0: 'CC0', 'CC-BY': 'CC BY', 'CC-BY-SA': 'CC BY-SA' }[arch.license] || arch.license;
+      return `<figure class="plate archive"><img src="${esc(arch.file)}" alt="${esc(arch.title)}" loading="lazy">
+        <figcaption>${esc(arch.title)}. ${esc(arch.author)}${arch.year ? `, ${esc(arch.year)}` : ''}. <a href="${esc(arch.source.url)}" target="_blank" rel="noopener">${esc(arch.source.title)}</a> · ${esc(lic)}</figcaption></figure>`;
+    }
+    const d = (ill.drawings || []).find(x => (x.events || []).includes(evId));
+    if (!d || !window.KoleyaPlates) return '';
+    return `<figure class="plate drawing">${window.KoleyaPlates.draw(d.plate, d.arg)}<figcaption>Рисунок игры</figcaption></figure>`;
+  }
+
   function showDispatch(evId) {
     const c = C();
     const ev = c.eventsById[evId];
@@ -1456,6 +1470,7 @@
     const inNo = (s.firedEvents.length + s.pendingEvents.length) * 7 + s.turn + 101;
     openModal(`<div class="doc-head"><div><div class="kicker">${kicker} · ${SEASON_RU[s.season].toLowerCase()} ${s.year}</div>
       <div class="stamp">Входящая № ${inNo}</div></div>${DECOR.seal('')}</div>
+      ${plateHtml(ev.id)}
       <h2>${esc(ev.title)}</h2>
       ${isLegend ? '<span class="tag legend">слух · легенда</span>' : ''}
       <div class="text">${esc(ev.text)}</div>
@@ -1508,13 +1523,37 @@
     }).join('');
     const extra = run.legs.filter(l => !l.segment && l.incident).length ? `<div class="report-note bad">В пути случилось происшествие — задержка.</div>` : '';
     const diff = run.minutes - run.historicalMinutes;
+    // Лента пути: станции по доле пройденного времени, паровозик едет по ней
+    let acc = 0;
+    const total = run.legs.reduce((a, l) => a + l.minutes, 0) || 1;
+    const ticks = run.legs.filter(l => l.segment).map(l => {
+      acc += l.minutes;
+      return `<i class="rt-stop" style="left:${(acc / total * 100).toFixed(1)}%"><span>${esc(c.nodesById[l.to].name.replace(/\s*\(.+\)/, ''))}</span></i>`;
+    }).join('');
+    const ride = `<div class="ride"><div class="rt-line"></div>${ticks}<div class="rt-train">${DECOR.loco()}</div></div>`;
     openModal(`<div class="kicker">Первый поезд</div>
       <h2>${esc(c.nodesById[c.map.historical.firstRun.from].name.replace(/\s*\(.+\)/, ''))} — ${esc(c.nodesById[c.map.historical.firstRun.to].name)}</h2>
-      <div class="bigtime">${hm(run.minutes)}</div>
+      ${ride}
+      <div class="bigtime" data-count="${run.minutes}">${hm(reducedMotion ? run.minutes : 0)}</div>
       <div class="compare">${run.historicalMinutes ? `Исторически — ${hm(run.historicalMinutes)}. ${diff === 0 ? 'Ровно как тогда.' : diff < 0 ? `Вы быстрее на ${hm(-diff)}.` : `Вы медленнее на ${hm(diff)}.`} ` : ''}Путь ${run.km} км, стоянок ${run.stops}.</div>
       <div style="margin-top:10px">${legs}</div>${extra}
       <div class="facts">${factsHtml([c.map.historical.firstRun.fact_ref])}</div>
-      <button class="btn" data-next>Далее</button>`, d => d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); }));
+      <button class="btn" data-next>Далее</button>`, d => {
+        d.querySelector('[data-next]').addEventListener('click', () => { haptic('tap'); nextModal(); });
+        const svgEl = d.querySelector('.rt-train svg');
+        if (svgEl) svgEl.classList.add('anim');
+        // Часы в пути отсчитываются синхронно с поездом
+        const el = d.querySelector('[data-count]');
+        if (el && !reducedMotion) {
+          const target = +el.dataset.count, t0 = performance.now(), dur = 3200;
+          const tick = now => {
+            const k = Math.min(1, (now - t0) / dur);
+            el.textContent = hm(Math.round(target * (1 - Math.pow(1 - k, 2))));
+            if (k < 1) requestAnimationFrame(tick); else { haptic('ok'); el.classList.add('arrived'); }
+          };
+          requestAnimationFrame(tick);
+        }
+      });
   }
 
   function showFinished() {
