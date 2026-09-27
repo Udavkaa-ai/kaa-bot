@@ -7,17 +7,18 @@ const { playGame } = require('./bots');
 
 const N = parseInt(process.argv[2], 10) || 1000;
 const only = process.argv[3];
+const difficulty = process.argv[4]; // easy | normal | hard
 const STRATEGIES = ['historical', 'cautious', 'shortcut', 'random'];
 
 for (const chId of content.chapterIds()) {
   if (only && only !== chId) continue;
   const ch = content.chapter(chId);
-  console.log(`\n=== ${chId}: ${N} прохождений на стратегию ===`);
+  console.log(`\n=== ${chId}${difficulty ? ` (${difficulty})` : ''}: ${N} прохождений на стратегию ===`);
   for (const strat of STRATEGIES) {
     const out = { won: 0, removed: 0, timeout: 0, halted: 0 };
     const years = [], stars = [], minutes = [], turns = [];
     for (let seed = 1; seed <= N; seed++) {
-      const s = playGame(ch, seed, strat);
+      const s = playGame(ch, seed, strat, difficulty);
       out[s.outcome] = (out[s.outcome] || 0) + 1;
       turns.push(s.turn);
       if (s.completedAt) years.push(s.completedAt.year + ['spring', 'summer', 'autumn', 'winter'].indexOf(s.completedAt.season) / 4);

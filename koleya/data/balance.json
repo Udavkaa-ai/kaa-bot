@@ -618,5 +618,41 @@
       }
     },
     "comment": "Глава, которую нельзя пройти: осенью 1991 года стройку останавливают (эффект halt). Срок 1995 года — игровой, до него игрок не доживает."
+  },
+  "difficulty": {
+    "comment": "Сложность главы на выбор игрока. Множители к работам, ценам, происшествиям, стартовой казне и ежегодным ассигнованиям; favorPenaltyMult — к штрафам благоволения за отставание, опоздание и происшествия; бонусы — к стартовым благоволению и настрою.",
+    "default": "normal",
+    "levels": {
+      "easy": {
+        "workMult": 0.8,
+        "costMult": 0.85,
+        "incidentMult": 0.7,
+        "treasuryMult": 1.25,
+        "allocationMult": 1.25,
+        "favorPenaltyMult": 0.5,
+        "favorBonus": 10,
+        "moraleBonus": 5
+      },
+      "normal": {
+        "workMult": 1,
+        "costMult": 1,
+        "incidentMult": 1,
+        "treasuryMult": 1,
+        "allocationMult": 1,
+        "favorPenaltyMult": 1,
+        "favorBonus": 0,
+        "moraleBonus": 0
+      },
+      "hard": {
+        "workMult": 1.08,
+        "costMult": 1.05,
+        "incidentMult": 1.3,
+        "treasuryMult": 0.95,
+        "allocationMult": 0.95,
+        "favorPenaltyMult": 1.25,
+        "favorBonus": -5,
+        "moraleBonus": -5
+      }
+    }
   }
 }

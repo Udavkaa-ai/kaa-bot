@@ -72,6 +72,9 @@ test('API: полный путь пролога через HTTP-контракт
   assert.equal(r.status, 409, 'без пролога глава I закрыта');
   assert.match(r.body.error, /пролог/);
 
+  r = await call('POST', '/game/start', { chapter: 'prologue', difficulty: 'nightmare' });
+  assert.equal(r.status, 400, 'неизвестная сложность');
+
   r = await call('POST', '/game/start', { chapter: 'prologue' });
   assert.equal(r.status, 200);
   assert.deepEqual(r.body.state.pendingEvents, ['P01']);

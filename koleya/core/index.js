@@ -277,7 +277,7 @@ function createKoleya(deps) {
       const saves = {};
       for (const c of CHAPTER_ORDER) {
         const g = c === chapter ? row : await getGame(tgId, c);
-        if (g) saves[c] = { finished: g.state.finished, outcome: g.state.outcome, year: g.state.year, season: g.state.season };
+        if (g) saves[c] = { finished: g.state.finished, outcome: g.state.outcome, year: g.state.year, season: g.state.season, difficulty: g.state.difficulty || null };
       }
       const unlocked = [];
       for (const c of CHAPTER_ORDER) if (await chapterUnlocked(tgId, player, c)) unlocked.push(c);
@@ -300,7 +300,11 @@ function createKoleya(deps) {
         if (!(await chapterUnlocked(tgId, player, chapter))) {
           throw new ApiError(409, 'Сначала пройдите пролог: он за несколько минут учит, как играть.');
         }
-        const { state, log: lg } = E.createGame(chapter, ch, seedGen(), (player && player.campaign) || {});
+        // Сложность выбирает игрок на старте главы; сервер принимает только уровни из balance.difficulty
+        const levels = (ch.balance.difficulty && ch.balance.difficulty.levels) || {};
+        const difficulty = body.difficulty == null || body.difficulty === '' ? undefined : String(body.difficulty);
+        if (difficulty !== undefined && !Object.prototype.hasOwnProperty.call(levels, difficulty)) throw new ApiError(400, 'Нет такой сложности');
+        const { state, log: lg } = E.createGame(chapter, ch, seedGen(), (player && player.campaign) || {}, { difficulty });
         await saveGame(tgId, chapter, state, null);
         await upsertPlayer(tgId, name, { activeChapter: chapter });
         return gamePayload(chapter, state, { log: lg, quiz: null });

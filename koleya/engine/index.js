@@ -136,9 +136,29 @@ function hasRollingStock(state, ch) {
 // ---------------- создание игры ----------------
 
 // campaign — итоги прошлых глав (например, колея главы I переходит в следующие)
-function createGame(chapterId, ch, seed, campaign = {}) {
+// Сложность, выбранная игроком на старте главы (balance.difficulty): множители работ, цен,
+// денег и штрафов. Без выбора — уровень по умолчанию («историческая», все множители 1).
+function difficultyOf(ch, id) {
+  const d = ch.balance.difficulty;
+  if (!d) return { id: null };
+  const key = id || d.default;
+  const lvl = d.levels[key];
+  if (!lvl) fail(`Нет такой сложности: ${key}`);
+  return { id: key, ...lvl };
+}
+const diffOf = (state, ch) => difficultyOf(ch, state.difficulty);
+// Штраф благоволения с множителем сложности: дробные части копятся и списываются целыми
+function favorPenalty(state, ch, base) {
+  const acc = (state.favorDebt || 0) + base * (diffOf(state, ch).favorPenaltyMult ?? 1);
+  const whole = Math.floor(acc + 1e-9);
+  state.favorDebt = acc - whole;
+  state.favor -= whole;
+}
+
+function createGame(chapterId, ch, seed, campaign = {}, opts = {}) {
   if (ch.id !== chapterId) fail('Контент не той главы');
   const cb = chapterBalance(ch);
+  const diff = difficultyOf(ch, opts.difficulty);
   const hasGaugeDecision = ch.events.some(e => e.choices.some(c => c.effects?.set?.gauge));
   const segments = {};
   for (const seg of ch.map.segments) {
@@ -152,16 +172,17 @@ function createGame(chapterId, ch, seed, campaign = {}) {
     year: cb.startYear,
     season: cb.startSeason,
     turn: 0,
-    treasury: cb.startTreasury,
-    favor: cb.startFavor,
-    morale: cb.startMorale,
+    difficulty: diff.id,
+    treasury: Math.round(cb.startTreasury * (diff.treasuryMult ?? 1)),
+    favor: clamp(cb.startFavor + (diff.favorBonus || 0), ch.balance.favorMin, ch.balance.favorMax),
+    morale: clamp(cb.startMorale + (diff.moraleBonus || 0), ch.balance.moraleMin, ch.balance.moraleMax),
     crewsTotal: cb.startCrews,
     pay: 'normal',
     decisions: {},
     flags: [],
     unlocked: { construction: false, rollingStock: false, quiz: false },
     routeVariant: null,
-    modifiers: { costMult: 1, workMult: 1, speedMult: 1, incidentMult: 1 },
+    modifiers: { costMult: diff.costMult ?? 1, workMult: diff.workMult ?? 1, speedMult: 1, incidentMult: diff.incidentMult ?? 1 },
     // Колея из кампании (решение главы I) действует, пока глава не задаёт свою (gaugeFixed)
     gauge: hasGaugeDecision ? null : (ch.map.historical.gaugeFixed ? ch.map.historical.gauge_mm : (campaign.gauge || ch.map.historical.gauge_mm)),
     tracks: hasGaugeDecision ? null : ch.map.historical.tracks,
@@ -321,7 +342,8 @@ function applyEffects(state, ch, effects, rng, log) {
         state.firstRun = run;
         if (run.incidents) {
           state.incidents += run.incidents;
-          state.favor = clamp(state.favor - run.incidents * (chapterBalance(ch).favor?.incidentPenalty || 0), b.favorMin, b.favorMax);
+          favorPenalty(state, ch, run.incidents * (chapterBalance(ch).favor?.incidentPenalty || 0));
+          state.favor = clamp(state.favor, b.favorMin, b.favorMax);
         }
         log.push({ kind: 'firstRun', minutes: run.minutes, historicalMinutes: run.historicalMinutes, incidents: run.incidents });
         break;
@@ -605,10 +627,12 @@ function endSeason(state, ch, rng, log) {
   }
 
   // Ежегодные ассигнования — весной, пока идёт стройка
+  const diff = diffOf(state, ch);
   if (state.season === seasons[0] && state.unlocked.construction && cb.yearlyAllocation) {
-    state.treasury += cb.yearlyAllocation;
-    state.income.allocation += cb.yearlyAllocation;
-    report.allocation = cb.yearlyAllocation;
+    const allocation = Math.round(cb.yearlyAllocation * (diff.allocationMult ?? 1));
+    state.treasury += allocation;
+    state.income.allocation += allocation;
+    report.allocation = allocation;
   }
 
   // 6. Сроки: после дедлайна благоволение тает каждый сезон, до него — если сильно отстаём
@@ -616,13 +640,13 @@ function endSeason(state, ch, rng, log) {
     const now = stateDate(ch, state);
     const deadline = dateIndex(ch, cb.deadline.year, cb.deadline.season);
     if (now > deadline) {
-      state.favor -= cb.favor?.seasonLatePenalty || 0;
+      favorPenalty(state, ch, cb.favor?.seasonLatePenalty || 0);
       log.push({ kind: 'late', seasons: now - deadline });
     } else if (cb.behindSchedule && cb.constructionStart) {
       const start = dateIndex(ch, cb.constructionStart.year, cb.constructionStart.season);
       const expected = (now - start) / Math.max(1, deadline - start);
       if (overallProgress(state, ch) < expected - cb.behindSchedule.lagShare) {
-        state.favor -= cb.behindSchedule.favorPenalty;
+        favorPenalty(state, ch, cb.behindSchedule.favorPenalty);
         log.push({ kind: 'behind', expected: round1(expected * 100), actual: round1(overallProgress(state, ch) * 100) });
       }
     }
@@ -829,6 +853,7 @@ function view(state, ch) {
 
 module.exports = {
   GameError,
+  difficultyOf,
   createGame,
   applyAction,
   simulateFirstTrain,

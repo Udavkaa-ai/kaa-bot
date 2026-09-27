@@ -693,3 +693,7 @@ body.coach-on .panel { padding-bottom: 180px; }
   .toast { max-width: 600px; margin: 0 auto; }
   .map-sheet { max-width: 900px; margin: 0 auto; box-shadow: 0 0 0 1px var(--ink-hair); }
 }
+
+/* Выбор сложности главы */
+.diff-choice .hint { margin: 4px 2px 0; font-size: 13px; color: var(--ink-faded); }
+.diff-choice .diff-num { display: block; font-family: var(--font-ui); font-style: normal; font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }

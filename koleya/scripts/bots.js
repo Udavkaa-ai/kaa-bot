@@ -138,9 +138,9 @@ function playTurn(state, ch, strategy, rnd) {
   return E.applyAction(state, { type: 'END_SEASON' }, ch).state;
 }
 
-function playGame(ch, seed, strategy) {
+function playGame(ch, seed, strategy, difficulty) {
   const rnd = botRng(seed * 7919 + strategy.length);
-  let { state } = E.createGame(ch.id, ch, seed);
+  let { state } = E.createGame(ch.id, ch, seed, {}, { difficulty });
   let guard = 0;
   while (!state.finished && guard++ < 400) state = playTurn(state, ch, strategy, rnd);
   return state;

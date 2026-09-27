@@ -195,3 +195,21 @@ test('глава IV: пройти нельзя — при любой страт�
     assert.ok(g.firedEvents.includes('N18') && g.unlocked.quiz, 'эпилог показан, викторина открыта');
   }
 });
+
+test('сложность главы: множители из balance.difficulty, по умолчанию — историческая', () => {
+  const ch = content.chapter('chapter1');
+  const d = ch.balance.difficulty;
+  const base = E.createGame('chapter1', ch, 1).state;
+  assert.equal(base.difficulty, d.default);
+  const easy = E.createGame('chapter1', ch, 1, {}, { difficulty: 'easy' }).state;
+  const hard = E.createGame('chapter1', ch, 1, {}, { difficulty: 'hard' }).state;
+  assert.ok(easy.treasury > base.treasury && hard.treasury < base.treasury);
+  assert.ok(easy.favor > base.favor && hard.favor < base.favor);
+  assert.equal(easy.modifiers.workMult, d.levels.easy.workMult);
+  const seg = ch.map.segments[0];
+  assert.ok(E._internal.segmentTotals(easy, ch, seg).work < E._internal.segmentTotals(hard, ch, seg).work);
+  assert.throws(() => E.createGame('chapter1', ch, 1, {}, { difficulty: 'nightmare' }), /сложности/);
+  // Хороший план проходит главу и на трудной
+  const { playGame } = require('../scripts/bots');
+  assert.equal(playGame(ch, 1, 'historical', 'hard').outcome, 'won');
+});

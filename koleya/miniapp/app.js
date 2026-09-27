@@ -497,7 +497,7 @@
       const sv = saves[ch];
       let status = '';
       if (done[ch]) status = done[ch].halted ? 'Стройка остановлена — как в истории' : `Пройдена${done[ch].stars != null ? ` · звёзд ${done[ch].stars} из ${done[ch].max}` : ''}`;
-      else if (sv && !sv.finished) status = `Идёт: ${SEASON_RU[sv.season].toLowerCase()} ${sv.year}`;
+      else if (sv && !sv.finished) status = `Идёт: ${SEASON_RU[sv.season].toLowerCase()} ${sv.year}${sv.difficulty ? ` · сложность ${diffName(sv.difficulty).toLowerCase()}` : ''}`;
       else if (sv && sv.finished) status = sv.outcome === 'won' ? 'Пройдена' : sv.outcome === 'halted' ? 'Стройка остановлена' : 'Проиграна';
       const cont = sv && !sv.finished;
       const review = sv && sv.finished && (sv.outcome === 'won' || sv.outcome === 'halted');
@@ -536,11 +536,61 @@
     haptic('tap');
     const sv = S.home && S.home.saves && S.home.saves[ch];
     if (sv && !sv.finished && !(await confirmBox('Начать главу заново? Текущее сохранение будет стёрто.'))) return;
+    await withBusy(() => loadContent(ch));
+    const difficulty = await chooseDifficulty(ch);
+    if (difficulty === null) return;
     await withBusy(async () => {
-      await loadContent(ch);
-      const r = await api('POST', '/game/start', { chapter: ch });
+      const r = await api('POST', '/game/start', { chapter: ch, difficulty });
       if (ch === 'prologue') tutReset();
       enterGame(r);
+    });
+  }
+
+  // ================= сложность главы =================
+  // Названия и описания — здесь, числа — из balance.difficulty (сервер проверяет выбор)
+  const DIFFICULTY_RU = {
+    easy: ['Лёгкая', 'Чтобы спокойно разобраться и прочитать историю.'],
+    normal: ['Историческая', 'Как задумано: успеть можно, если не зевать.'],
+    hard: ['Трудная', 'Меньше денег, больше работы, начальство строже.'],
+  };
+  const DIFFICULTY_KEY = 'koleya-difficulty';
+  const diffName = id => (DIFFICULTY_RU[id] || [id || 'Историческая'])[0];
+  const mult = v => String(v).replace('.', ',');
+  function difficultyDetails(lvl) {
+    const pct = v => `${v > 1 ? '+' : '−'}${Math.round(Math.abs(v - 1) * 100)}%`;
+    const bits = [];
+    if (lvl.workMult !== 1) bits.push(`объём работ ${pct(lvl.workMult)}`);
+    if (lvl.costMult !== 1) bits.push(`цены ${pct(lvl.costMult)}`);
+    if (lvl.treasuryMult !== 1 || lvl.allocationMult !== 1) bits.push(`деньги ${pct(lvl.allocationMult)}`);
+    if (lvl.favorPenaltyMult !== 1) bits.push(`штрафы начальства ×${mult(lvl.favorPenaltyMult)}`);
+    if (lvl.incidentMult !== 1) bits.push(`происшествия ${pct(lvl.incidentMult)}`);
+    if (lvl.favorBonus) bits.push(`доверие на старте ${lvl.favorBonus > 0 ? '+' : '−'}${Math.abs(lvl.favorBonus)}`);
+    return bits.length ? bits.join(' · ') : 'все числа — как в основной игре';
+  }
+  function chooseDifficulty(ch) {
+    const d = S.content[ch] && S.content[ch].balance && S.content[ch].balance.difficulty;
+    if (!d) return Promise.resolve(undefined);
+    let last = d.default;
+    try { last = localStorage.getItem(DIFFICULTY_KEY) || d.default; } catch (_) {}
+    const info = CHAPTER_INFO[ch] || {};
+    return new Promise(res => {
+      const opts = Object.keys(d.levels).map(id => `<div class="choice diff-choice">
+          <button class="btn${id === last ? '' : ' ghost'}" data-diff="${id}">${esc(diffName(id))}${id === d.default ? ' <span class="cost">· рекомендуем</span>' : ''}</button>
+          <div class="hint">${esc((DIFFICULTY_RU[id] || ['', ''])[1])} <span class="diff-num">${esc(difficultyDetails(d.levels[id]))}</span></div>
+        </div>`).join('');
+      openModal(`<div class="kicker">Сложность главы</div>
+        <h2>${esc(info.title || ch)}</h2>
+        <div class="text">Выберите, насколько строго с вас спросят. Сложность действует до конца главы; при новом начале её можно сменить.</div>
+        ${DECOR.rule('✦')}
+        ${opts}
+        <button class="link" data-diff-cancel type="button" style="margin-top:12px">Отмена</button>`, dEl => {
+        dEl.querySelectorAll('[data-diff]').forEach(b => b.addEventListener('click', () => {
+          haptic('sel');
+          try { localStorage.setItem(DIFFICULTY_KEY, b.dataset.diff); } catch (_) {}
+          closeModal(); res(b.dataset.diff);
+        }));
+        dEl.querySelector('[data-diff-cancel]').addEventListener('click', () => { closeModal(); res(null); });
+      });
     });
   }
   async function resumeChapter(ch) {
@@ -1724,6 +1774,7 @@
       const scales = sc.scales.map(x => `<div class="scale"><span>${scaleName(x)}</span>${starsHtml(x.stars)}<span class="sd">${esc(SCALE_RU[x.id][1](x))}</span></div>`).join('');
       el.innerHTML = `<h2 class="sheet-title">${esc(c.map.title)}: глава пройдена</h2>
         <div class="kv"><span>Итог</span><span>${sc.total} из ${sc.max} ★</span></div>
+        ${s.difficulty ? `<div class="kv"><span>Сложность</span><span>${esc(diffName(s.difficulty))}</span></div>` : ''}
         ${scales}
         <h3 class="sheet-title" style="font-size:21px;margin-top:18px">Как было на самом деле</h3>
         ${S.chapter === 'prologue' ? `<div class="history" style="margin-top:14px"><div class="h">Обучение пройдено</div><div class="t">В главе I всё то же, но крупнее: двенадцать участков и две дирекции, срок — осень 1851 года, решения о трассе, колее и мостах. Следите за календарём и не держите артели без дела.</div></div>` : ''}
