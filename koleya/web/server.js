@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Веб-версия «Пяти футов»: игра в обычном браузере, без Telegram.
+// Веб-версия «Истории железных дорог России»: игра в обычном браузере, без Telegram.
 // Отдельный сервис на Railway (koleya/web/railway.json), своя или общая с «Билли» база Postgres.
 //   DATABASE_URL=postgres://... KOLEYA_WEB_SECRET=<длинная случайная строка> node koleya/web/server.js
 // Вход — гостевой: сервер выдаёт подписанный токен игрока, браузер хранит его у себя.
@@ -142,5 +142,5 @@ mountHttp(app, core);
 
 core.migrate()
   .then(() => pool.query(NAMES_MIGRATION))
-  .then(() => app.listen(PORT, () => console.log(`«Пять футов» (веб): порт ${PORT}`)))
+  .then(() => app.listen(PORT, () => console.log(`«История железных дорог России» (веб): порт ${PORT}`)))
   .catch(err => { console.error('Не удалось подготовить базу', err); process.exit(1); });
