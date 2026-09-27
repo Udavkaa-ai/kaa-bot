@@ -13,6 +13,11 @@
 - `GET /healthz` — проверка здоровья для Railway, `/` → `/koleya/`.
 
 ## Railway: новый сервис из ветки
+
+> **Важно.** В ветке `koleya-web` корневой `railway.json` заменён на конфиг веб-версии, чтобы
+> сервис игры собирался из `koleya/web/Dockerfile` без ручных настроек. При слиянии ветки
+> в master этот файл **брать нельзя**: в master он собирает бота «Билли»
+> (`git checkout master -- railway.json` после слияния).
 1. В проекте Railway, где живёт «Билли»: **New → GitHub Repo →** этот репозиторий.
 2. У нового сервиса в **Settings**:
    - **Source → Branch:** `koleya-web`;
