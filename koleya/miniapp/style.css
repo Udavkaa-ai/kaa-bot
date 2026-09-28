@@ -731,3 +731,9 @@ body.coach-on .panel { padding-bottom: 180px; }
 
 .about-src { font-size: 13px; color: var(--ink-faded); }
 .about-src a { color: var(--ink-faded); }
+
+/* Текстуры подложки */
+#map pattern .hatch-line { stroke: var(--engrave); opacity: 0.42; }
+#map pattern .dot { fill: var(--engrave); opacity: 0.45; }
+#map .tex-watercolor .wood-land { stroke: var(--wood-edge); stroke-width: 1.6px; }
+#map .tex-hatch .wood-land, #map .tex-halftone .wood-land { stroke: var(--engrave); stroke-opacity: 0.45; stroke-width: 0.9px; }
