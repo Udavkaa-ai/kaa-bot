@@ -1015,11 +1015,26 @@
     </defs>`);
     // Рамка — двойная линия
     parts.push(`<rect x="3" y="3" width="${W - 6}" height="${H - 6}" class="frame"/><rect x="7" y="7" width="${W - 14}" height="${H - 14}" class="frame thin"/>`);
-    parts.push(`<defs><filter id="wood-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    // Текстура подложки: дерево (по умолчанию), акварель, гравюра-штриховка или типографский растр.
+    // Для просмотра вариантов: #…&maptex=hatch | halftone | watercolor | wood
+    const TEX = (location.hash.match(/maptex=(\w+)/) || [])[1] || 'wood';
+    const hatchAngles = [0, 35, 70, 110, 145, 20];
+    parts.push(`<defs>
+      <filter id="tex-watercolor" x="-2%" y="-2%" width="104%" height="104%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="${(0.012 * inv).toFixed(5)}" numOctaves="3" seed="3" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="${(5 * inv).toFixed(2)}" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feTurbulence type="fractalNoise" baseFrequency="${(0.03 * inv).toFixed(5)}" numOctaves="2" seed="9" result="m"/>
+        <feColorMatrix in="m" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.22  0 0 0 0 0.14  0.7 0 0 0 -0.28" result="mm"/>
+        <feComposite in="mm" in2="d" operator="in" result="mi"/><feBlend in="mi" in2="d" mode="multiply"/>
+      </filter>
+      <filter id="wood-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
         <feTurbulence type="fractalNoise" baseFrequency="${(0.004 * inv).toFixed(5)} ${(0.06 * inv).toFixed(5)}" numOctaves="3" seed="7" result="n"/>
         <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.16  0.45 0 0 0 -0.17" result="g"/>
         <feComposite in="g" in2="SourceGraphic" operator="in" result="gi"/><feBlend in="gi" in2="SourceGraphic" mode="multiply"/>
-      </filter></defs>`);
+      </filter>
+      ${hatchAngles.map((a, i) => `<pattern id="tex-hatch-${i}" patternUnits="userSpaceOnUse" width="${(5 + i % 3) * inv}" height="${(5 + i % 3) * inv}" patternTransform="rotate(${a})"><rect width="${(5 + i % 3) * inv}" height="${(5 + i % 3) * inv}" class="w${i}"/><line x1="0" y1="0" x2="0" y2="${(5 + i % 3) * inv}" class="hatch-line" style="stroke-width:${(0.7 * inv).toFixed(2)}px"/></pattern>`).join('')}
+      ${[0, 1, 2, 3, 4, 5].map(i => { const st = (4 + (i % 3) * 1.5) * inv, r = (0.55 + (i % 3) * 0.25) * inv; return `<pattern id="tex-dots-${i}" patternUnits="userSpaceOnUse" width="${st}" height="${st}" patternTransform="rotate(${15 + i * 10})"><rect width="${st}" height="${st}" class="w${i}"/><circle cx="${st / 2}" cy="${st / 2}" r="${r}" class="dot"/></pattern>`; }).join('')}
+    </defs>`);
     parts.push(`<g clip-path="url(#map-clip)"><rect x="0" y="0" width="${W}" height="${H}" class="wood-wall"/><g class="zc" id="map-zoom" transform="translate(${(-Z.x * zk).toFixed(2)} ${(-Z.y * zk).toFixed(2)}) scale(${zk})">`);
     const bm = c.basemap;
     const woodPath = rs => rs.map(r => 'M' + r.map(([lon, lat]) => { const [x, y] = P({ lon, lat }); return `${x.toFixed(1)} ${y.toFixed(1)}`; }).join('L') + 'Z').join('');
@@ -1027,7 +1042,9 @@
     if (bm) {
       const byTone = {};
       for (const pc of bm.pieces) (byTone[pc.f] = byTone[pc.f] || []).push(pc);
-      parts.push(`<g class="wood" filter="url(#wood-grain)">${Object.entries(byTone).map(([f, list]) => list.map(pc => `<path d="${woodPath(pc.r)}" class="wood-land ${f < 0 ? 'wf' : 'w' + f}"/>`).join('')).join('')}</g>`);
+      const texFill = f => (f < 0 ? '' : TEX === 'hatch' ? ` style="fill:url(#tex-hatch-${f})"` : TEX === 'halftone' ? ` style="fill:url(#tex-dots-${f})"` : '');
+      const texFilter = TEX === 'wood' ? ' filter="url(#wood-grain)"' : TEX === 'watercolor' ? ' filter="url(#tex-watercolor)"' : '';
+      parts.push(`<g class="wood tex-${TEX}"${texFilter}>${Object.entries(byTone).map(([f, list]) => list.map(pc => `<path d="${woodPath(pc.r)}" class="wood-land ${f < 0 ? 'wf' : 'w' + f}"${texFill(+f)}/>`).join('')).join('')}</g>`);
       parts.push(bm.lakes.map(l => `<path d="${woodPath(l.r)}" class="wood-lake"/>`).join(''));
       parts.push(`<g class="wood-rivers">${bm.rivers.map(rv => `<path d="M${rv.l.map(([lon, lat]) => P({ lon, lat }).map(v => v.toFixed(1)).join(' ')).join('L')}" style="stroke-width:${(rv.w * 0.35).toFixed(2)}px"/>`).join('')}</g>`);
       regionSlot = parts.length; parts.push('');
