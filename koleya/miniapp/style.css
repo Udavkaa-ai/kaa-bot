@@ -711,3 +711,7 @@ body.coach-on .panel { padding-bottom: 180px; }
 #map pattern .grid-line { stroke: var(--engrave); opacity: 0.28; fill: none; }
 #map .tex-stipple .wood-land { stroke: var(--engrave); stroke-opacity: 0.35; stroke-width: 0.8px; }
 #map .tex-grid .wood-land { stroke: var(--engrave); stroke-opacity: 0.55; stroke-width: 1px; stroke-dasharray: 5 2; }
+
+/* Во время щипка и перетаскивания — без тяжёлых фильтров и анимаций */
+#map.gesturing .wood { filter: none !important; }
+#map.gesturing .draw-in { animation: none; }

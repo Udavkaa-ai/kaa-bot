@@ -903,6 +903,23 @@
   }
   let zoomRaf = 0;
   function scheduleMap() { if (!zoomRaf) zoomRaf = requestAnimationFrame(() => { zoomRaf = 0; renderMap(); }); }
+  // Во время жеста карту не перерисовываем: только сдвиг и масштаб готовой группы
+  // (тяжёлые фильтры подложки на это время выключены); полная перерисовка — по окончании жеста.
+  let liveRaf = 0, settleTimer = 0;
+  function liveZoom() {
+    $('map').classList.add('gesturing');
+    if (liveRaf) return;
+    liveRaf = requestAnimationFrame(() => {
+      liveRaf = 0;
+      const g = $('map-zoom'); if (!g) return;
+      const z = S.zoom;
+      g.setAttribute('transform', `translate(${(-z.x * z.k).toFixed(2)} ${(-z.y * z.k).toFixed(2)}) scale(${z.k})`);
+    });
+  }
+  function settleZoom(delay = 0) {
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => { $('map').classList.remove('gesturing'); renderMap(); }, delay);
+  }
   function zoomBy(f) {
     haptic('sel');
     zoomAt(S.zoom.k * f, mapDims.W / 2, mapDims.H / 2);
@@ -931,10 +948,14 @@
       if (pts.size === 1) moved = false;
       snapshot();
     });
+    // Захват указателей — только когда жест начался (второй палец или сдвиг): тогда он не теряется,
+    // а обычный тап по участку по-прежнему доходит до участка
+    const capture = () => { for (const id of pts.keys()) { try { if (!svg.hasPointerCapture(id)) svg.setPointerCapture(id); } catch (_) {} } };
     svg.addEventListener('pointermove', e => {
       if (!pts.has(e.pointerId) || !start) return;
       pts.set(e.pointerId, toSvg(e));
       const list = [...pts.values()];
+      if (list.length >= 2 || moved) capture();
       if (list.length >= 2 && start.dist) {
         const [a, b] = list;
         const dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -945,14 +966,14 @@
         const kk = Math.max(1, Math.min(ZOOM_MAX, k));
         S.zoom = clampZoom({ k: kk, x: cx - mid[0] / kk, y: cy - mid[1] / kk }, mapDims.W, mapDims.H);
         moved = true;
-        scheduleMap();
+        liveZoom();
       } else if (list.length === 1 && start.p) {
         const [x, y] = list[0];
         const dx = x - start.p[0], dy = y - start.p[1];
         if (Math.hypot(dx, dy) > 6) moved = true;
         if (moved && start.zoom.k > 1) {
           S.zoom = clampZoom({ k: start.zoom.k, x: start.zoom.x - dx / start.zoom.k, y: start.zoom.y - dy / start.zoom.k }, mapDims.W, mapDims.H);
-          scheduleMap();
+          liveZoom();
         }
       }
     });
@@ -961,6 +982,7 @@
       const p = pts.get(e.pointerId);
       pts.delete(e.pointerId);
       snapshot();
+      if (moved && pts.size === 0) settleZoom();
       // двойной тап: приблизить в точку, на сильном приближении — весь чертёж
       if (!moved && pts.size === 0 && e.type === 'pointerup') {
         const now = Date.now();
@@ -982,7 +1004,8 @@
       e.preventDefault();
       const [x, y] = toSvg(e);
       zoomAt(S.zoom.k * Math.exp(-e.deltaY * 0.0015), x, y);
-      scheduleMap();
+      liveZoom();
+      settleZoom(160);
     }, { passive: false });
   })();
 
@@ -1050,7 +1073,10 @@
     </defs>`);
     parts.push(`<g clip-path="url(#map-clip)"><rect x="0" y="0" width="${W}" height="${H}" class="wood-wall"/><g class="zc" id="map-zoom" transform="translate(${(-Z.x * zk).toFixed(2)} ${(-Z.y * zk).toFixed(2)}) scale(${zk})">`);
     const bm = c.basemap;
-    const woodPath = rs => rs.map(r => 'M' + r.map(([lon, lat]) => { const [x, y] = P({ lon, lat }); return `${x.toFixed(1)} ${y.toFixed(1)}`; }).join('L') + 'Z').join('');
+    const woodKey = `${S.chapter}|${W}|${H}|${S.state.routeVariant || ''}`;
+    if (!c.woodCache || c.woodCache.key !== woodKey) c.woodCache = { key: woodKey, paths: new Map() };
+    const woodPath = rs => { let d = c.woodCache.paths.get(rs); if (!d) { d = woodPathRaw(rs); c.woodCache.paths.set(rs, d); } return d; };
+    const woodPathRaw = rs => rs.map(r => 'M' + r.map(([lon, lat]) => { const [x, y] = P({ lon, lat }); return `${x.toFixed(1)} ${y.toFixed(1)}`; }).join('L') + 'Z').join('');
     let regionSlot = -1;
     if (bm) {
       const byTone = {};
