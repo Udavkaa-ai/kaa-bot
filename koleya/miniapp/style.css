@@ -709,3 +709,25 @@ body.coach-on .panel { padding-bottom: 180px; }
 .name-form .btn { margin-top: 0; }
 .home-account .hint { font-size: 12px; margin-top: 6px; }
 .home-account .or { margin: 10px 0 6px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+
+/* ================= фанерная карта-подложка (miniapp/basemap/*.json) ================= */
+#map .wood-wall { fill: var(--wall); }
+#map .wood-land { stroke: var(--wood-edge); stroke-width: 1.1px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+#map .w0 { fill: var(--wood-0); } #map .w1 { fill: var(--wood-1); } #map .w2 { fill: var(--wood-2); }
+#map .w3 { fill: var(--wood-3); } #map .w4 { fill: var(--wood-4); } #map .w5 { fill: var(--wood-5); }
+#map .wf { fill: var(--wood-foreign); }
+#map .wood-lake { fill: var(--lake-cut); stroke: rgba(0, 0, 0, 0.3); stroke-width: 0.8px; vector-effect: non-scaling-stroke; }
+#map .wood-rivers path { fill: none; stroke: var(--engrave); opacity: 0.3; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+#map .wood-region { font-family: var(--font-ui); font-weight: 700; letter-spacing: 1.5px; fill: var(--engrave); opacity: 0.5; pointer-events: none; }
+/* Трасса поверх дерева: светлый кант и толще линии */
+#map .route-edge { stroke: rgba(255, 250, 238, 0.92); stroke-width: 10; stroke-linecap: round; }
+#map .route-plan { stroke-width: 2.4; }
+#map .route-alt { stroke-width: 2.4; }
+#map .route-build { stroke-width: 4; }
+#map .route-progress { stroke-width: 6; }
+#map .route-done { stroke-width: 6.5; }
+#map .sleepers { stroke-width: 12; }
+#map .node-label { paint-order: stroke; stroke: rgba(255, 250, 238, 0.75); stroke-linejoin: round; }
+
+.about-src { font-size: 13px; color: var(--ink-faded); }
+.about-src a { color: var(--ink-faded); }
