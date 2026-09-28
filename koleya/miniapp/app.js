@@ -274,6 +274,8 @@
       c.factsById = Object.fromEntries(c.facts.map(f => [f.id, f]));
       c.nodesById = Object.fromEntries(c.map.nodes.map(n => [n.id, n]));
       c.segById = Object.fromEntries(c.map.segments.map(s => [s.id, s]));
+      // Подложка «фанерная карта»: регионы того времени, озёра, реки (miniapp/basemap/*.json)
+      c.basemap = await fetch(`basemap/${chapter}.json`).then(r => (r.ok ? r.json() : null)).catch(() => null);
       S.content[chapter] = c;
     }
     return S.content[chapter];
@@ -1013,7 +1015,23 @@
     </defs>`);
     // Рамка — двойная линия
     parts.push(`<rect x="3" y="3" width="${W - 6}" height="${H - 6}" class="frame"/><rect x="7" y="7" width="${W - 14}" height="${H - 14}" class="frame thin"/>`);
-    parts.push(`<g clip-path="url(#map-clip)"><g class="zc" id="map-zoom" transform="translate(${(-Z.x * zk).toFixed(2)} ${(-Z.y * zk).toFixed(2)}) scale(${zk})">`);
+    parts.push(`<defs><filter id="wood-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="${(0.004 * inv).toFixed(5)} ${(0.06 * inv).toFixed(5)}" numOctaves="3" seed="7" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.16  0.45 0 0 0 -0.17" result="g"/>
+        <feComposite in="g" in2="SourceGraphic" operator="in" result="gi"/><feBlend in="gi" in2="SourceGraphic" mode="multiply"/>
+      </filter></defs>`);
+    parts.push(`<g clip-path="url(#map-clip)"><rect x="0" y="0" width="${W}" height="${H}" class="wood-wall"/><g class="zc" id="map-zoom" transform="translate(${(-Z.x * zk).toFixed(2)} ${(-Z.y * zk).toFixed(2)}) scale(${zk})">`);
+    const bm = c.basemap;
+    const woodPath = rs => rs.map(r => 'M' + r.map(([lon, lat]) => { const [x, y] = P({ lon, lat }); return `${x.toFixed(1)} ${y.toFixed(1)}`; }).join('L') + 'Z').join('');
+    let regionSlot = -1;
+    if (bm) {
+      const byTone = {};
+      for (const pc of bm.pieces) (byTone[pc.f] = byTone[pc.f] || []).push(pc);
+      parts.push(`<g class="wood" filter="url(#wood-grain)">${Object.entries(byTone).map(([f, list]) => list.map(pc => `<path d="${woodPath(pc.r)}" class="wood-land ${f < 0 ? 'wf' : 'w' + f}"/>`).join('')).join('')}</g>`);
+      parts.push(bm.lakes.map(l => `<path d="${woodPath(l.r)}" class="wood-lake"/>`).join(''));
+      parts.push(`<g class="wood-rivers">${bm.rivers.map(rv => `<path d="M${rv.l.map(([lon, lat]) => P({ lon, lat }).map(v => v.toFixed(1)).join(' ')).join('L')}" style="stroke-width:${(rv.w * 0.35).toFixed(2)}px"/>`).join('')}</g>`);
+      regionSlot = parts.length; parts.push('');
+    }
 
     const segs = c.map.segments.map(seg => ({ seg, a: P(c.nodesById[seg.from]), b: P(c.nodesById[seg.to]), sv: v.segments[seg.id] }));
     const decided = !!s.routeVariant || !c.map.segments.some(x => x.variant && x.variant !== 'both');
@@ -1057,7 +1075,8 @@
         }
       });
     }
-    // Трасса
+    // Трасса: сначала светлый кант, чтобы линия читалась на любом тоне дерева
+    for (const { a, b, sv } of segs) if (sv.active || !decided) parts.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="route-edge"/>`);
     for (const { seg, a, b, sv } of segs) {
       const L = lineLen(a, b);
       if (!sv.active && decided) continue;
@@ -1116,7 +1135,55 @@
       if (clash(sx + (right ? 9 : -9), sy, right, w) && n.kind === 'station') continue;
       const lx = sx + (right ? 9 : -9);
       placed.push({ y: sy, x1: right ? lx : lx - w, x2: right ? lx + w : lx });
-      parts.push(`<text x="${x + (right ? 9 : -9) * inv}" y="${y + 4 * inv}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${(size * inv).toFixed(2)}">${esc(name)}</text>`);
+      parts.push(`<text x="${x + (right ? 9 : -9) * inv}" y="${y + 4 * inv}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${(size * inv).toFixed(2)}" style="stroke-width:${(3 * inv).toFixed(2)}px">${esc(name)}</text>`);
+    }
+    if (bm && regionSlot >= 0) {
+      // Подписи регионов: экранные рамки не пересекают подписи станций и трассу; не влезла — не пишем
+      const toS = ([x, y]) => [(x - Z.x) * zk, (y - Z.y) * zk];
+      const obst = placed.map(q => ({ x1: q.x1 - 4, x2: q.x2 + 4, y1: q.y - fs, y2: q.y + 5 }));
+      for (const { a, b } of segs) {
+        const A = toS(a), B = toS(b), L = Math.max(1, lineLen(A, B));
+        for (let t = 0; t <= L; t += 8) { const x = A[0] + (B[0] - A[0]) * t / L, y = A[1] + (B[1] - A[1]) * t / L; obst.push({ x1: x - 8, x2: x + 8, y1: y - 8, y2: y + 8 }); }
+      }
+      for (const nd of nodesToDraw) { const [x, y] = toS(nd.p); obst.push({ x1: x - 8, x2: x + 8, y1: y - 8, y2: y + 8 }); }
+      // неподвижные украшения: картуш, роза ветров, масштабная линейка
+      obst.push({ x1: 0, x2: Math.min(W - 28, 230) + 20, y1: 0, y2: 60 }, { x1: W - 90, x2: W, y1: H - 110, y2: H }, { x1: 0, x2: 200, y1: H - 44, y2: H });
+      const hit = r => obst.some(q => !(r.x2 < q.x1 || r.x1 > q.x2 || r.y2 < q.y1 || r.y1 > q.y2));
+      const inPoly = (rings, x, y) => { let c = false; for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+      const rs = Math.max(9, Math.min(12, W / 40));
+      const out = [];
+      for (const pc of bm.pieces) {
+        if (!pc.n || !pc.lp) continue;
+        const [cx, cy] = toS(P({ lon: pc.lp[0], lat: pc.lp[1] }));
+        const m = pc.n.match(/^(.*) (губ\.|обл\.|у\.|АССР|АО|край)$/);
+        const lines = m && pc.n.length > 14 ? [m[1], m[2]] : [pc.n];
+        const w = Math.max(...lines.map(t => t.length)) * rs * 0.68 + 8, h = lines.length * rs * 1.2 + 4;
+        // Кандидаты: точка подписи, затем сетка по видимой части детали, ближние — раньше
+        const scr = pc.r.map(r => r.map(([lon, lat]) => toS(P({ lon, lat }))));
+        const xs = scr.flat().map(q => q[0]), ys = scr.flat().map(q => q[1]);
+        const x0 = Math.max(12 + w / 2, Math.min(...xs)), x1 = Math.min(W - 12 - w / 2, Math.max(...xs));
+        const y0 = Math.max(60 + h / 2, Math.min(...ys)), y1 = Math.min(H - 44 - h / 2, Math.max(...ys));
+        const cands = [[cx, cy]];
+        for (let y = y0; y <= y1; y += 18) for (let x = x0; x <= x1; x += 24) cands.push([x, y]);
+        cands.sort((a, b) => (a === cands[0] ? -1 : b === cands[0] ? 1 : Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy)));
+        // Сначала подпись целиком внутри детали; не вышло — достаточно, чтобы внутри был её центр
+        let ok = null;
+        for (const strict of [true, false]) {
+          for (const [x, y] of cands.slice(0, 400)) {
+            const r = { x1: x - w / 2, x2: x + w / 2, y1: y - h / 2, y2: y + h / 2 };
+            if (r.x1 < 12 || r.x2 > W - 12 || r.y1 < 60 || r.y2 > H - 44 || hit(r)) continue;
+            const probe = strict ? [[r.x1, r.y1], [r.x2, r.y1], [r.x1, r.y2], [r.x2, r.y2], [x, y]] : [[x, y]];
+            if (!probe.every(([qx, qy]) => inPoly(scr, qx, qy))) continue;
+            ok = { x, y, r }; break;
+          }
+          if (ok) break;
+        }
+        if (!ok) continue;
+        obst.push(ok.r);
+        const ux = ok.x / zk + Z.x, uy = ok.y / zk + Z.y;
+        out.push(`<text class="wood-region" text-anchor="middle" font-size="${(rs * inv).toFixed(2)}">${lines.map((t, i) => `<tspan x="${ux.toFixed(1)}" y="${(uy + ((i - (lines.length - 1) / 2) * rs * 1.2 + rs * 0.35) * inv).toFixed(1)}">${esc(t.toUpperCase())}</tspan>`).join('')}</text>`);
+      }
+      parts[regionSlot] = out.join('');
     }
     parts.push(`</g></g>`);
     // Роза ветров и масштабная линейка: в вёрстах (1 верста = 1,0668 км), в советских главах — в км

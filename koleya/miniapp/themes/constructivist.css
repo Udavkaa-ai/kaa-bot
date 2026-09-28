@@ -22,6 +22,19 @@
 
   --font-display: 'Oswald', 'PT Sans Narrow', 'Arial Narrow', 'PT Sans', sans-serif;
   --font-ui: 'PT Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* фанерная карта: морилка деталей, стена, вырезы озёр, выжигание */
+  --wood-0: #ece3d0;
+  --wood-1: #decdb9;
+  --wood-2: #d0c0af;
+  --wood-3: #c6b9ac;
+  --wood-4: #d0c9bf;
+  --wood-5: #c0b3a7;
+  --wood-foreign: #e8e2d8;
+  --wood-edge: rgba(60, 42, 25, 0.38);
+  --wall: #C7CFCB;
+  --lake-cut: #6c655e;
+  --engrave: #241812;
+
 }
 
 /* Эпоха 4: «Технический буклет» конца 1980-х — ВСМ «Центр — Юг».
@@ -47,6 +60,19 @@
 
   --font-display: 'Oswald', 'PT Sans Narrow', 'Arial Narrow', 'PT Sans', sans-serif;
   --font-ui: 'PT Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* фанерная карта: морилка деталей, стена, вырезы озёр, выжигание */
+  --wood-0: #f2eee4;
+  --wood-1: #eae4d8;
+  --wood-2: #e1dace;
+  --wood-3: #d7d1c7;
+  --wood-4: #e5dbca;
+  --wood-5: #d0cbc2;
+  --wood-foreign: #eeeae2;
+  --wood-edge: rgba(60, 42, 25, 0.38);
+  --wall: #C4D3DC;
+  --lake-cut: #6f7478;
+  --engrave: #1E2229;
+
 }
 
 /* ---------- типографика: рубленый заголовок, текст — гротеском ---------- */

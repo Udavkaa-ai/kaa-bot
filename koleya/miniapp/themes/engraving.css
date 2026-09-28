@@ -21,4 +21,17 @@
 
   --font-display: 'Old Standard TT', 'Times New Roman', Georgia, serif;
   --font-ui: 'PT Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* фанерная карта: морилка деталей, стена, вырезы озёр, выжигание */
+  --wood-0: #f2eada;
+  --wood-1: #ebdec9;
+  --wood-2: #e5d4bc;
+  --wood-3: #decab3;
+  --wood-4: #d4c3b1;
+  --wood-5: #e0d7cb;
+  --wood-foreign: #efe8dc;
+  --wood-edge: rgba(60, 42, 25, 0.38);
+  --wall: #BFD3D4;
+  --lake-cut: #7b6f64;
+  --engrave: #3B2616;
+
 }
