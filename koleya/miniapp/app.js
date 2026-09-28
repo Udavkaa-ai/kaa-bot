@@ -492,6 +492,7 @@
     const saves = S.home.saves || {};
     const done = (S.home.player && S.home.player.completed) || {};
     setEra('engraving');
+    document.documentElement.removeAttribute('data-chapter');
     // Показываем только главы, которые сервер считает готовыми
     const ready = (S.home && S.home.chapters) || CHAPTER_ORDER;
     $('chapters').innerHTML = CHAPTER_ORDER.filter(ch => ready.includes(ch)).map(ch => {
@@ -618,6 +619,7 @@
   function enterGame(r) {
     S.chapter = r.chapter;
     setEra(S.content[r.chapter] && S.content[r.chapter].map.era);
+    document.documentElement.setAttribute('data-chapter', r.chapter); // палитра и шрифты карты главы
     S.state = r.state;
     S.view = r.view;
     S.quiz = r.quiz || null;
@@ -1041,6 +1043,15 @@
     }, { passive: false });
   })();
 
+  // Ширина подписи станции шрифтом главы (--map-font-station) — для раскладки без наложений
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  function measureLabel(text, size) {
+    const cs = getComputedStyle(document.documentElement);
+    const family = cs.getPropertyValue('--map-font-station').trim() || cs.getPropertyValue('--font-display').trim() || 'serif';
+    const style = cs.getPropertyValue('--map-station-style').trim() || 'italic';
+    measureCtx.font = `${style} ${size}px ${family}`;
+    return measureCtx.measureText(text).width;
+  }
   function renderMap() {
     const svg = $('map');
     const c = C();
@@ -1074,14 +1085,14 @@
     parts.push(`<rect x="3" y="3" width="${W - 6}" height="${H - 6}" class="frame"/><rect x="7" y="7" width="${W - 14}" height="${H - 14}" class="frame thin"/>`);
     // Текстура подложки: дерево (по умолчанию), акварель, гравюра-штриховка или типографский растр.
     // Для просмотра вариантов: #…&maptex=hatch | halftone | watercolor | wood
-    const TEX = (location.hash.match(/maptex=(\w+)/) || [])[1] || 'wood';
+    const TEX = (location.hash.match(/maptex=(\w+)/) || [])[1] || c.map.mapTexture || 'wood';
     const hatchAngles = [0, 35, 70, 110, 145, 20];
     parts.push(`<defs>
       <filter id="tex-watercolor" x="-2%" y="-2%" width="104%" height="104%" color-interpolation-filters="sRGB">
         <feTurbulence type="fractalNoise" baseFrequency="${(0.012 * inv).toFixed(5)}" numOctaves="3" seed="3" result="n"/>
         <feDisplacementMap in="SourceGraphic" in2="n" scale="${(5 * inv).toFixed(2)}" xChannelSelector="R" yChannelSelector="G" result="d"/>
-        <feTurbulence type="fractalNoise" baseFrequency="${(0.03 * inv).toFixed(5)}" numOctaves="2" seed="9" result="m"/>
-        <feColorMatrix in="m" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.22  0 0 0 0 0.14  0.7 0 0 0 -0.28" result="mm"/>
+        <feTurbulence type="fractalNoise" baseFrequency="${(0.045 * inv).toFixed(5)}" numOctaves="2" seed="9" result="m"/>
+        <feColorMatrix in="m" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.26  0 0 0 0 0.18  0.38 0 0 0 -0.15" result="mm"/>
         <feComposite in="mm" in2="d" operator="in" result="mi"/><feBlend in="mi" in2="d" mode="multiply"/>
       </filter>
       <filter id="wood-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
@@ -1091,6 +1102,8 @@
       </filter>
       ${hatchAngles.map((a, i) => `<pattern id="tex-hatch-${i}" patternUnits="userSpaceOnUse" width="${(5 + i % 3) * inv}" height="${(5 + i % 3) * inv}" patternTransform="rotate(${a})"><rect width="${(5 + i % 3) * inv}" height="${(5 + i % 3) * inv}" class="w${i}"/><line x1="0" y1="0" x2="0" y2="${(5 + i % 3) * inv}" class="hatch-line" style="stroke-width:${(0.7 * inv).toFixed(2)}px"/></pattern>`).join('')}
       ${[0, 1, 2, 3, 4, 5].map(i => { const st = (4 + (i % 3) * 1.5) * inv, r = (0.55 + (i % 3) * 0.25) * inv; return `<pattern id="tex-dots-${i}" patternUnits="userSpaceOnUse" width="${st}" height="${st}" patternTransform="rotate(${15 + i * 10})"><rect width="${st}" height="${st}" class="w${i}"/><circle cx="${st / 2}" cy="${st / 2}" r="${r}" class="dot"/></pattern>`; }).join('')}
+      ${[0, 1, 2, 3, 4, 5].map(i => { const st = (2.6 + (i % 3) * 0.7) * inv, r = (0.32 + (i % 2) * 0.12) * inv; return `<pattern id="tex-stipple-${i}" patternUnits="userSpaceOnUse" width="${st}" height="${st}" patternTransform="rotate(${i * 23}) skewX(${10 + i * 7})"><rect width="${st}" height="${st}" class="w${i}"/><circle cx="${st * 0.3}" cy="${st * 0.4}" r="${r}" class="dot"/></pattern>`; }).join('')}
+      ${[0, 1, 2, 3, 4, 5].map(i => { const st = (6 + (i % 3) * 2) * inv; return `<pattern id="tex-grid-${i}" patternUnits="userSpaceOnUse" width="${st}" height="${st}"${i % 2 ? ' patternTransform="rotate(45)"' : ''}><rect width="${st}" height="${st}" class="w${i}"/><path d="M0 0 H${st} M0 0 V${st}" class="grid-line" style="stroke-width:${(0.5 * inv).toFixed(2)}px"/></pattern>`; }).join('')}
     </defs>`);
     parts.push(`<g clip-path="url(#map-clip)"><rect x="0" y="0" width="${W}" height="${H}" class="wood-wall"/><g class="zc" id="map-zoom" transform="translate(${(-Z.x * zk).toFixed(2)} ${(-Z.y * zk).toFixed(2)}) scale(${zk})">`);
     const bm = c.basemap;
@@ -1099,7 +1112,8 @@
     if (bm) {
       const byTone = {};
       for (const pc of bm.pieces) (byTone[pc.f] = byTone[pc.f] || []).push(pc);
-      const texFill = f => (f < 0 ? '' : TEX === 'hatch' ? ` style="fill:url(#tex-hatch-${f})"` : TEX === 'halftone' ? ` style="fill:url(#tex-dots-${f})"` : '');
+      const PATTERN = { hatch: 'tex-hatch', halftone: 'tex-dots', stipple: 'tex-stipple', grid: 'tex-grid' }[TEX];
+      const texFill = f => (f < 0 || !PATTERN ? '' : ` style="fill:url(#${PATTERN}-${f})"`);
       const texFilter = TEX === 'wood' ? ' filter="url(#wood-grain)"' : TEX === 'watercolor' ? ' filter="url(#tex-watercolor)"' : '';
       parts.push(`<g class="wood tex-${TEX}"${texFilter}>${Object.entries(byTone).map(([f, list]) => list.map(pc => `<path d="${woodPath(pc.r)}" class="wood-land ${f < 0 ? 'wf' : 'w' + f}"${texFill(+f)}/>`).join('')).join('')}</g>`);
       parts.push(bm.lakes.map(l => `<path d="${woodPath(l.r)}" class="wood-lake"/>`).join(''));
@@ -1195,18 +1209,18 @@
     const nodesToDraw = c.map.nodes.filter(n => !(decided && n.variant && n.variant !== s.routeVariant))
       .map(n => ({ n, p: P(n), rank: n.kind === 'capital' ? 0 : n.kind === 'town' ? 1 : 2 }))
       .sort((a, b) => a.rank - b.rank);
-    const clash = (sx, sy, right, w) => placed.some(q => Math.abs(q.y - sy) < fs * 1.15 && (right ? sx < q.x2 && sx + w > q.x1 : sx - w < q.x2 && sx > q.x1));
+    const clash = (sx, sy, right, w) => placed.some(q => Math.abs(q.y - sy) < fs * 1.5 && (right ? sx < q.x2 && sx + w > q.x1 : sx - w < q.x2 && sx > q.x1));
     for (const { n, p: [x, y] } of nodesToDraw) {
       if (n.kind === 'capital') parts.push(`<circle cx="${x}" cy="${y}" r="${6.5 * inv}" class="node"/><circle cx="${x}" cy="${y}" r="${3 * inv}" class="node inner"/>`);
       else parts.push(`<circle cx="${x}" cy="${y}" r="${(n.kind === 'town' ? 4 : 3) * inv}" class="node${n.kind === 'station' ? ' small' : ''}"/>`);
       const name = n.name.replace(/\s*\(.+\)/, '');
       const size = n.kind === 'station' ? fs - 1 : fs + 1;
-      const w = name.length * size * 0.52;
+      const w = measureLabel(name, size) + 4;
       // экранные координаты для проверки наложений
       const sx = (x - Z.x) * zk, sy = (y - Z.y) * zk;
       let right = sx < W * 0.62;
       if (clash(sx + (right ? 9 : -9), sy, right, w)) right = !right;
-      if (clash(sx + (right ? 9 : -9), sy, right, w) && n.kind === 'station') continue;
+      if (clash(sx + (right ? 9 : -9), sy, right, w) && n.kind !== 'capital') continue; // тесно — подпись появится при приближении
       const lx = sx + (right ? 9 : -9);
       placed.push({ y: sy, x1: right ? lx : lx - w, x2: right ? lx + w : lx });
       parts.push(`<text x="${x + (right ? 9 : -9) * inv}" y="${y + 4 * inv}" text-anchor="${right ? 'start' : 'end'}" class="node-label" font-size="${(size * inv).toFixed(2)}" style="stroke-width:${(3 * inv).toFixed(2)}px">${esc(name)}</text>`);
@@ -1231,7 +1245,9 @@
         const [cx, cy] = toS(P({ lon: pc.lp[0], lat: pc.lp[1] }));
         const m = pc.n.match(/^(.*) (губ\.|обл\.|у\.|АССР|АО|край)$/);
         const lines = m && pc.n.length > 14 ? [m[1], m[2]] : [pc.n];
-        const w = Math.max(...lines.map(t => t.length)) * rs * 0.68 + 8, h = lines.length * rs * 1.2 + 4;
+        // ширина с учётом разрядки букв главы (--map-region-spacing)
+        const spacing = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--map-region-spacing')) || 1.5;
+        const w = Math.max(...lines.map(t => t.length)) * (rs * 0.7 + spacing) + 10, h = lines.length * rs * 1.2 + 4;
         // Кандидаты: точка подписи, затем сетка по видимой части детали, ближние — раньше
         const scr = pc.r.map(r => r.map(([lon, lat]) => toS(P({ lon, lat }))));
         const xs = scr.flat().map(q => q[0]), ys = scr.flat().map(q => q[1]);

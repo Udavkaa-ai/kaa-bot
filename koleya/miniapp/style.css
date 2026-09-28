@@ -164,8 +164,8 @@ button { font-family: inherit; color: inherit; }
 }
 #map { width: 100%; height: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; }
 #map .seg-hit { stroke: transparent; stroke-width: 22; fill: none; cursor: pointer; }
-#map .node-label { font-family: var(--font-display); font-style: italic; fill: var(--ink); }
-#map .cartouche-title { font-family: var(--font-display); fill: var(--ink); }
+#map .node-label { font-family: var(--map-font-station, var(--font-display)); font-style: var(--map-station-style, italic); fill: var(--ink); }
+#map .cartouche-title { font-family: var(--map-font-title, var(--font-display)); fill: var(--ink); }
 #map .cartouche-sub { font-family: var(--font-ui); fill: var(--ink-faded); letter-spacing: 1.5px; }
 #map .draw-in { animation: drawIn 1.6s ease-out forwards; }
 @keyframes drawIn { to { stroke-dashoffset: 0; } }
@@ -718,7 +718,7 @@ body.coach-on .panel { padding-bottom: 180px; }
 #map .wf { fill: var(--wood-foreign); }
 #map .wood-lake { fill: var(--lake-cut); stroke: rgba(0, 0, 0, 0.3); stroke-width: 0.8px; vector-effect: non-scaling-stroke; }
 #map .wood-rivers path { fill: none; stroke: var(--engrave); opacity: 0.3; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
-#map .wood-region { font-family: var(--font-ui); font-weight: 700; letter-spacing: 1.5px; fill: var(--engrave); opacity: 0.5; pointer-events: none; }
+#map .wood-region { font-family: var(--map-font-region, var(--font-ui)); font-style: var(--map-region-style, normal); font-weight: var(--map-region-weight, 700); letter-spacing: var(--map-region-spacing, 1.5px); fill: var(--engrave); opacity: var(--map-region-opacity, 0.5); pointer-events: none; }
 /* Трасса поверх дерева: светлый кант и толще линии */
 #map .route-edge { stroke: rgba(255, 250, 238, 0.92); stroke-width: 10; stroke-linecap: round; }
 #map .route-plan { stroke-width: 2.4; }
@@ -737,3 +737,6 @@ body.coach-on .panel { padding-bottom: 180px; }
 #map pattern .dot { fill: var(--engrave); opacity: 0.45; }
 #map .tex-watercolor .wood-land { stroke: var(--wood-edge); stroke-width: 1.6px; }
 #map .tex-hatch .wood-land, #map .tex-halftone .wood-land { stroke: var(--engrave); stroke-opacity: 0.45; stroke-width: 0.9px; }
+#map pattern .grid-line { stroke: var(--engrave); opacity: 0.28; fill: none; }
+#map .tex-stipple .wood-land { stroke: var(--engrave); stroke-opacity: 0.35; stroke-width: 0.8px; }
+#map .tex-grid .wood-land { stroke: var(--engrave); stroke-opacity: 0.55; stroke-width: 1px; stroke-dasharray: 5 2; }

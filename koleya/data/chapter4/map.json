@@ -255,5 +255,6 @@
       "comment": "Дорогу не построили — сравнивать не с чем."
     }
   },
-  "historyScaleLabel": "Как было в истории"
+  "historyScaleLabel": "Как было в истории",
+  "mapTexture": "grid"
 }
