@@ -369,5 +369,6 @@
     "north": "Северная дирекция · Мельников",
     "south": "Южная дирекция · Крафт"
   },
-  "historyScaleLabel": "Как у Мельникова"
+  "historyScaleLabel": "Как у Мельникова",
+  "mapTexture": "watercolor"
 }

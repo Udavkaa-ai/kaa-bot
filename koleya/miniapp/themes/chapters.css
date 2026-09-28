@@ -1,0 +1,48 @@
+/* Облик карты по главам: палитра подложки, море, вырезы озёр, чернила подписей и шрифты.
+   Текстура задаётся в data/<глава>/map.json (mapTexture). Подключается после тем эпох. */
+
+/* Пролог, 1836: гравюра на пергаменте — сепия, штриховка */
+[data-chapter="prologue"] {
+  --wood-0: #EFE6D0; --wood-1: #E8DCC0; --wood-2: #E2D3B3; --wood-3: #DCCBAB; --wood-4: #E6D9C0; --wood-5: #D8C8AA;
+  --wood-foreign: #F1EBDD; --wall: #D5DFD9; --lake-cut: #9DB0AC; --engrave: #3B2616;
+  --map-font-station: 'Old Standard TT', serif; --map-station-style: italic;
+  --map-font-region: 'Old Standard TT', serif; --map-region-style: italic; --map-region-weight: 400; --map-region-spacing: 2px;
+  --map-font-title: 'Old Standard TT', serif;
+}
+
+/* Глава I, 1840-е: губернская карта, раскрашенная от руки акварелью */
+[data-chapter="chapter1"] {
+  --wood-0: #F1D9D0; --wood-1: #DBE5CC; --wood-2: #F2E6BF; --wood-3: #E3DBE8; --wood-4: #D5E3EA; --wood-5: #F3DCC4;
+  --wood-foreign: #EDE7DB; --wall: #CFDCDC; --lake-cut: #8FB0BD; --engrave: #3B2616;
+  --wood-edge: rgba(120, 70, 40, 0.45);
+  --map-font-station: 'Old Standard TT', serif; --map-station-style: italic;
+  --map-font-region: 'Old Standard TT', serif; --map-region-style: normal; --map-region-weight: 700; --map-region-spacing: 2.5px; --map-region-opacity: 0.55;
+  --map-font-title: 'Old Standard TT', serif;
+}
+
+/* Глава II, 1890-е: литография — мелкий пунктир, охра, олива, терракота */
+[data-chapter="chapter2"] {
+  --wood-0: #EADCC0; --wood-1: #DFE2C7; --wood-2: #ECD2BD; --wood-3: #D9D6C9; --wood-4: #E8D6A8; --wood-5: #D6C7B5;
+  --wood-foreign: #E9E5DC; --wall: #BCD0D8; --lake-cut: #6E8FA6; --engrave: #35251A;
+  --map-font-station: 'Playfair Display', serif; --map-station-style: italic;
+  --map-font-region: 'Playfair Display', serif; --map-region-style: italic; --map-region-weight: 600; --map-region-spacing: 1.5px;
+  --map-font-title: 'Playfair Display', serif;
+}
+
+/* Глава III, БАМ: плакатный растр — серые и тёплые тона, красная трасса */
+[data-chapter="chapter3"] {
+  --wood-0: #E7E1D3; --wood-1: #D9CFC0; --wood-2: #C9C2B6; --wood-3: #E3CFC3; --wood-4: #D3D6CF; --wood-5: #BFB8AD;
+  --wood-foreign: #ECE8E0; --wall: #C9CFCC; --lake-cut: #4D4A47; --engrave: #1D1B19;
+  --map-font-station: 'Oswald', 'PT Sans Narrow', sans-serif; --map-station-style: normal;
+  --map-font-region: 'Oswald', 'PT Sans Narrow', sans-serif; --map-region-style: normal; --map-region-weight: 600; --map-region-spacing: 2px; --map-region-opacity: 0.6;
+  --map-font-title: 'Oswald', sans-serif;
+}
+
+/* Глава IV, ВСМ: технический буклет — калька с сеткой, холодная гамма */
+[data-chapter="chapter4"] {
+  --wood-0: #E6EBEE; --wood-1: #DDE3E0; --wood-2: #E9E5DC; --wood-3: #D7DDE6; --wood-4: #E2E6EA; --wood-5: #CFD6DC;
+  --wood-foreign: #EEF0F0; --wall: #C4D3DC; --lake-cut: #5F7F99; --engrave: #18222D;
+  --map-font-station: 'PT Sans', sans-serif; --map-station-style: normal;
+  --map-font-region: 'Oswald', 'PT Sans Narrow', sans-serif; --map-region-style: normal; --map-region-weight: 400; --map-region-spacing: 3px; --map-region-opacity: 0.55;
+  --map-font-title: 'Oswald', sans-serif;
+}
