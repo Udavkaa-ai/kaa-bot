@@ -49,7 +49,17 @@ const config = {
   // БД
   databaseUrl: process.env.DATABASE_URL,
 
-  // Claude через OpenRouter
+  // Claude напрямую через API Anthropic: если ключ задан, ANTHROPIC_MODEL идёт первой
+  // в цепочке, OpenRouter остаётся запасным (кончился дневной бюджет, сбой API).
+  anthropicKey: process.env.ANTHROPIC_API_KEY || null,
+  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-5-5',
+  // Глубина размышлений: low | medium | high | xhigh | max. Для болтовни в чате хватает low.
+  anthropicEffort: (process.env.ANTHROPIC_EFFORT || 'low').toLowerCase(),
+  // Потолок трат в долларах за московские сутки; дальше — модели OpenRouter. 0 — без потолка.
+  anthropicDailyUsd: process.env.ANTHROPIC_DAILY_USD !== undefined
+    ? parseFloat(process.env.ANTHROPIC_DAILY_USD) || 0 : 3,
+
+  // Модели через OpenRouter
   openrouterKeys,
   claudeModel: process.env.CLAUDE_MODEL || 'google/gemini-3.5-flash-lite',
   fallbackModels: (process.env.FALLBACK_MODELS ||
@@ -117,7 +127,7 @@ const config = {
 const missing = [];
 if (!config.botToken) missing.push('BOT_TOKEN');
 if (!config.databaseUrl) missing.push('DATABASE_URL');
-if (config.openrouterKeys.length === 0) missing.push('OPENROUTER_KEY');
+if (config.openrouterKeys.length === 0 && !config.anthropicKey) missing.push('OPENROUTER_KEY или ANTHROPIC_API_KEY');
 
 if (missing.length > 0) {
   console.error(`[CONFIG] Не заданы обязательные переменные: ${missing.join(', ')}`);
@@ -125,7 +135,11 @@ if (missing.length > 0) {
 }
 
 console.log(`[CONFIG] kaa-bot v${config.version}`);
-console.log(`[CONFIG] Claude: ${config.claudeModel} (${openrouterKeys.length} ключей)`);
+if (config.anthropicKey) {
+  const cap = config.anthropicDailyUsd > 0 ? `$${config.anthropicDailyUsd}/сутки` : 'без потолка';
+  console.log(`[CONFIG] Anthropic API: ${config.anthropicModel}, effort=${config.anthropicEffort}, ${cap}`);
+}
+console.log(`[CONFIG] OpenRouter: ${config.claudeModel} (${openrouterKeys.length} ключей)`);
 console.log(`[CONFIG] Gemini: ${geminiKeys.length} ключей`);
 console.log(`[CONFIG] Модули: vision=${config.visionEnabled} voice=${config.voiceEnabled} audio=${config.audioEnabled} search=${config.searchEnabled} images=${config.imagesEnabled}`);
 

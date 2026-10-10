@@ -42,6 +42,7 @@ npm start
    - `BOT_TOKEN` — токен от [@BotFather](https://t.me/BotFather)
    - `ADMIN_ID` — твой Telegram user id (узнать у [@userinfobot](https://t.me/userinfobot))
    - `OPENROUTER_KEY` — с [openrouter.ai/keys](https://openrouter.ai/keys), там же пополнить баланс ($5 хватит надолго)
+   - `ANTHROPIC_API_KEY` (необязательно) — ключ из [platform.claude.com](https://platform.claude.com/settings/keys): тогда бот отвечает Claude напрямую, а OpenRouter остаётся запасным. Нужен хотя бы один из двух ключей
    - `GEMINI_KEY` — с [aistudio.google.com](https://aistudio.google.com/app/apikey) (бесплатно). Можно несколько: `GEMINI_KEY_2`, `GEMINI_KEY_3` для ротации квот
    - `GROQ_KEY` — с [console.groq.com/keys](https://console.groq.com/keys) (бесплатно)
    - `TAVILY_KEY` — с [tavily.com](https://tavily.com) (1000 запросов бесплатно)
@@ -54,7 +55,10 @@ npm start
 ```env
 BOT_NAME=Дух                                       # как тебя зовут
 BOT_TRIGGER=дух,духи,духа,духу,spirit,duh          # слова на которые откликается в группах (можно переопределить per-chat через /trigger)
-CLAUDE_MODEL=anthropic/claude-sonnet-4.6  # модель Claude
+ANTHROPIC_MODEL=claude-opus-5-5           # модель при прямом доступе (нужен ANTHROPIC_API_KEY)
+ANTHROPIC_EFFORT=low                      # глубина размышлений: low | medium | high | xhigh | max
+ANTHROPIC_DAILY_USD=3                     # потолок трат за сутки (МСК), дальше OpenRouter; 0 — без потолка
+CLAUDE_MODEL=anthropic/claude-sonnet-4.6  # основная модель OpenRouter
 FALLBACK_MODELS=google/gemini-2.5-flash,meta-llama/llama-3.3-70b-instruct:free
 AUTO_REVIVE=true                          # оживлять мёртвые чаты
 AUTO_REVIVE_HOURS=3

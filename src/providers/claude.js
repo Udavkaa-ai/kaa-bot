@@ -1,6 +1,7 @@
 const OpenAI = require('openai');
 const config = require('../config');
 const stats = require('../db/repo/stats');
+const anthropic = require('./anthropic');
 
 let currentKeyIdx = 0;
 const exhaustedKeys = new Set();
@@ -74,6 +75,7 @@ function emptyReplyReason(choice) {
 }
 
 async function callOnce(model, messages, opts = {}) {
+  if (anthropic.isDirect(model)) return anthropic.callOnce(model, messages, opts);
   const keyIdx = pickKey();
   const client = makeClient(keyIdx);
   try {
@@ -99,16 +101,26 @@ async function callOnce(model, messages, opts = {}) {
   }
 }
 
+// Цепочка по умолчанию: Claude напрямую (если есть ключ Anthropic), потом OpenRouter.
+function baseOrder() {
+  const direct = config.anthropicKey ? [config.anthropicModel] : [];
+  return [...direct, config.claudeModel, ...config.fallbackModels];
+}
+
+// Сколько раз пробовать модель: у OpenRouter — по разу на ключ, у Anthropic — один.
+function attemptsFor(model) {
+  return anthropic.isDirect(model) ? 1 : config.openrouterKeys.length;
+}
+
 async function callWithFallback(messages, opts = {}) {
   // opts.model — предпочтительная модель (строка) или список кандидатов (массив)
   // для этого вызова; если все упали — обычная цепочка фолбэков.
   const preferred = Array.isArray(opts.model) ? opts.model : (opts.model ? [opts.model] : []);
-  const baseOrder = [config.claudeModel, ...config.fallbackModels];
-  const tryOrder = [...new Set([...preferred, ...baseOrder])];
+  const tryOrder = [...new Set([...preferred, ...baseOrder()])];
   let lastErr = null;
 
   for (const model of tryOrder) {
-    for (let attempt = 0; attempt < config.openrouterKeys.length; attempt++) {
+    for (let attempt = 0; attempt < attemptsFor(model); attempt++) {
       try {
         return await callOnce(model, messages, opts);
       } catch (err) {
@@ -158,6 +170,7 @@ async function ask({ system, history, userText, opts = {} }) {
 }
 
 async function streamOnce(model, messages, opts, onProgress) {
+  if (anthropic.isDirect(model)) return anthropic.streamOnce(model, messages, opts, onProgress);
   const keyIdx = pickKey();
   const client = makeClient(keyIdx);
   try {
@@ -195,10 +208,10 @@ async function streamOnce(model, messages, opts, onProgress) {
 // Стриминговый вариант ask: onProgress получает накопленный текст по мере генерации.
 async function askStream({ system, history, userText, opts = {} }, onProgress) {
   const messages = buildAskMessages({ system, history, userText });
-  const tryOrder = [config.claudeModel, ...config.fallbackModels];
+  const tryOrder = baseOrder();
   let lastErr = null;
   for (const model of tryOrder) {
-    for (let attempt = 0; attempt < config.openrouterKeys.length; attempt++) {
+    for (let attempt = 0; attempt < attemptsFor(model); attempt++) {
       try {
         return await streamOnce(model, messages, opts, onProgress);
       } catch (err) {
@@ -249,6 +262,9 @@ async function askJson({ system, userText, opts = {} }) {
 // либо ответ, либо точный текст ошибки (статус + сообщение OpenRouter).
 async function probeModel(model) {
   const t0 = Date.now();
+  if (!anthropic.isDirect(model) && config.openrouterKeys.length === 0) {
+    return { ok: false, error: 'нет ключа OpenRouter', ms: 0 };
+  }
   try {
     // maxTokens не 5, а с запасом: «думающим» моделям нужно место под reasoning,
     // иначе диагностика покажет пустой ответ там, где бот работает нормально.

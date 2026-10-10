@@ -291,6 +291,10 @@ async function handleDiag(bot, msg) {
   const chatId = msg.chat.id;
   await bot.sendChatAction(chatId, 'typing').catch(() => {});
   const lines = [`Диагностика · ${config.openrouterKeys.length} ключ(ей) OpenRouter`];
+  if (config.anthropicKey) {
+    const { usd, cap } = require('../providers/anthropic').spendToday();
+    lines.push(`Anthropic: ${config.anthropicModel}, effort=${config.anthropicEffort}, сегодня ≈ $${usd.toFixed(3)}${cap > 0 ? ` из $${cap}` : ''}`);
+  }
 
   try {
     const db = require('../db/pool');
@@ -301,7 +305,8 @@ async function handleDiag(bot, msg) {
     lines.push(`БД: ОШИБКА — ${err.message.slice(0, 150)}`);
   }
 
-  const models = [...new Set([config.claudeModel, ...config.fallbackModels, ...config.quizModels, ...config.quizVerifyModels])];
+  const direct = config.anthropicKey ? [config.anthropicModel] : [];
+  const models = [...new Set([...direct, config.claudeModel, ...config.fallbackModels, ...config.quizModels, ...config.quizVerifyModels])];
   for (const m of models) {
     const r = await claude.probeModel(m);
     lines.push(r.ok
