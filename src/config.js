@@ -52,6 +52,8 @@ const config = {
   // Claude напрямую через API Anthropic: если ключ задан, ANTHROPIC_MODEL идёт первой
   // в цепочке, OpenRouter остаётся запасным (кончился дневной бюджет, сбой API).
   anthropicKey: process.env.ANTHROPIC_API_KEY || null,
+  // Для ключа, не привязанного к workspace: ID из platform.claude.com/settings/workspaces (wrkspc_…)
+  anthropicWorkspaceId: (process.env.ANTHROPIC_WORKSPACE_ID || '').trim() || null,
   anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-5-5',
   // Глубина размышлений: low | medium | high | xhigh | max. Для болтовни в чате хватает low.
   anthropicEffort: (process.env.ANTHROPIC_EFFORT || 'low').toLowerCase(),
@@ -137,7 +139,8 @@ if (missing.length > 0) {
 console.log(`[CONFIG] kaa-bot v${config.version}`);
 if (config.anthropicKey) {
   const cap = config.anthropicDailyUsd > 0 ? `$${config.anthropicDailyUsd}/сутки` : 'без потолка';
-  console.log(`[CONFIG] Anthropic API: ${config.anthropicModel}, effort=${config.anthropicEffort}, ${cap}`);
+  const ws = config.anthropicWorkspaceId ? `, workspace ${config.anthropicWorkspaceId}` : '';
+  console.log(`[CONFIG] Anthropic API: ${config.anthropicModel}, effort=${config.anthropicEffort}, ${cap}${ws}`);
 }
 console.log(`[CONFIG] OpenRouter: ${config.claudeModel} (${openrouterKeys.length} ключей)`);
 console.log(`[CONFIG] Gemini: ${geminiKeys.length} ключей`);

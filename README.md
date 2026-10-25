@@ -56,6 +56,7 @@ npm start
 BOT_NAME=Дух                                       # как тебя зовут
 BOT_TRIGGER=дух,духи,духа,духу,spirit,duh          # слова на которые откликается в группах (можно переопределить per-chat через /trigger)
 ANTHROPIC_MODEL=claude-opus-5-5           # модель при прямом доступе (нужен ANTHROPIC_API_KEY)
+ANTHROPIC_WORKSPACE_ID=wrkspc_…          # нужен, если ключ не привязан к workspace (ID — на странице Workspaces в консоли)
 ANTHROPIC_EFFORT=low                      # глубина размышлений: low | medium | high | xhigh | max
 ANTHROPIC_DAILY_USD=3                     # потолок трат за сутки (МСК), дальше OpenRouter; 0 — без потолка
 CLAUDE_MODEL=anthropic/claude-sonnet-4.6  # основная модель OpenRouter

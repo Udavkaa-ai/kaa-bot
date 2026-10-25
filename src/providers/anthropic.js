@@ -20,7 +20,15 @@ const THINKING_HEADROOM = 4000;
 
 let client = null;
 function getClient() {
-  if (!client) client = new Anthropic({ apiKey: config.anthropicKey, timeout: 90000, maxRetries: 1 });
+  if (!client) {
+    client = new Anthropic({
+      apiKey: config.anthropicKey,
+      timeout: 90000,
+      maxRetries: 1,
+      // Ключу без привязки к workspace API требует указывать workspace в каждом запросе
+      ...(config.anthropicWorkspaceId ? { defaultHeaders: { 'anthropic-workspace-id': config.anthropicWorkspaceId } } : {}),
+    });
+  }
   return client;
 }
 
