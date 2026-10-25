@@ -99,6 +99,13 @@ function convertMessages(messages) {
   return { system, messages: out };
 }
 
+// Если аккаунту недоступна бета серверных фолбэков, API ответит 400 — тогда шлём без неё.
+let serverFallbacks = true;
+
+function isFallbackRejected(err) {
+  return err instanceof Anthropic.BadRequestError && /fallback|beta/i.test(err.message || '');
+}
+
 function buildParams(model, messages, opts) {
   const { system, messages: msgs } = convertMessages(messages);
   return {
@@ -108,8 +115,7 @@ function buildParams(model, messages, opts) {
     messages: msgs,
     output_config: { effort: opts.effort || config.anthropicEffort },
     // Если классификатор безопасности отклонит запрос, API сам повторит его на подходящей модели
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
+    ...(serverFallbacks ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {}),
   };
 }
 
@@ -135,14 +141,35 @@ function finish(model, msg) {
   return text;
 }
 
+// Повтор без беты фолбэков, если API её не принял; остальные ошибки — наверх с понятным текстом
+async function withFallbackRetry(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (serverFallbacks && isFallbackRejected(err)) {
+      console.warn(`[ANTHROPIC] серверные фолбэки недоступны (${err.message}), работаю без них`);
+      serverFallbacks = false;
+      return fn();
+    }
+    if (err instanceof Anthropic.APIError) err.message = `Anthropic: ${err.message}`;
+    throw err;
+  }
+}
+
 async function callOnce(model, messages, opts = {}) {
   checkBudget();
-  const msg = await getClient().beta.messages.create(buildParams(model, messages, opts));
-  return { text: finish(model, msg), model, raw: msg };
+  return withFallbackRetry(async () => {
+    const msg = await getClient().beta.messages.create(buildParams(model, messages, opts));
+    return { text: finish(model, msg), model, raw: msg };
+  });
 }
 
 async function streamOnce(model, messages, opts, onProgress) {
   checkBudget();
+  return withFallbackRetry(() => streamRequest(model, messages, opts, onProgress));
+}
+
+async function streamRequest(model, messages, opts, onProgress) {
   const stream = getClient().beta.messages.stream(buildParams(model, messages, opts));
   let full = '';
   for await (const event of stream) {

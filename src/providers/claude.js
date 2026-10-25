@@ -112,6 +112,14 @@ function attemptsFor(model) {
   return anthropic.isDirect(model) ? 1 : config.openrouterKeys.length;
 }
 
+// 401 от OpenRouter — ключ недействителен (удалён аккаунт или ключ): остальные модели
+// OpenRouter упадут так же, перебирать их незачем. Anthropic идёт раньше в цепочке.
+function openrouterKeyRejected(model, err) {
+  if (anthropic.isDirect(model) || err?.status !== 401) return false;
+  console.error('[CLAUDE] OpenRouter отклонил ключ (401) — проверь OPENROUTER_KEY на openrouter.ai/keys');
+  return true;
+}
+
 async function callWithFallback(messages, opts = {}) {
   // opts.model — предпочтительная модель (строка) или список кандидатов (массив)
   // для этого вызова; если все упали — обычная цепочка фолбэков.
@@ -131,6 +139,7 @@ async function callWithFallback(messages, opts = {}) {
         }
       }
     }
+    if (openrouterKeyRejected(model, lastErr)) break;
   }
   throw lastErr || new Error('All models failed');
 }
@@ -222,6 +231,7 @@ async function askStream({ system, history, userText, opts = {} }, onProgress) {
         }
       }
     }
+    if (openrouterKeyRejected(model, lastErr)) break;
   }
   throw lastErr || new Error('All models failed (stream)');
 }
