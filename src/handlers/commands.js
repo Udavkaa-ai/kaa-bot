@@ -294,6 +294,7 @@ async function handleDiag(bot, msg) {
   if (config.anthropicKey) {
     const { usd, cap } = require('../providers/anthropic').spendToday();
     lines.push(`Anthropic: ${config.anthropicModel}, effort=${config.anthropicEffort}, сегодня ≈ $${usd.toFixed(3)}${cap > 0 ? ` из $${cap}` : ''}`);
+    lines.push(`Workspace: ${config.anthropicWorkspaceId || 'не задан (ANTHROPIC_WORKSPACE_ID)'}`);
   }
 
   try {
