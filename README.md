@@ -73,6 +73,9 @@ PROMPT_CACHE=true                          # кэширование Claude (эк
 PRIVATE_CHAT_ADMIN_ONLY=false              # отвечать в ЛС только админу
 ADMIN_MUST_BE_IN_GROUP=false               # покидать чаты где нет админа
 SEMANTIC_RECALL_K=5                        # сколько релевантных воспоминаний подгружать
+TRIANGLE_APP=ocenka                        # короткое имя Mini App «Треугольник решений» в BotFather (/newapp) — для кнопки в группах
+TRIANGLE_PER_HOUR=40                       # запросов к «Треугольнику» на человека в час (одно решение — два запроса)
+TRIANGLE_MODEL=                            # своя модель для «Треугольника» первой в цепочке; пусто — общая цепочка бота
 ```
 
 ## Команды

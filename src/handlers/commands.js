@@ -97,6 +97,11 @@ async function handleCommand(bot, msg) {
     case '/koleya':
       return require('../../koleya/billy-plugin').handleCommand(bot, msg);
 
+    case '/оценка':
+    case '/ocenka':
+    case '/triangle':
+      return require('../webapp/triangle').handleCommand(bot, msg, args);
+
     case '/games':
     case '/игры':
       return handleGames(bot, msg);
@@ -166,6 +171,7 @@ function buildHelp() {
     '/sec — Сечение, игра на глазомер. /sec top — топ чата. /sec remind 20:00 — ежедневный автопост топа',
     '/contour — Контур: угадай страну по очертанию или проведи границу между соседями',
     '/koleya — «История железных дорог России»: историческая стратегия от Царскосельской дороги до БАМа и скоростных магистралей',
+    '/оценка [решение] — Треугольник решений: чем платите за выбор — деньгами, временем или качеством (можно ответом на сообщение)',
     '/games — одно сообщение обо всех играх: что за игра, как открыть, в чём смысл',
     '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',
     '/transcribe on|off — авто-расшифровка голосовых в чат (только админ чата)',

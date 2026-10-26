@@ -10,6 +10,7 @@ const arena = require('./quizArena');
 const { generateVerifiedQuestion } = require('../handlers/quiz');
 const { verifyInitData } = require('./auth');
 const koleya = require('../../koleya/billy-plugin');
+const triangle = require('./triangle');
 
 let botRef = null;
 function setBot(bot) {
@@ -356,6 +357,9 @@ function start() {
 
   // «История железных дорог России» (Koleya): мини-апп /koleya/ и API /koleya/api/*
   koleya.mount(app);
+
+  // «Треугольник решений»: мини-апп /triangle/ и API /triangle/api/triangle/*
+  triangle.mount(app, staticOpts);
 
   app.use((req, res) => res.status(404).json({ error: 'not_found' }));
 

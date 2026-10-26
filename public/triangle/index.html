@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- API base: same server by default. For GitHub Pages put the full URL, e.g. https://bot.example.ru/api/triangle -->
+<meta name="triangle-api" content="api/triangle">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{-webkit-tap-highlight-color:transparent}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Треугольник решений</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Unbounded:wght@500;700;800&display=swap">
+<style>
+/* Layout: the triangle lives on a fixed stage behind everything; one narrow column of frosted-glass panels scrolls over it, with a clear "window" in the middle where the shape shows unobstructed. */
+:root{
+  --bg:#ECEFF5; --bg2:#F7F8FB; --ink:#161B26; --muted:#5B6476; --line:rgba(22,27,38,.10);
+  --glass:rgba(255,255,255,.52); --glass-strong:rgba(255,255,255,.72); --glass-edge:rgba(255,255,255,.85); --shadow:rgba(30,40,70,.14);
+  --edge:#FFFFFF; --disc:#FFFFFF;
+  --res:#E08A1A; --time:#3B62E3; --qual:#CC2F7E;
+  --good:#1F8A55; --bad:#D2452E; --btn:#161B26; --btn-fg:#FFFFFF;
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C1018; --bg2:#121826; --ink:#EDF0F6; --muted:#9AA4B8; --line:rgba(237,240,246,.10);
+  --glass:rgba(22,28,42,.50); --glass-strong:rgba(22,28,42,.74); --glass-edge:rgba(255,255,255,.10); --shadow:rgba(0,0,0,.45);
+  --edge:rgba(255,255,255,.75); --disc:#171D2B;
+  --res:#F2A33F; --time:#7C9BFF; --qual:#F06AAE; --good:#4FCB8A; --bad:#FF7D66; --btn:#EDF0F6; --btn-fg:#0C1018; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C1018; --bg2:#121826; --ink:#EDF0F6; --muted:#9AA4B8; --line:rgba(237,240,246,.10);
+  --glass:rgba(22,28,42,.50); --glass-strong:rgba(22,28,42,.74); --glass-edge:rgba(255,255,255,.10); --shadow:rgba(0,0,0,.45);
+  --edge:rgba(255,255,255,.75); --disc:#171D2B;
+  --res:#F2A33F; --time:#7C9BFF; --qual:#F06AAE; --good:#4FCB8A; --bad:#FF7D66; --btn:#EDF0F6; --btn-fg:#0C1018; color-scheme:dark}
+
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  background-image:
+    radial-gradient(60% 45% at 50% 0%, var(--bg2), transparent 70%),
+    radial-gradient(40% 35% at 0% 100%, color-mix(in srgb, var(--time) 10%, transparent), transparent 70%),
+    radial-gradient(40% 35% at 100% 100%, color-mix(in srgb, var(--qual) 9%, transparent), transparent 70%);
+  background-attachment:fixed;}
+
+/* stage */
+.stage{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:0}
+.stage svg{width:min(100vw, 82vh, 720px);height:auto;max-width:100%;overflow:visible;transform:translateY(4vh)}
+.stage .grid-dot{fill:var(--ink);opacity:.07}
+.ring{fill:none;stroke:var(--ink);stroke-opacity:.08;stroke-width:1}
+.base{fill:none;stroke:var(--ink);stroke-opacity:.38;stroke-width:1.4;stroke-dasharray:5 6}
+.edge{fill:none;stroke:var(--edge);stroke-width:2.5;stroke-linejoin:round}
+.spoke{stroke:var(--edge);stroke-opacity:.6;stroke-width:1.2}
+.v-name{font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.01em}
+.v-val{font-family:var(--f-mono);font-weight:700;font-size:13px}
+.v-word{font-family:var(--f-body);font-weight:500;font-size:11.5px;fill:var(--muted)}
+.disc{fill:var(--disc)}
+.icon{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* column */
+.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 48px;display:flex;flex-direction:column;gap:14px}
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(9px) saturate(150%);backdrop-filter:blur(9px) saturate(150%);border:1px solid var(--glass-edge);border-radius:20px;box-shadow:0 10px 30px -12px var(--shadow), inset 0 1px 0 rgba(255,255,255,.25)}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:34px;height:34px;flex:none}
+h1{font-family:var(--f-display);font-weight:800;font-size:19px;letter-spacing:-.01em;margin:0;line-height:1.15;text-wrap:balance}
+.sub{font-size:12.5px;color:var(--muted);margin:2px 0 0}
+.rate-btn{flex:none;border-radius:999px;padding:7px 12px 7px 9px;display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);cursor:pointer}
+.rate-btn svg{width:16px;height:16px;color:var(--time)}
+
+.settings{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.settings label{font-weight:600;font-size:14px}
+.rate-field{display:flex;align-items:center;gap:8px}
+.rate-field input{width:130px;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-family:var(--f-mono);font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;background:var(--glass-strong);color:var(--ink)}
+.rate-field span{color:var(--muted);font-size:14px}
+.settings p{margin:0;font-size:13px;color:var(--muted)}
+.settings input[type=range]{width:100%;accent-color:var(--time)}
+
+.ask{padding:12px;display:flex;flex-direction:column;gap:8px}
+.ask textarea{width:100%;box-sizing:border-box;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16.5px;resize:none;min-height:54px;padding:4px 6px;outline:none}
+.ask textarea::placeholder{color:var(--muted);opacity:.8}
+.ask-row{display:flex;gap:8px;align-items:center}
+.ask-row .spacer{flex:1}
+button{font:inherit;cursor:pointer}
+.btn{border:0;border-radius:14px;padding:11px 20px;background:var(--btn);color:var(--btn-fg);font-weight:700;font-size:14.5px;letter-spacing:.01em;box-shadow:0 6px 16px -6px var(--shadow);transition:transform .15s}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:default}
+.icon-btn{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--glass-strong);color:var(--ink);display:grid;place-items:center}
+.icon-btn.rec{color:var(--bad);border-color:var(--bad);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--bad) 18%,transparent)}}
+.icon-btn svg{width:19px;height:19px}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--time);outline-offset:2px}
+.hint{font-size:12px;color:var(--muted);padding:0 6px}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border-radius:999px;padding:7px 13px;font-size:13.5px;color:var(--ink);font-weight:500}
+.chip:hover{border-color:var(--ink)}
+.chips-label{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:100%;padding-left:4px}
+
+/* clear window over the triangle */
+.window{height:clamp(300px, 54vh, 600px);display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
+.legend{font-size:12px;color:var(--muted);padding:6px 12px;border-radius:999px;text-align:center}
+.thinking{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;padding:8px 16px;border-radius:999px;font-size:13.5px;font-weight:600;display:flex;gap:8px;align-items:center}
+.thinking i{width:8px;height:8px;border-radius:50%;background:var(--time);animation:blink 1s infinite}
+.thinking i:nth-child(2){background:var(--res);animation-delay:.15s}.thinking i:nth-child(3){background:var(--qual);animation-delay:.3s}
+@keyframes blink{50%{opacity:.25;transform:scale(.7)}}
+
+/* result */
+.card{padding:18px;display:flex;flex-direction:column;gap:16px}
+.card-head{display:flex;flex-direction:column;gap:3px}
+.tag{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.title{font-family:var(--f-display);font-weight:700;font-size:19px;line-height:1.25;text-wrap:balance}
+.vs{font-size:13px;color:var(--muted)}
+.verdict{margin:0;font-size:15.5px;line-height:1.55}
+.rows{display:flex;flex-direction:column;gap:14px}
+.row{display:grid;grid-template-columns:28px 1fr 54px;gap:3px 10px;align-items:center}
+.row .ico{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;color:#fff}
+.row .ico svg{width:16px;height:16px}
+.row .name{font-weight:700;font-size:14px;display:flex;justify-content:space-between;gap:8px}
+.row .name em{font-style:normal;font-weight:500;font-size:12.5px}
+.row .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;text-align:right;grid-row:1 / 3;grid-column:3}
+.row .bar{grid-column:2}
+.row .note{grid-column:2 / 4;font-size:13px;color:var(--muted);min-width:0}
+.bar{position:relative;height:7px;background:color-mix(in srgb,var(--ink) 8%,transparent);border-radius:4px;overflow:hidden}
+.bar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1.5px;background:var(--ink);opacity:.35}
+.bar i{position:absolute;top:0;bottom:0;border-radius:4px;transition:left .9s cubic-bezier(.34,1.56,.64,1),width .9s cubic-bezier(.34,1.56,.64,1)}
+.good{color:var(--good)}.bad{color:var(--bad)}.neutral{color:var(--muted)}
+.bg-good{background:var(--good)}.bg-bad{background:var(--bad)}.bg-neutral{background:var(--muted)}
+
+.ledger{border-radius:14px;background:color-mix(in srgb,var(--ink) 4%,transparent);padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.lrow{display:flex;justify-content:space-between;gap:12px;font-size:14px}
+.lrow span:first-child{color:var(--muted);min-width:0}
+.lrow b{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.lrow.total{border-top:1px solid var(--line);padding-top:8px;margin-top:2px;font-weight:700}
+.lrow.total span:first-child{color:var(--ink)}
+.lrow.total b{font-size:17px}
+.ledger small{font-size:12px;color:var(--muted)}
+.ledger .per{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.qin{display:flex;align-items:center;gap:4px}
+.qin input{width:92px;box-sizing:border-box;border:1px dashed var(--muted);border-radius:8px;padding:3px 6px;background:transparent;color:var(--ink);font-family:var(--f-mono);font-weight:700;font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+.qin span{font-family:var(--f-mono);font-weight:700;font-size:14px}
+.lam{font-size:12px;color:var(--muted)}
+
+/* integral score */
+.score{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;padding:14px 16px;border-radius:16px;background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.score .lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.score .net{font-family:var(--f-display);font-weight:800;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.score .net small{font-family:var(--f-body);font-weight:500;font-size:13px;color:var(--muted);margin-left:4px;letter-spacing:0}
+.idx{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.idx .pill{font-weight:700;font-size:12.5px;padding:4px 10px;border-radius:999px;border:1.5px solid currentColor}
+.idx .meter{position:relative;width:120px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--bad),color-mix(in srgb,var(--muted) 50%,transparent) 50%,var(--good))}
+.idx .meter i{position:absolute;top:-4px;width:4px;height:14px;border-radius:2px;background:var(--ink);transform:translateX(-50%);transition:left .9s cubic-bezier(.34,1.56,.64,1)}
+.alt .sc{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.alt .sc b{font-family:var(--f-mono);font-size:13.5px}
+.alt .sc em{font-style:normal;font-size:12px;color:var(--muted)}
+.best{font-family:var(--f-mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--good);color:var(--btn-fg)}
+:root:not([data-theme="dark"]) .best{color:#fff}
+
+.sect{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:6px 4px 0}
+.alts{display:flex;flex-direction:column;gap:10px}
+.alt{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center;text-align:left;color:var(--ink);padding:12px 14px;transition:transform .25s, box-shadow .25s, border-color .25s}
+.alt:hover{transform:translateY(-1px)}
+.alt.on{border-color:var(--ink);box-shadow:0 14px 34px -14px var(--shadow), 0 0 0 1px var(--ink)}
+.alt .mini{width:52px;height:46px}
+.alt .t{min-width:0;display:flex;flex-direction:column;gap:3px}
+.alt .t b{font-size:14.5px;font-weight:600;line-height:1.3}
+.alt .t small{color:var(--muted);font-size:12.5px;line-height:1.35}
+.alt .d{font-family:var(--f-mono);font-size:11.5px;font-weight:700;display:flex;gap:10px;flex-wrap:wrap}
+.err{font-size:13.5px;color:var(--bad);padding:10px 14px}
+
+/* clarifying questions */
+.clarify{padding:16px;display:flex;flex-direction:column;gap:16px}
+.clarify-head{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.clarify-head span.dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,var(--res),var(--qual),var(--time))}
+.qblock{display:flex;flex-direction:column;gap:8px}
+.qtext{font-weight:600;font-size:14.5px;line-height:1.35}
+.qtext small{font-family:var(--f-mono);font-weight:700;color:var(--muted);margin-right:6px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{border:1px solid var(--line);background:var(--glass-strong);border-radius:999px;padding:7px 13px;font-size:13.5px;color:var(--ink);transition:background .2s,color .2s,transform .15s}
+.opt:active{transform:scale(.96)}
+.opt.sel{background:var(--btn);color:var(--btn-fg);border-color:var(--btn)}
+.own{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;padding:8px 12px;font:inherit;font-size:16px;background:var(--glass-strong);color:var(--ink)}
+.own::placeholder{color:var(--muted)}
+.link{background:none;border:0;color:var(--muted);font-size:14px;padding:10px 6px;text-decoration:underline;text-underline-offset:3px}
+footer{font-size:12px;color:var(--muted);padding:4px}
+.offline{padding:10px 14px;font-size:13px;color:var(--muted)}
+/* peek tab: hold to bring the triangle through the glass */
+/* Fade each leaf element on its own. Opacity or filter on a shared parent would cut the glass off
+   from the triangle behind it (a new backdrop root) and make the blur snap back at the end. */
+.stage svg{transition:transform .9s cubic-bezier(.34,1.4,.64,1)}
+.fade{transition:opacity .75s cubic-bezier(.45,0,.25,1)}
+.alt.fade{transition:opacity .75s cubic-bezier(.45,0,.25,1), transform .25s, box-shadow .25s, border-color .25s}
+body.peek .fade{opacity:0;pointer-events:none;transition-duration:.45s}
+body.peek .stage svg{transform:translateY(4vh) scale(1.07);transition-duration:.6s}
+.peek-tab{position:fixed;z-index:5;top:50%;right:0;transform:translateY(-50%);width:calc(54px + env(safe-area-inset-right,0px));height:84px;padding:0 env(safe-area-inset-right,0px) 0 0;border:0;cursor:pointer;
+  clip-path:polygon(100% 0,100% 100%,0 50%);background:var(--glass-strong);-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);
+  display:flex;align-items:center;justify-content:flex-end;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;transition:width .35s cubic-bezier(.34,1.56,.64,1)}
+.peek-tab .pk-edge{position:absolute;inset:0;width:100%;height:100%;margin:0}
+.peek-tab .pk-ico{position:relative;width:20px;height:20px;margin-right:calc(9px + env(safe-area-inset-right,0px));transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.peek-tab:hover{width:calc(60px + env(safe-area-inset-right,0px))}
+body.peek .peek-tab{width:calc(64px + env(safe-area-inset-right,0px))}
+body.peek .peek-tab .pk-ico{transform:scale(1.2) rotate(-8deg)}
+.peek-tab:focus-visible{outline:none}
+.peek-tab:focus-visible .pk-edge polygon{stroke:var(--ink)}
+@media (prefers-reduced-motion: reduce){.bar i,.alt{transition:none}.thinking i,.icon-btn.rec{animation:none}.stage svg{transition:filter .3s}body.peek .stage svg{transform:translateY(4vh)}.wrap{transition:opacity .25s}}
+</style>
+</head>
+<body>
+
+<!-- stage -->
+<div class="stage" aria-hidden="true">
+  <svg viewBox="0 0 500 480" id="tri">
+    <defs>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="26"/></filter>
+      <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
+      <filter id="lift" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0B1020" flood-opacity=".22"/></filter>
+      <radialGradient id="gR"><stop offset="0" stop-color="var(--res)" stop-opacity=".95"/><stop offset="1" stop-color="var(--res)" stop-opacity="0"/></radialGradient>
+      <radialGradient id="gT"><stop offset="0" stop-color="var(--time)" stop-opacity=".95"/><stop offset="1" stop-color="var(--time)" stop-opacity="0"/></radialGradient>
+      <radialGradient id="gQ"><stop offset="0" stop-color="var(--qual)" stop-opacity=".95"/><stop offset="1" stop-color="var(--qual)" stop-opacity="0"/></radialGradient>
+      <clipPath id="clip"><polygon id="clipPoly"/></clipPath>
+      <symbol id="i-res" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v5c0 1.6 3.1 2.8 7 2.8s7-1.2 7-2.8V6"/><path d="M5 11v5c0 1.6 3.1 2.8 7 2.8s7-1.2 7-2.8v-5"/></symbol>
+      <symbol id="i-time" viewBox="0 0 24 24"><circle cx="12" cy="12.5" r="8.5"/><path d="M12 8v4.7l3.2 2M9.5 2.5h5"/></symbol>
+      <symbol id="i-qual" viewBox="0 0 24 24"><path d="M12 3.2l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.6l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.8z"/></symbol>
+    </defs>
+    <g id="dotgrid"></g>
+    <g id="rings"></g>
+    <g id="auras" filter="url(#glow)" opacity=".38"></g>
+    <polygon id="shadow" fill="#0B1020" fill-opacity=".14" filter="url(#soft)"></polygon>
+    <g clip-path="url(#clip)">
+      <rect x="0" y="0" width="500" height="480" fill="var(--disc)" fill-opacity=".55"/>
+      <g id="blobs"></g>
+    </g>
+    <g id="spokes"></g>
+    <polygon class="edge" id="edge"></polygon>
+    <polygon class="base" id="base"></polygon>
+    <g id="verts"></g>
+  </svg>
+</div>
+
+<button type="button" class="peek-tab" id="peek" aria-label="Показать треугольник — удерживайте">
+  <svg class="pk-edge" viewBox="0 0 54 84" preserveAspectRatio="none" aria-hidden="true"><polygon points="54,0 54,84 0,42" fill="none" stroke="url(#pk)" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>
+  <svg class="pk-ico" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="pk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--res)"/><stop offset=".55" stop-color="var(--qual)"/><stop offset="1" stop-color="var(--time)"/></linearGradient></defs><path d="M12 3.5 L21 19.5 L3 19.5 Z" fill="url(#pk)" stroke="var(--edge)" stroke-width="1.6" stroke-linejoin="round"/></svg>
+</button>
+
+<div class="thinking glass fade" id="thinking" hidden><i></i><i></i><i></i><span>Считаю баланс…</span></div>
+
+<div class="wrap">
+  <header>
+    <div class="brand fade">
+      <svg class="logo" viewBox="0 0 34 34" aria-hidden="true">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--res)"/><stop offset=".5" stop-color="var(--qual)"/><stop offset="1" stop-color="var(--time)"/></linearGradient></defs>
+        <path d="M17 4 L30 28 L4 28 Z" fill="url(#lg)" stroke="var(--edge)" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <h1>Треугольник решений</h1>
+        <p class="sub">Ресурсы · Время · Качество</p>
+      </div>
+    </div>
+    <button type="button" class="rate-btn glass fade" id="rateBtn" aria-expanded="false" aria-controls="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12.5" r="8.5"/><path d="M12 8v4.7l3.2 2"/></svg>
+      <span id="rateShow">1 500 ₽/ч</span>
+    </button>
+  </header>
+
+  <section class="settings glass fade" id="settings" hidden>
+    <label for="rate">Сколько стоит мой час</label>
+    <div class="rate-field"><input id="rate" type="number" inputmode="numeric" min="0" step="50" value="1500"><span>₽ в час</span></div>
+    <p>Сэкономленное время переводится в рубли по этой ставке и сравнивается с деньгами, которые требует решение.</p>
+    <label for="lambda">Вес потерь: <span id="lamShow">×1,5</span></label>
+    <input id="lambda" type="range" min="1" max="3" step="0.1" value="1.5">
+    <p>Во сколько раз потеря ощущается сильнее такого же выигрыша. 1 — потери и выигрыши равны, 2 — классика поведенческой экономики. Настройки хранятся только в этом браузере.</p>
+  </section>
+
+  <form class="ask glass fade" id="ask">
+    <textarea id="q" rows="2" placeholder="Например: хочу сегодня доехать домой побыстрее"></textarea>
+    <div class="ask-row">
+      <button type="button" class="icon-btn" id="mic" aria-label="Голосовой ввод" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <span class="hint" id="hint">Enter — рассчитать</span>
+      <span class="spacer"></span>
+      <button type="button" class="icon-btn" id="stop" aria-label="Остановить" hidden>
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+      </button>
+      <button type="submit" class="btn" id="go">Рассчитать</button>
+    </div>
+  </form>
+
+  <section class="clarify glass fade" id="clarify" hidden aria-live="polite">
+    <div class="clarify-head"><span class="dot"></span>Уточню пару деталей</div>
+    <div id="qs" style="display:flex;flex-direction:column;gap:16px"></div>
+    <div class="ask-row">
+      <button type="button" class="link" id="skip">Пропустить</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="go2">Рассчитать</button>
+    </div>
+  </section>
+
+  <div class="chips" id="examples"><span class="chips-label fade">Примеры</span></div>
+  <div class="err glass fade" id="err" hidden></div>
+
+  <div class="window"><span class="legend glass fade">Пунктир — как обычно · цвет — с этим решением</span></div>
+
+  <section class="card glass fade" id="card" aria-live="polite">
+    <div class="card-head">
+      <span class="tag" id="tag">пример</span>
+      <span class="title" id="title"></span>
+      <span class="vs" id="vs"></span>
+    </div>
+    <div class="score" id="score"></div>
+    <p class="verdict" id="verdict"></p>
+    <div class="rows" id="rows"></div>
+    <div class="ledger" id="ledger"></div>
+  </section>
+
+  <div class="sect fade" id="altsHead">Варианты по чистой выгоде — нажмите, треугольник перестроится</div>
+  <div class="alts" id="alts"></div>
+
+  <div class="chips" id="history" hidden><span class="chips-label fade">Недавние</span></div>
+  <footer id="foot" class="fade">Оси относительные: ±100 — предельное изменение по сравнению с вашим обычным вариантом.</footer>
+</div>
+
+<script>
+(() => {
+const AX = [
+  {k:"resources", name:"Ресурсы", ang:-90, color:"var(--res)",  grad:"gR", icon:"i-res",  up:"дороже", down:"экономия"},
+  {k:"time",      name:"Время",   ang:150, color:"var(--time)", grad:"gT", icon:"i-time", up:"дольше", down:"быстрее"},
+  {k:"quality",   name:"Качество",ang:30,  color:"var(--qual)", grad:"gQ", icon:"i-qual", up:"лучше",  down:"хуже"},
+];
+const CX=250, CY=282, R0=112, K=0.6;
+
+const EXAMPLES = [
+  {title:"Домой на такси", ask:"Хочу сегодня доехать домой побыстрее — на такси вместо электрички с автобусом", baseline:"электричка и автобус", period:"за поездку",
+   resources:60, time:-50, quality:40, money:1300, minutes:-60, quality_rub:400,
+   notes:{resources:"Поездка в разы дороже проезда на общественном транспорте", time:"Без пересадок и ожидания — дома заметно раньше", quality:"Сидя, в тепле, можно поработать или подремать"},
+   verdict:"Платите деньгами за время и комфорт. Оправдано, если вечер дома чего-то стоит или вы сильно устали.",
+   alternatives:[
+     {title:"Такси только до станции", resources:20, time:-20, quality:15, money:400, minutes:-25, quality_rub:150, note:"Срезает самый медленный отрезок", verdict:"Компромисс: доплата скромная, а самый долгий кусок пути исчезает. Хорош, когда до станции идёт медленный автобус."},
+     {title:"Подождать и уехать позже", resources:0, time:25, quality:20, money:0, minutes:40, quality_rub:250, note:"Свободнее в транспорте, но дома позже", verdict:"Деньги не тратите, едете спокойнее, но вечер дома короче. Разумно, если задержку можно занять делом."}]},
+  {title:"Перекус в кафе", ask:"Перекусить в кафе вместо того, чтобы готовить дома", baseline:"приготовить дома", period:"за раз",
+   resources:35, time:-55, quality:10, money:450, minutes:-50, quality_rub:150,
+   notes:{resources:"Чек выше стоимости продуктов, зато не тратите силы на готовку", time:"Не нужно готовить и мыть посуду", quality:"Разнообразие выше, контроль над составом ниже"},
+   verdict:"Покупаете время за умеренные деньги. Хорошая сделка в загруженный день, дорогая привычка — каждый день.",
+   alternatives:[
+     {title:"Готовая еда из магазина", resources:10, time:-40, quality:-10, money:150, minutes:-40, quality_rub:-100, note:"Почти так же быстро, но дешевле", verdict:"Почти та же экономия времени за треть цены кафе. Качество еды проседает, так что это вариант на загруженный день."},
+     {title:"Готовить сразу на 2–3 дня", resources:-10, time:-15, quality:10, money:-100, minutes:-20, quality_rub:50, note:"Одна большая готовка вместо трёх", verdict:"Немного дешевле и быстрее обычного, качество под вашим контролем. Требует один свободный вечер заранее."}]},
+  {title:"Подрядчик подешевле", ask:"Взять подрядчика подешевле вместо проверенного", baseline:"проверенный подрядчик", period:"за проект",
+   resources:-40, time:25, quality:-35, money:-40000, minutes:900, quality_rub:-15000,
+   notes:{resources:"Бюджет меньше на старте", time:"Вероятны переделки и согласования", quality:"Риск недочётов выше, нужен плотный контроль"},
+   verdict:"Экономия на входе часто возвращается временем на контроль и переделки. Имеет смысл для некритичных работ.",
+   alternatives:[
+     {title:"Дешёвый, но с поэтапной приёмкой", resources:-30, time:30, quality:-10, money:-30000, minutes:1200, quality_rub:-5000, note:"Качество держите контролем, платите временем", verdict:"Экономия сохраняется, а риск брака снимаете своей приёмкой. Платите за это собственными часами."},
+     {title:"Проверенный, но урезать объём", resources:-15, time:0, quality:0, money:-15000, minutes:0, quality_rub:0, note:"Платите меньше, отказавшись от второстепенного", verdict:"Надёжность прежняя, бюджет меньше, но часть работ уходит на потом. Хорош, если объём можно честно разделить."}]},
+  {title:"Отчёт за вечер без вычитки", ask:"Сделать отчёт за один вечер без вычитки вместо двух дней с проверкой", baseline:"отчёт за два дня с проверкой", period:"за отчёт",
+   resources:-10, time:-50, quality:-40, money:0, minutes:-480, quality_rub:-9000,
+   notes:{resources:"Чуть меньше сил сейчас", time:"Сдаёте на день раньше", quality:"Ошибки и недоработки уйдут адресату"},
+   verdict:"Быстро, но качество проседает. Подходит для черновика, рискованно для документа на подпись.",
+   alternatives:[
+     {title:"За вечер + вычитка утром", resources:0, time:-30, quality:-10, money:0, minutes:-450, quality_rub:-2000, note:"Полчаса утром снимают основные ошибки", verdict:"Почти тот же выигрыш по времени, а качество теряете намного меньше. Обычно лучший баланс для рабочего документа."},
+     {title:"Отдать вычитку коллеге", resources:5, time:-40, quality:-5, money:0, minutes:-420, quality_rub:-1000, note:"Свежий взгляд ловит то, что пропустите вы", verdict:"Быстро и почти без потери качества, но тратите время коллеги. Уместно, если вы отвечаете ему тем же."}]},
+];
+
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs={}, parent) => { const e=document.createElementNS(NS,tag); for (const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; };
+const clamp = v => Math.max(-100, Math.min(100, Math.round(Number(v)||0)));
+const num = v => { const n=Number(v); return Number.isFinite(n) ? Math.round(n) : undefined; };
+const pt = (ang, r) => { const a=ang*Math.PI/180; return [CX + r*Math.cos(a), CY + r*Math.sin(a)]; };
+const rad = v => R0*(1 + Math.max(-125, Math.min(125, v))/100*K);
+const sgn = v => (v>0?"+":v<0?"−":"±")+Math.abs(Math.round(v));
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ICON = id => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#${id}"/></svg>`;
+
+/* ---------- static stage ---------- */
+const V = {};
+(function build(){
+  const dg=$("dotgrid");
+  for (let y=10; y<480; y+=24) for (let x=(y/24%2?12:0); x<=500; x+=24) el("circle",{cx:x,cy:y,r:1.1,class:"grid-dot"},dg);
+  [-100,-50,50,100].forEach(v=>el("polygon",{class:"ring",points:AX.map(a=>pt(a.ang,rad(v)).join(",")).join(" ")},$("rings")));
+  $("base").setAttribute("points", AX.map(a=>pt(a.ang,R0).join(",")).join(" "));
+  AX.forEach(a=>{
+    const aura = el("circle",{r:70,fill:a.color},$("auras"));
+    const blob = el("circle",{r:250,fill:`url(#${a.grad})`},$("blobs"));
+    const spoke = el("line",{class:"spoke",x1:CX,y1:CY},$("spokes"));
+    const g = el("g",{},$("verts"));
+    const disc = el("g",{filter:"url(#lift)"},g);
+    el("circle",{r:23,class:"disc"},disc);
+    el("circle",{r:23,fill:"none",stroke:a.color,"stroke-width":3},disc);
+    const ic = el("use",{href:"#"+a.icon,x:-12,y:-12,width:24,height:24,class:"icon",stroke:a.color},g);
+    const lab = el("g",{},g);
+    const name = el("text",{class:"v-name","text-anchor":"middle",fill:a.color},lab); name.textContent=a.name;
+    const val  = el("text",{class:"v-val","text-anchor":"middle",fill:"var(--ink)"},lab);
+    const word = el("text",{class:"v-word","text-anchor":"middle"},lab);
+    V[a.k]={aura,blob,spoke,g,lab,name,val,word};
+  });
+})();
+
+/* ---------- spring physics ("с оттяжкой") ---------- */
+const S = {}; AX.forEach(a=>S[a.k]={x:0,v:0,target:0});
+const STIFF=62, DAMP=7.2;   // zeta ≈ 0.46 → visible overshoot, soft settle
+let raf=0, last=0;
+function draw(){
+  const P = AX.map(a=>pt(a.ang, rad(S[a.k].x)));
+  const pts = P.map(p=>p.join(",")).join(" ");
+  $("clipPoly").setAttribute("points",pts); $("edge").setAttribute("points",pts);
+  $("shadow").setAttribute("points", P.map(p=>[p[0],p[1]+12].join(",")).join(" "));
+  AX.forEach((a,i)=>{
+    const [x,y]=P[i], o=V[a.k];
+    o.aura.setAttribute("cx",x); o.aura.setAttribute("cy",y);
+    o.blob.setAttribute("cx",x); o.blob.setAttribute("cy",y);
+    o.spoke.setAttribute("x2",x); o.spoke.setAttribute("y2",y);
+    o.g.setAttribute("transform",`translate(${x.toFixed(1)},${y.toFixed(1)})`);
+    // labels sit outside the vertex
+    const ly = a.ang===-90 ? -64 : 40, lx = a.ang===-90 ? 0 : (a.ang===150 ? 10 : -10);
+    o.lab.setAttribute("transform",`translate(${lx},${ly})`);
+    o.name.setAttribute("y",0); o.val.setAttribute("y",17); o.word.setAttribute("y",31);
+    if (a.ang===-90){ o.name.setAttribute("y",0); o.val.setAttribute("y",17); o.word.setAttribute("y",31); }
+    const t=S[a.k].target; o.val.textContent=sgn(S[a.k].x);
+    o.word.textContent = Math.abs(t)<5 ? "как обычно" : (t>0?a.up:a.down);
+  });
+}
+function tick(now){
+  const dt=Math.min(0.033,(now-last)/1000||0.016); last=now;
+  let moving=false;
+  AX.forEach(a=>{
+    const s=S[a.k];
+    if (s.wait>0){ s.wait-=dt; moving=true; return; }
+    const f = -STIFF*(s.x-s.target) - DAMP*s.v;
+    s.v+=f*dt; s.x+=s.v*dt;
+    if (Math.abs(s.v)>0.05 || Math.abs(s.x-s.target)>0.05) moving=true; else { s.x=s.target; s.v=0; }
+  });
+  draw();
+  raf = moving ? requestAnimationFrame(tick) : 0;
+}
+function springTo(vals, stagger=true){
+  AX.forEach((a,i)=>{ S[a.k].target=clamp(vals[a.k]); S[a.k].wait = stagger ? i*0.09 : 0; if (reduce){ S[a.k].x=S[a.k].target; S[a.k].v=0; S[a.k].wait=0; } });
+  if (reduce){ draw(); return; }
+  if (!raf){ last=performance.now(); raf=requestAnimationFrame(tick); }
+}
+draw();
+
+/* thinking wobble */
+let wobble=0, saved=null;
+function startWobble(){
+  saved = {}; AX.forEach(a=>saved[a.k]=S[a.k].target);
+  const kick=()=>{ const v={}; AX.forEach(a=>v[a.k]=saved[a.k]*0.4 + (Math.random()*60-30)); springTo(v,false); };
+  kick(); wobble=setInterval(kick, 700);
+}
+function stopWobble(restore){ clearInterval(wobble); wobble=0; if (restore && saved) springTo(saved); }
+
+/* ---------- readout ---------- */
+function tone(axis, v){ if (Math.abs(v)<5) return "neutral"; return (axis==="quality" ? v>0 : v<0) ? "good" : "bad"; }
+
+let current=null, selected=null;
+let source="";
+function renderHead(a){
+  const isMain = a===current;
+  $("tag").textContent = isMain ? source : "альтернатива · " + source;
+  $("title").textContent = a.title || "Решение";
+  $("vs").textContent = current.baseline ? "по сравнению с: " + current.baseline : "";
+  $("verdict").textContent = isMain ? (current.verdict||"") : (a.verdict || a.note || "");
+}
+function render(res, src){
+  current=res; selected=res; source=src;
+  renderHead(res);
+  renderRows(res, res.notes||{});
+  renderLedger(res);
+  renderAlts();
+  $("err").hidden=true;
+  springTo(res);
+}
+function renderRows(vals, notes){
+  const rows=$("rows"); rows.textContent="";
+  AX.forEach(a=>{
+    const v=clamp(vals[a.k]), tn=tone(a.k,v);
+    const row=document.createElement("div"); row.className="row";
+    const ico=document.createElement("span"); ico.className="ico"; ico.style.background=a.color; ico.innerHTML=ICON(a.icon); ico.style.gridRow="1 / 3";
+    const name=document.createElement("span"); name.className="name";
+    const nm=document.createElement("span"); nm.textContent=a.name;
+    const wd=document.createElement("em"); wd.className=tn; wd.textContent=Math.abs(v)<5?"без изменений":(v>0?a.up:a.down);
+    name.append(nm,wd);
+    const bar=document.createElement("div"); bar.className="bar";
+    const fill=document.createElement("i"); fill.className="bg-"+tn; fill.style.left="50%"; fill.style.width="0";
+    bar.appendChild(fill);
+    const n=document.createElement("span"); n.className="num "+tn; n.textContent=sgn(v);
+    const note=document.createElement("span"); note.className="note"; note.textContent=notes[a.k]||"";
+    row.append(ico,name,n,bar); if (notes[a.k]) row.appendChild(note);
+    rows.appendChild(row);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ const w=Math.abs(v)/2; fill.style.width=w+"%"; fill.style.left=(v>=0?50:50-w)+"%"; }));
+  });
+}
+function miniSVG(a){
+  const s=document.createElementNS(NS,"svg"); s.setAttribute("viewBox","0 0 52 46"); s.setAttribute("class","mini");
+  const c=[26,27], r0=13, k=0.6, p=AX.map(ax=>{ const r=r0*(1+clamp(a[ax.k])/100*k), t=ax.ang*Math.PI/180; return [c[0]+r*Math.cos(t), c[1]+r*Math.sin(t)]; });
+  el("polygon",{points:AX.map(ax=>{const t=ax.ang*Math.PI/180;return [c[0]+r0*Math.cos(t),c[1]+r0*Math.sin(t)].join(",");}).join(" "),fill:"none",stroke:"var(--ink)","stroke-opacity":".35","stroke-dasharray":"2 2"},s);
+  el("polygon",{points:p.map(q=>q.join(",")).join(" "),fill:"var(--ink)","fill-opacity":".12",stroke:"var(--ink)","stroke-width":"1.4","stroke-linejoin":"round"},s);
+  AX.forEach((ax,i)=>el("circle",{cx:p[i][0],cy:p[i][1],r:3.4,fill:ax.color},s));
+  return s;
+}
+/* ---------- integral score ---------- */
+// 1) one sign: every part is a benefit (+ good); 2) one currency: ₽;
+// 3) losses weighted by λ; 4) one period; 5) clarity index = net / Σ|parts| × 100
+const RKEY="tri-rate-v1", LKEY="tri-lambda-v1";
+let rate=1500, lambda=1.5;
+try{ const s=Number(localStorage.getItem(RKEY)); if (s>0) rate=s; }catch{}
+try{ const s=Number(localStorage.getItem(LKEY)); if (s>=1&&s<=3) lambda=s; }catch{}
+const fin=v=>Number.isFinite(Number(v)) && v!==null && v!=="";
+function score(a){
+  const has = fin(a.money)||fin(a.minutes)||fin(a.quality_rub);
+  const raw = {money: fin(a.money)? -Number(a.money):0, time: fin(a.minutes)? -Number(a.minutes)/60*rate:0, quality: fin(a.quality_rub)? Number(a.quality_rub):0};
+  const adj = {}; let net=0, abs=0;
+  for (const k in raw){ adj[k] = raw[k]<0 ? raw[k]*lambda : raw[k]; net+=adj[k]; abs+=Math.abs(adj[k]); }
+  const idx = abs ? Math.round(net/abs*100) : 0;
+  return {has, raw, adj, net, idx};
+}
+function verdictOf(idx){
+  const a=Math.abs(idx);
+  if (a<15) return {w:"на грани", c:"neutral"};
+  if (idx>0) return {w: a<45?"скорее выгодно":"однозначно выгодно", c:"good"};
+  return {w: a<45?"скорее невыгодно":"однозначно невыгодно", c:"bad"};
+}
+const rub=n=>Math.round(Math.abs(n)).toLocaleString("ru-RU")+" ₽";
+const srub=n=>(Math.round(n)>0?"+":Math.round(n)<0?"−":"")+rub(n);
+const dur=m=>{ m=Math.round(Math.abs(m)); const h=Math.floor(m/60), mm=m%60; return (h?h+" ч":"")+(h&&mm?" ":"")+(mm||!h?mm+" мин":""); };
+const per=()=>current?.period ? " "+current.period : "";
+
+function renderScore(v){
+  const box=$("score"); box.textContent="";
+  const s=score(v); box.hidden=!s.has; if (!s.has) return;
+  const vd=verdictOf(s.idx);
+  const left=document.createElement("div");
+  const l=document.createElement("div"); l.className="lbl"; l.textContent="Чистая выгода";
+  const n=document.createElement("div"); n.className="net "+(Math.abs(s.idx)<15?"neutral":s.net>0?"good":"bad"); n.textContent=srub(s.net);
+  if (current?.period){ const p=document.createElement("small"); p.textContent=current.period; n.appendChild(p); }
+  left.append(l,n);
+  const right=document.createElement("div"); right.className="idx";
+  const pill=document.createElement("span"); pill.className="pill "+vd.c; pill.textContent=vd.w+" · "+(s.idx>0?"+":s.idx<0?"−":"")+Math.abs(s.idx);
+  const meter=document.createElement("div"); meter.className="meter"; meter.title="Индекс ясности от −100 до +100";
+  const mk=document.createElement("i"); mk.style.left="50%"; meter.appendChild(mk);
+  right.append(pill,meter);
+  box.append(left,right);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ mk.style.left=(50+s.idx/2)+"%"; }));
+}
+
+function renderAlts(){
+  const box=$("alts"); box.textContent="";
+  const list=Array.isArray(current.alternatives)?current.alternatives.slice(0,3):[];
+  $("altsHead").hidden=!list.length;
+  if (!list.length) return;
+  const all=[current, ...list];
+  const scored=all.map(a=>({a, s:score(a)}));
+  const ranked = scored.some(x=>x.s.has) ? scored.slice().sort((x,y)=>y.s.net-x.s.net) : scored;
+  const bestNet = ranked[0].s.net;
+  ranked.forEach(({a,s})=>box.appendChild(altCard(a, a===current, s, s.has && s.net===bestNet && bestNet>0)));
+}
+function altCard(a, isMain, s, isBest){
+  const b=document.createElement("button"); b.type="button"; b.className="alt glass fade"+(a===selected?" on":"");
+  const t=document.createElement("span"); t.className="t";
+  const tt=document.createElement("b"); tt.textContent=a.title||"";
+  const sm=document.createElement("small"); sm.textContent=isMain ? "Ваш вариант" : (a.note||"");
+  const sc=document.createElement("span"); sc.className="sc";
+  if (s.has){
+    const nb=document.createElement("b"); nb.className=Math.abs(s.idx)<15?"neutral":s.net>0?"good":"bad"; nb.textContent=srub(s.net);
+    const em=document.createElement("em"); em.textContent=verdictOf(s.idx).w;
+    sc.append(nb,em);
+  }
+  if (isBest){ const bb=document.createElement("span"); bb.className="best"; bb.textContent="лучший"; sc.appendChild(bb); }
+  const d=document.createElement("span"); d.className="d";
+  AX.forEach(ax=>{ const v=clamp(a[ax.k]); const x=document.createElement("span"); x.className=tone(ax.k,v); x.textContent=ax.name.slice(0,3).toLowerCase()+" "+sgn(v); d.appendChild(x); });
+  t.append(tt); if (sm.textContent) t.append(sm); t.append(sc, d);
+  b.append(miniSVG(a), t);
+  b.onclick=()=>{
+    selected=a; haptic("select");
+    document.querySelectorAll(".alt").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+    renderHead(a);
+    renderRows(a, isMain ? (current.notes||{}) : (a.notes||{}));
+    renderLedger(a);
+    springTo(a);
+  };
+  return b;
+}
+
+/* ---------- settings ---------- */
+const showSettings=()=>{ $("rateShow").textContent=rate.toLocaleString("ru-RU")+" ₽/ч"; $("rate").value=rate; $("lambda").value=lambda; $("lamShow").textContent="×"+lambda.toFixed(1).replace(".",","); };
+showSettings();
+$("rateBtn").onclick=()=>{ const s=$("settings"); s.hidden=!s.hidden; $("rateBtn").setAttribute("aria-expanded",String(!s.hidden)); if(!s.hidden) $("rate").focus(); };
+function refresh(){ if (!current) return; renderLedger(selected||current); renderAlts(); }
+$("rate").addEventListener("input",()=>{ const v=Number($("rate").value); if (!(v>=0)) return; rate=v; try{ localStorage.setItem(RKEY,String(v)); }catch{} showSettings(); refresh(); });
+$("lambda").addEventListener("input",()=>{ const v=Number($("lambda").value); if (!(v>=1)) return; lambda=v; try{ localStorage.setItem(LKEY,String(v)); }catch{} $("lamShow").textContent="×"+lambda.toFixed(1).replace(".",","); refresh(); });
+
+/* ---------- ledger: the breakdown behind the number ---------- */
+function renderLedger(v){
+  renderScore(v);
+  const box=$("ledger"); box.textContent="";
+  const s=score(v); box.hidden=!s.has; if (!s.has) return;
+  const head=document.createElement("div"); head.className="per"; head.textContent="Расчёт"+(current?.period?" · "+current.period:""); box.appendChild(head);
+  const line=(label,valNode,extra)=>{ const r=document.createElement("div"); r.className="lrow"+(extra||""); const x=document.createElement("span"); x.textContent=label; r.append(x,valNode); box.appendChild(r); return r; };
+  const val=(n,cls)=>{ const y=document.createElement("b"); y.className=cls||(Math.round(n)>0?"good":Math.round(n)<0?"bad":"neutral"); y.textContent=Math.round(n)?srub(n):"0 ₽"; return y; };
+  const m=fin(v.money)?Number(v.money):0, t=fin(v.minutes)?Number(v.minutes):0;
+  line(m>0?"Деньги: доплата":m<0?"Деньги: экономия":"Деньги: без изменений", val(s.raw.money));
+  line(t<0?`Время: экономия ${dur(t)}`:t>0?`Время: потеря ${dur(t)}`:"Время: без изменений", val(s.raw.time));
+  // quality — editable willingness-to-pay
+  const q=document.createElement("span"); q.className="qin";
+  const inp=document.createElement("input"); inp.type="number"; inp.step="100"; inp.inputMode="numeric"; inp.id="qrub";
+  inp.value=Math.round(s.raw.quality); inp.setAttribute("aria-label","Цена качества, рублей");
+  const cur=document.createElement("span"); cur.textContent="₽";
+  q.append(inp,cur);
+  line(v.qualityEdited?"Качество: ваша оценка":"Качество: готов доплатить", q);
+  inp.addEventListener("input",()=>{ const n=Number(inp.value); if (!Number.isFinite(n)) return; v.quality_rub=n; v.qualityEdited=true; renderScore(v); updateLoss(); renderAltsKeepFocus(); });
+  const loss=document.createElement("b"); loss.className="bad";
+  const lossRow=line("", loss);
+  function updateLoss(){
+    const sc=score(v), extra=Object.values(sc.raw).filter(x=>x<0).reduce((p,x)=>p+x*(lambda-1),0);
+    lossRow.firstChild.textContent=`Вес потерь ×${lambda.toFixed(1).replace(".",",")}`;
+    loss.textContent = Math.round(extra) ? srub(extra) : "0 ₽"; loss.className = Math.round(extra)?"bad":"neutral";
+    totalB.textContent=srub(sc.net); totalB.className=Math.abs(sc.idx)<15?"neutral":sc.net>0?"good":"bad";
+  }
+  const totalB=document.createElement("b");
+  line("Итог", totalB, " total");
+  updateLoss();
+  const sm=document.createElement("small"); sm.textContent=`Час = ${rate.toLocaleString("ru-RU")} ₽. Сумму за качество можно поправить — это самая субъективная часть.`; box.appendChild(sm);
+}
+function renderAltsKeepFocus(){
+  // re-rank cards without stealing focus from the quality input
+  clearTimeout(renderAltsKeepFocus.t); renderAltsKeepFocus.t=setTimeout(renderAlts, 350);
+}
+
+/* ---------- examples & history ---------- */
+EXAMPLES.forEach(ex=>{ const c=document.createElement("button"); c.type="button"; c.className="chip glass fade"; c.textContent=ex.title; c.onclick=()=>{ $("q").value=ex.ask; $("clarify").hidden=true; pending=null; $("hint").textContent="Пример в поле — поправьте под себя и нажмите «Рассчитать»"; render(ex,"пример · рассчитан заранее"); }; $("examples").appendChild(c); });
+const HKEY="tri-history-v1";
+const loadHist=()=>{ try{ return JSON.parse(localStorage.getItem(HKEY)||"[]"); }catch{ return []; } };
+const saveHist=h=>{ try{ localStorage.setItem(HKEY, JSON.stringify(h.slice(0,6))); }catch{} };
+function drawHist(){
+  const h=loadHist(), box=$("history"); box.querySelectorAll(".chip").forEach(x=>x.remove()); box.hidden=!h.length;
+  h.forEach(r=>{ const c=document.createElement("button"); c.type="button"; c.className="chip glass fade"; c.textContent=r.title||"Решение"; c.onclick=()=>{ if (r.ask) $("q").value=r.ask; render(r,"из недавних · оценка ИИ"); }; box.appendChild(c); });
+}
+drawHist();
+
+/* ---------- AI ---------- */
+const tg = window.Telegram?.WebApp || null;
+const API = (document.querySelector('meta[name="triangle-api"]')?.content || "api/triangle").replace(/\/$/,"");
+const haptic = (kind, arg) => { try{ const h=tg?.HapticFeedback; if (!h) return;
+  if (kind==="impact") h.impactOccurred(arg||"light"); else if (kind==="select") h.selectionChanged(); else h.notificationOccurred(arg||"success"); }catch{} };
+let ctl=null;
+const ERR={
+  bad_auth:"Откройте приложение из Telegram-бота — так сервер понимает, кто спрашивает.",
+  rate_limited:"Слишком много запросов подряд. Попробуйте через несколько минут.",
+  invalid_json:"Модель ответила в неожиданном виде. Нажмите «Рассчитать» ещё раз.",
+  bad_request:"Запрос не принят: опишите решение короче.",
+  network:"Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.",
+  upstream:"Модель сейчас не отвечает. Попробуйте ещё раз через минуту.",
+};
+const showErr=msg=>{ $("err").textContent=msg; $("err").hidden=false; };
+
+async function api(path, body){
+  let res;
+  try{
+    res = await fetch(API + "/" + path, {method:"POST",
+      headers:{"Content-Type":"application/json","X-Telegram-Init-Data": tg?.initData || ""},
+      body: JSON.stringify(body), signal: ctl?.signal});
+  }catch(e){ throw {code: e?.name==="AbortError" ? "cancelled" : "network"}; }
+  const data = await res.json().catch(()=>null);
+  if (!res.ok || !data) throw {code: data?.error || "upstream"};
+  return data;
+}
+
+function setBusy(on, label){
+  $("go").disabled=on; $("go2").disabled=on; $("stop").hidden=!on; $("thinking").hidden=!on;
+  $("thinking").querySelector("span").textContent = label || "Считаю баланс…";
+  if (on){ $("err").hidden=true; ctl=new AbortController(); }
+}
+
+/* step 1: up to 3 clarifying questions */
+let pending=null;
+async function run(){
+  const text=$("q").value.trim();
+  if (!text){ $("q").focus(); return; }
+  $("clarify").hidden=true;
+  setBusy(true,"Думаю, что уточнить…"); startWobble();
+  let qs=[];
+  try{
+    const r=await api("ask",{text});
+    qs=(Array.isArray(r?.questions)?r.questions:[]).filter(x=>x&&x.q).slice(0,3)
+      .map(x=>({q:String(x.q).slice(0,120), options:(Array.isArray(x.options)?x.options:[]).map(String).filter(Boolean).slice(0,4)}));
+  }catch(e){
+    if (e?.code==="cancelled"){ stopWobble(true); setBusy(false); return; }
+    if (["bad_auth","rate_limited","network","bad_request"].includes(e?.code)){ stopWobble(true); setBusy(false); showErr(ERR[e.code]); return; }
+    qs=[]; // questions are optional — go straight to the estimate
+  }
+  stopWobble(false); setBusy(false);
+  if (!qs.length){ evaluate(text, []); return; }
+  pending={text, qs, ans:qs.map(()=>"")};
+  drawQuestions();
+}
+function drawQuestions(){
+  const box=$("qs"); box.textContent="";
+  pending.qs.forEach((x,i)=>{
+    const b=document.createElement("div"); b.className="qblock";
+    const t=document.createElement("div"); t.className="qtext";
+    const n=document.createElement("small"); n.textContent=(i+1)+"/"+pending.qs.length; t.append(n, document.createTextNode(x.q));
+    const opts=document.createElement("div"); opts.className="opts";
+    const own=document.createElement("input"); own.className="own"; own.id="own-"+i; own.placeholder="или свой ответ"; own.setAttribute("aria-label","Свой ответ: "+x.q);
+    x.options.forEach(o=>{
+      const c=document.createElement("button"); c.type="button"; c.className="opt"; c.textContent=o;
+      c.onclick=()=>{ const sel=c.classList.contains("sel"); opts.querySelectorAll(".opt").forEach(z=>z.classList.remove("sel"));
+        if (!sel){ c.classList.add("sel"); pending.ans[i]=o; own.value=""; } else pending.ans[i]=""; };
+      opts.appendChild(c);
+    });
+    own.addEventListener("input",()=>{ pending.ans[i]=own.value.trim(); if (own.value) opts.querySelectorAll(".opt").forEach(z=>z.classList.remove("sel")); });
+    own.addEventListener("keydown",e=>{ if (e.key==="Enter"){ e.preventDefault(); $("go2").click(); } });
+    b.append(t); if (x.options.length) b.append(opts); b.append(own);
+    box.appendChild(b);
+  });
+  $("clarify").hidden=false;
+  $("clarify").scrollIntoView({behavior: reduce?"auto":"smooth", block:"nearest"});
+}
+$("go2").onclick=()=>{ if (!pending) return; const qa=pending.qs.map((x,i)=>({q:x.q,a:pending.ans[i]})).filter(x=>x.a); $("clarify").hidden=true; evaluate(pending.text, qa); };
+$("skip").onclick=()=>{ if (!pending) return; $("clarify").hidden=true; evaluate(pending.text, []); };
+
+/* step 2: the estimate */
+async function evaluate(text, qa){
+  setBusy(true,"Считаю баланс…"); startWobble();
+  let ok=false;
+  try{
+    const r=await api("estimate",{text, qa, rate});
+    if (!r || typeof r!=="object") throw {code:"invalid_json"};
+    const res={
+      title:String(r.title||text).slice(0,60), baseline:String(r.baseline||"").slice(0,80),
+      resources:clamp(r.resources), time:clamp(r.time), quality:clamp(r.quality),
+      money:num(r.money), minutes:num(r.minutes), quality_rub:num(r.quality_rub), period:String(r.period||"").slice(0,30),
+      notes:{resources:String(r.notes?.resources||""),time:String(r.notes?.time||""),quality:String(r.notes?.quality||"")},
+      verdict:String(r.verdict||""),
+      alternatives:(Array.isArray(r.alternatives)?r.alternatives:[]).slice(0,3).map(a=>({
+        title:String(a?.title||""),note:String(a?.note||""),verdict:String(a?.verdict||""),
+        notes:{resources:String(a?.notes?.resources||""),time:String(a?.notes?.time||""),quality:String(a?.notes?.quality||"")},resources:clamp(a?.resources),time:clamp(a?.time),quality:clamp(a?.quality),
+        money:num(a?.money),minutes:num(a?.minutes),quality_rub:num(a?.quality_rub)}))
+    };
+    res.ask=text; stopWobble(false); ok=true; pending=null;
+    render(res, qa.length ? `оценка ИИ · с учётом ${qa.length} уточн.` : "оценка ИИ"); haptic("notify","success");
+    $("card").scrollIntoView({behavior: reduce?"auto":"smooth", block:"start"});
+    const h=loadHist().filter(x=>x.title!==res.title); h.unshift(res); saveHist(h); drawHist();
+  }catch(e){
+    if (e?.code!=="cancelled"){ showErr(ERR[e?.code]||"Не удалось получить оценку. Попробуйте ещё раз."); haptic("notify","error"); }
+  }finally{
+    if (!ok) stopWobble(true);
+    setBusy(false);
+  }
+}
+$("ask").addEventListener("submit",e=>{ e.preventDefault(); run(); });
+$("q").addEventListener("keydown",e=>{ if (e.key==="Enter" && !e.shiftKey){ e.preventDefault(); run(); } });
+$("stop").onclick=()=>ctl?.abort();
+
+/* ---------- voice ---------- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if (SR){
+  const mic=$("mic"); mic.hidden=false; let rec=null;
+  const noMic="Микрофон здесь недоступен — используйте диктовку клавиатуры";
+  mic.onclick=()=>{
+    if (rec){ rec.stop(); return; }
+    try{
+      rec=new SR(); rec.lang="ru-RU"; rec.interimResults=true; rec.continuous=false;
+      const before=$("q").value.trim();
+      rec.onresult=ev=>{ let t=""; for (const r of ev.results) t+=r[0].transcript; $("q").value=(before?before+" ":"")+t; };
+      rec.onerror=ev=>{ $("hint").textContent=(ev.error==="not-allowed"||ev.error==="service-not-allowed")?noMic:"Не расслышал, ещё раз"; };
+      rec.onend=()=>{ rec=null; mic.classList.remove("rec"); };
+      rec.start(); mic.classList.add("rec"); $("hint").textContent="Слушаю…";
+    }catch{ rec=null; mic.classList.remove("rec"); $("hint").textContent=noMic; }
+  };
+}
+
+/* ---------- peek: hold the tab, the triangle rises through the glass ---------- */
+(function(){
+  const tab=$("peek"); let held=false;
+  const on=()=>{ if (held) return; held=true; document.body.classList.add("peek"); haptic("impact","light"); };
+  const off=()=>{ if (!held) return; held=false; document.body.classList.remove("peek"); };
+  tab.addEventListener("pointerdown",e=>{ e.preventDefault(); try{ tab.setPointerCapture(e.pointerId); }catch{} on(); });
+  ["pointerup","pointercancel","lostpointercapture"].forEach(ev=>tab.addEventListener(ev,off));
+  tab.addEventListener("contextmenu",e=>e.preventDefault());
+  tab.addEventListener("keydown",e=>{ if ((e.key===" "||e.key==="Enter") && !e.repeat){ e.preventDefault(); on(); } });
+  tab.addEventListener("keyup",e=>{ if (e.key===" "||e.key==="Enter") off(); });
+  tab.addEventListener("blur",off);
+  window.addEventListener("blur",off);
+})();
+
+/* ---------- start: Telegram theme, prefill from the bot ---------- */
+render(EXAMPLES[0],"пример · рассчитан заранее");
+function decodeStart(p){
+  try{ const b=atob(p.replace(/-/g,"+").replace(/_/g,"/")); return new TextDecoder().decode(Uint8Array.from(b,c=>c.charCodeAt(0))); }catch{ return ""; }
+}
+if (tg){
+  tg.ready(); tg.expand();
+  const applyTheme=()=>{
+    document.documentElement.dataset.theme = tg.colorScheme==="dark" ? "dark" : "light";
+    try{ const bg=getComputedStyle(document.documentElement).getPropertyValue("--bg").trim(); tg.setHeaderColor(bg); tg.setBackgroundColor(bg); }catch{}
+  };
+  applyTheme(); tg.onEvent("themeChanged", applyTheme);
+}
+// ?q=текст in the button URL, or startapp=<base64url> in a t.me direct link
+const preset = new URLSearchParams(location.search).get("q") || (tg?.initDataUnsafe?.start_param ? decodeStart(tg.initDataUnsafe.start_param) : "");
+if (preset){ $("q").value = preset.slice(0,2000); $("hint").textContent = "Текст из бота — нажмите «Рассчитать»"; }
+})();
+</script>
+
+</body>
+</html>
