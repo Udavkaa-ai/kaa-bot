@@ -49,7 +49,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 
 /* stage */
 .stage{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:0}
-.stage svg{width:min(100vw, 82vh, 720px);height:auto;max-width:100%;overflow:visible;transform:translateY(4vh)}
+.stage svg{width:min(100vw, 82vh, 720px);height:auto;max-width:100%;overflow:visible;transform:translateY(8vh)}
 .stage .grid-dot{fill:var(--ink);opacity:.07}
 .ring{fill:none;stroke:var(--ink);stroke-opacity:.08;stroke-width:1}
 .base{fill:none;stroke:var(--ink);stroke-opacity:.38;stroke-width:1.4;stroke-dasharray:5 6}
@@ -62,7 +62,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .icon{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* column */
-.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 48px;display:flex;flex-direction:column;gap:14px}
+.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 110px;display:flex;flex-direction:column;gap:14px}
 .glass{background:var(--glass);-webkit-backdrop-filter:blur(9px) saturate(150%);backdrop-filter:blur(9px) saturate(150%);border:1px solid var(--glass-edge);border-radius:20px;box-shadow:0 10px 30px -12px var(--shadow), inset 0 1px 0 rgba(255,255,255,.25)}
 
 header{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -97,10 +97,44 @@ button{font:inherit;cursor:pointer}
 button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--time);outline-offset:2px}
 .hint{font-size:12px;color:var(--muted);padding:0 6px}
 
-.chips{display:flex;flex-wrap:wrap;gap:7px}
-.chip{border-radius:999px;padding:7px 13px;font-size:13.5px;color:var(--ink);font-weight:500}
-.chip:hover{border-color:var(--ink)}
-.chips-label{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:100%;padding-left:4px}
+.chips-label{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-left:4px}
+/* examples: ровная сетка 2×2 вместо рваного ряда пилюль */
+.examples{display:flex;flex-direction:column;gap:8px}
+/* один ряд с горизонтальной прокруткой: не наезжает на треугольник и не рвётся по ширине */
+.ex-grid{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;margin:0 -16px;padding:4px 16px 6px;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 28px),transparent)}
+.ex-grid::-webkit-scrollbar{display:none}
+.ex{flex:none;scroll-snap-align:start;display:flex;align-items:center;gap:9px;height:46px;padding:0 14px 0 10px;border-radius:14px;text-align:left;color:var(--ink);font-size:13.5px;font-weight:600;line-height:1.2;white-space:nowrap;transition:transform .15s, box-shadow .25s, border-color .25s}
+.ex:active{transform:scale(.97)}
+.ex.on{border-color:var(--ink);box-shadow:0 10px 26px -14px var(--shadow),0 0 0 1px var(--ink)}
+.ex .mini{width:30px;height:27px;flex:none}
+.ex span{min-width:0}
+
+/* history */
+.hist{padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.hist-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hist-row{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line)}
+.hist-row:first-of-type{border-top:0}
+.hist-open{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;background:none;border:0;color:var(--ink);text-align:left;padding:9px 2px}
+.hist-open b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-open small{font-size:12px;color:var(--muted)}
+.hist-del{flex:none;width:36px;height:36px;border-radius:10px;border:0;background:none;color:var(--muted);display:grid;place-items:center}
+.hist-del:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,transparent)}
+.hist-del svg{width:16px;height:16px}
+.hist-note{margin:4px 2px 0;font-size:12px;color:var(--muted)}
+.link.small{font-size:12.5px;padding:4px 2px}
+
+/* tip, assumptions, refine */
+.extra{display:flex;flex-direction:column;gap:10px}
+.tip{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:14px;background:color-mix(in srgb,var(--good) 10%,transparent);font-size:14px;line-height:1.45}
+.tip b{flex:none;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--good);padding-top:2px}
+.assume summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600}
+.assume ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.refine{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:14px;border:1px dashed var(--line)}
+.refine label{font-weight:600;font-size:13.5px}
+.refine .ask-row .own{flex:1;min-width:0}
+.refined{margin:0;font-size:12.5px;color:var(--muted)}
+.qwhy{font-size:12.5px;color:var(--muted);margin-top:-4px}
 
 /* clear window over the triangle */
 .window{height:clamp(300px, 54vh, 600px);display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
@@ -196,7 +230,7 @@ footer{font-size:12px;color:var(--muted);padding:4px}
 .fade{transition:opacity .75s cubic-bezier(.45,0,.25,1)}
 .alt.fade{transition:opacity .75s cubic-bezier(.45,0,.25,1), transform .25s, box-shadow .25s, border-color .25s}
 body.peek .fade{opacity:0;pointer-events:none;transition-duration:.45s}
-body.peek .stage svg{transform:translateY(4vh) scale(1.07);transition-duration:.6s}
+body.peek .stage svg{transform:translateY(8vh) scale(1.07);transition-duration:.6s}
 .peek-tab{position:fixed;z-index:5;top:50%;right:0;transform:translateY(-50%);width:calc(54px + env(safe-area-inset-right,0px));height:84px;padding:0 env(safe-area-inset-right,0px) 0 0;border:0;cursor:pointer;
   clip-path:polygon(100% 0,100% 100%,0 50%);background:var(--glass-strong);-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);
   display:flex;align-items:center;justify-content:flex-end;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;transition:width .35s cubic-bezier(.34,1.56,.64,1)}
@@ -207,7 +241,38 @@ body.peek .peek-tab{width:calc(64px + env(safe-area-inset-right,0px))}
 body.peek .peek-tab .pk-ico{transform:scale(1.2) rotate(-8deg)}
 .peek-tab:focus-visible{outline:none}
 .peek-tab:focus-visible .pk-edge polygon{stroke:var(--ink)}
-@media (prefers-reduced-motion: reduce){.bar i,.alt{transition:none}.thinking i,.icon-btn.rec{animation:none}.stage svg{transition:filter .3s}body.peek .stage svg{transform:translateY(4vh)}.wrap{transition:opacity .25s}}
+/* ---------- buddy: живой треугольник-помощник ---------- */
+.buddy{position:fixed;z-index:8;left:max(10px,env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));width:68px;height:68px;padding:0;border:0;background:none;cursor:pointer;
+  transition:left .7s cubic-bezier(.34,1.3,.64,1), bottom .7s cubic-bezier(.34,1.3,.64,1), transform .7s cubic-bezier(.34,1.3,.64,1), opacity .45s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.buddy svg{width:100%;height:100%;overflow:visible;display:block}
+.buddy.center{left:calc(50% - 34px);bottom:calc(50% + 36px);transform:scale(2)}
+.buddy:focus-visible{outline:2px solid var(--time);outline-offset:4px;border-radius:50%}
+.bd-edge{stroke:var(--edge);stroke-width:2.6;stroke-linejoin:round}
+.bd-eye{fill:#fff}.bd-pupil{fill:#161B26}
+.bd-mouth{fill:none;stroke:#161B26;stroke-width:2.4;stroke-linecap:round}
+.bd-mouth-open{fill:#161B26}
+.bubble{position:fixed;z-index:9;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(90px + env(safe-area-inset-bottom,0px));width:min(330px,calc(100vw - 24px));box-sizing:border-box;padding:13px 15px 11px;border-radius:18px 18px 18px 6px;
+  background:var(--glass-strong);font-size:14.5px;line-height:1.45;display:flex;flex-direction:column;gap:10px;transform-origin:20px 100%;animation:pop .35s cubic-bezier(.34,1.56,.64,1)}
+.bubble.intro{left:50%;bottom:auto;top:calc(50% + 40px);transform:translateX(-50%);border-radius:18px;transform-origin:50% 0;animation:popc .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:scale(.6) translateY(10px)}}
+@keyframes popc{from{opacity:0;transform:translateX(-50%) scale(.6)}}
+.bubble p{margin:0}
+.bubble .who{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.bubble .formula{font-size:13.5px;padding:8px 10px;border-radius:12px;background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.bubble .formula i{font-style:normal;font-weight:700}
+.bubble .formula .r{color:var(--res)}.bubble .formula .t{color:var(--time)}.bubble .formula .q{color:var(--qual)}
+.bubble .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bubble .acts .spacer{flex:1}
+.bubble .btn{padding:8px 16px;font-size:13.5px;border-radius:12px}
+.bubble .link{padding:6px 2px;font-size:13px}
+.bubble .dots{display:flex;gap:5px}
+.bubble .dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.bubble .dots i.on{background:var(--ink)}
+.scrim{position:fixed;inset:0;z-index:7;background:color-mix(in srgb,var(--bg) 62%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:fadein .4s}
+@keyframes fadein{from{opacity:0}}
+body.peek .buddy, body.peek .bubble{opacity:0;pointer-events:none}
+
+@media (prefers-reduced-motion: reduce){.buddy,.bubble{transition:none;animation:none}.bar i,.alt{transition:none}.thinking i,.icon-btn.rec{animation:none}.stage svg{transition:filter .3s}body.peek .stage svg{transform:translateY(8vh)}.wrap{transition:opacity .25s}}
 </style>
 </head>
 <body>
@@ -246,6 +311,32 @@ body.peek .peek-tab .pk-ico{transform:scale(1.2) rotate(-8deg)}
   <svg class="pk-edge" viewBox="0 0 54 84" preserveAspectRatio="none" aria-hidden="true"><polygon points="54,0 54,84 0,42" fill="none" stroke="url(#pk)" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>
   <svg class="pk-ico" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="pk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--res)"/><stop offset=".55" stop-color="var(--qual)"/><stop offset="1" stop-color="var(--time)"/></linearGradient></defs><path d="M12 3.5 L21 19.5 L3 19.5 Z" fill="url(#pk)" stroke="var(--edge)" stroke-width="1.6" stroke-linejoin="round"/></svg>
 </button>
+
+<div class="scrim" id="scrim" hidden></div>
+<button type="button" class="buddy" id="buddy" aria-label="Треугольник-помощник: подсказки" aria-haspopup="dialog">
+  <svg viewBox="-60 -60 120 120" aria-hidden="true">
+    <defs>
+      <linearGradient id="bdg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--res)"/><stop offset=".55" stop-color="var(--qual)"/><stop offset="1" stop-color="var(--time)"/></linearGradient>
+      <filter id="bdglow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>
+    </defs>
+    <ellipse id="bdShadow" cx="0" cy="50" rx="30" ry="5" fill="#0B1020" opacity=".18"/>
+    <g id="bdRoot">
+      <path id="bdAura" fill="url(#bdg)" opacity=".45" filter="url(#bdglow)"/>
+      <path id="bdShape" fill="url(#bdg)" class="bd-edge"/>
+      <g id="bdFace">
+        <g id="bdEyes">
+          <ellipse class="bd-eye" cx="-10" cy="2" rx="6.2" ry="7"/><ellipse class="bd-eye" cx="10" cy="2" rx="6.2" ry="7"/>
+          <circle class="bd-pupil" id="bdPL" cx="-10" cy="3" r="3.2"/><circle class="bd-pupil" id="bdPR" cx="10" cy="3" r="3.2"/>
+        </g>
+        <path id="bdMouth" class="bd-mouth"/>
+        <ellipse id="bdMouthO" class="bd-mouth-open" cx="0" cy="17" rx="4" ry="0"/>
+      </g>
+    </g>
+    <g id="bdDots"></g>
+    <g id="bdFx"></g>
+  </svg>
+</button>
+<div class="bubble glass" id="bubble" role="dialog" aria-live="polite" hidden></div>
 
 <div class="thinking glass fade" id="thinking" hidden><i></i><i></i><i></i><span>Считаю баланс…</span></div>
 
@@ -292,7 +383,7 @@ body.peek .peek-tab .pk-ico{transform:scale(1.2) rotate(-8deg)}
   </form>
 
   <section class="clarify glass fade" id="clarify" hidden aria-live="polite">
-    <div class="clarify-head"><span class="dot"></span>Уточню пару деталей</div>
+    <div class="clarify-head"><span class="dot"></span>Три уточнения — так расчёт будет точнее</div>
     <div id="qs" style="display:flex;flex-direction:column;gap:16px"></div>
     <div class="ask-row">
       <button type="button" class="link" id="skip">Пропустить</button>
@@ -301,7 +392,7 @@ body.peek .peek-tab .pk-ico{transform:scale(1.2) rotate(-8deg)}
     </div>
   </section>
 
-  <div class="chips" id="examples"><span class="chips-label fade">Примеры</span></div>
+  <section class="examples"><span class="chips-label fade">Примеры — листайте и нажмите</span><div class="ex-grid" id="examples"></div></section>
   <div class="err glass fade" id="err" hidden></div>
 
   <div class="window"><span class="legend glass fade">Пунктир — как обычно · цвет — с этим решением</span></div>
@@ -314,14 +405,30 @@ body.peek .peek-tab .pk-ico{transform:scale(1.2) rotate(-8deg)}
     </div>
     <div class="score" id="score"></div>
     <p class="verdict" id="verdict"></p>
+    <div class="extra" id="extra">
+      <div class="tip" id="tip" hidden><b>Совет</b><span></span></div>
+      <details class="assume" id="assume" hidden><summary>На чём держится расчёт</summary><ul></ul></details>
+    </div>
     <div class="rows" id="rows"></div>
     <div class="ledger" id="ledger"></div>
+    <form class="refine" id="refine" hidden>
+      <label for="refineIn">Что-то не учтено? Допишите — пересчитаю один раз</label>
+      <div class="ask-row">
+        <input class="own" id="refineIn" maxlength="500" placeholder="Например: у меня проездной, а ехать в час пик">
+        <button type="submit" class="btn" id="refineGo">Пересчитать</button>
+      </div>
+    </form>
+    <p class="refined" id="refined" hidden></p>
   </section>
 
   <div class="sect fade" id="altsHead">Варианты по чистой выгоде — нажмите, треугольник перестроится</div>
   <div class="alts" id="alts"></div>
 
-  <div class="chips" id="history" hidden><span class="chips-label fade">Недавние</span></div>
+  <section class="hist glass fade" id="history" hidden>
+    <div class="hist-head"><span class="chips-label">Мои расчёты</span><button type="button" class="link small" id="histClear">Удалить все</button></div>
+    <div id="histList"></div>
+    <p class="hist-note">Хранятся только на этом устройстве, на сервере не сохраняются.</p>
+  </section>
   <footer id="foot" class="fade">Оси относительные: ±100 — предельное изменение по сравнению с вашим обычным вариантом.</footer>
 </div>
 
@@ -338,28 +445,36 @@ const EXAMPLES = [
   {title:"Домой на такси", ask:"Хочу сегодня доехать домой побыстрее — на такси вместо электрички с автобусом", baseline:"электричка и автобус", period:"за поездку",
    resources:60, time:-50, quality:40, money:1300, minutes:-60, quality_rub:400,
    notes:{resources:"Поездка в разы дороже проезда на общественном транспорте", time:"Без пересадок и ожидания — дома заметно раньше", quality:"Сидя, в тепле, можно поработать или подремать"},
-   verdict:"Платите деньгами за время и комфорт. Оправдано, если вечер дома чего-то стоит или вы сильно устали.",
+   verdict:"Платите деньгами за время и комфорт. Оправдано, если вечер дома чего-то стоит или вы сильно устали. Каждый день так ездить — дорогая привычка: за месяц набегает как за абонемент в хороший спортзал.",
+   tip:"Сравните цену в нескольких приложениях и вызовите машину за 5 минут до выхода — сэкономите и деньги, и ожидание.",
+   assumptions:["Обычный путь — электричка и автобус, около полутора часов","Поездка вечером, без сильного повышающего коэффициента"],
    alternatives:[
      {title:"Такси только до станции", resources:20, time:-20, quality:15, money:400, minutes:-25, quality_rub:150, note:"Срезает самый медленный отрезок", verdict:"Компромисс: доплата скромная, а самый долгий кусок пути исчезает. Хорош, когда до станции идёт медленный автобус."},
      {title:"Подождать и уехать позже", resources:0, time:25, quality:20, money:0, minutes:40, quality_rub:250, note:"Свободнее в транспорте, но дома позже", verdict:"Деньги не тратите, едете спокойнее, но вечер дома короче. Разумно, если задержку можно занять делом."}]},
   {title:"Перекус в кафе", ask:"Перекусить в кафе вместо того, чтобы готовить дома", baseline:"приготовить дома", period:"за раз",
    resources:35, time:-55, quality:10, money:450, minutes:-50, quality_rub:150,
    notes:{resources:"Чек выше стоимости продуктов, зато не тратите силы на готовку", time:"Не нужно готовить и мыть посуду", quality:"Разнообразие выше, контроль над составом ниже"},
-   verdict:"Покупаете время за умеренные деньги. Хорошая сделка в загруженный день, дорогая привычка — каждый день.",
+   verdict:"Покупаете время за умеренные деньги. Хорошая сделка в загруженный день, дорогая привычка — каждый день. Если готовка для вас отдых, а не обязанность, выигрыш по времени почти ничего не стоит.",
+   tip:"Выбирайте бизнес-ланч в будни — тот же выигрыш по времени за меньший чек.",
+   assumptions:["Дома готовите простое блюдо минут за 40 плюс посуда","Кафе рядом, дорога туда не дольше 10 минут"],
    alternatives:[
      {title:"Готовая еда из магазина", resources:10, time:-40, quality:-10, money:150, minutes:-40, quality_rub:-100, note:"Почти так же быстро, но дешевле", verdict:"Почти та же экономия времени за треть цены кафе. Качество еды проседает, так что это вариант на загруженный день."},
      {title:"Готовить сразу на 2–3 дня", resources:-10, time:-15, quality:10, money:-100, minutes:-20, quality_rub:50, note:"Одна большая готовка вместо трёх", verdict:"Немного дешевле и быстрее обычного, качество под вашим контролем. Требует один свободный вечер заранее."}]},
   {title:"Подрядчик подешевле", ask:"Взять подрядчика подешевле вместо проверенного", baseline:"проверенный подрядчик", period:"за проект",
    resources:-40, time:25, quality:-35, money:-40000, minutes:900, quality_rub:-15000,
    notes:{resources:"Бюджет меньше на старте", time:"Вероятны переделки и согласования", quality:"Риск недочётов выше, нужен плотный контроль"},
-   verdict:"Экономия на входе часто возвращается временем на контроль и переделки. Имеет смысл для некритичных работ.",
+   verdict:"Экономия на входе часто возвращается временем на контроль и переделки. Имеет смысл для некритичных работ. Для того, что потом сложно исправить, — электрика, гидроизоляция, сдача заказчику — риск обычно дороже экономии.",
+   tip:"Платите по этапам и принимайте каждый — так дешёвый подрядчик не уйдёт далеко с ошибкой.",
+   assumptions:["Проект среднего размера, около 200 тысяч у проверенного","Переделки занимают пару выходных вашего времени"],
    alternatives:[
      {title:"Дешёвый, но с поэтапной приёмкой", resources:-30, time:30, quality:-10, money:-30000, minutes:1200, quality_rub:-5000, note:"Качество держите контролем, платите временем", verdict:"Экономия сохраняется, а риск брака снимаете своей приёмкой. Платите за это собственными часами."},
      {title:"Проверенный, но урезать объём", resources:-15, time:0, quality:0, money:-15000, minutes:0, quality_rub:0, note:"Платите меньше, отказавшись от второстепенного", verdict:"Надёжность прежняя, бюджет меньше, но часть работ уходит на потом. Хорош, если объём можно честно разделить."}]},
   {title:"Отчёт за вечер без вычитки", ask:"Сделать отчёт за один вечер без вычитки вместо двух дней с проверкой", baseline:"отчёт за два дня с проверкой", period:"за отчёт",
    resources:-10, time:-50, quality:-40, money:0, minutes:-480, quality_rub:-9000,
    notes:{resources:"Чуть меньше сил сейчас", time:"Сдаёте на день раньше", quality:"Ошибки и недоработки уйдут адресату"},
-   verdict:"Быстро, но качество проседает. Подходит для черновика, рискованно для документа на подпись.",
+   verdict:"Быстро, но качество проседает. Подходит для черновика, рискованно для документа на подпись. Ошибки в отчёте для руководства потом стоят дороже сэкономленного дня.",
+   tip:"Даже 20 минут вычитки на следующее утро ловят большую часть опечаток и нестыковок.",
+   assumptions:["Обычно на отчёт уходит два рабочих дня","Отчёт читает руководство, ошибки заметят"],
    alternatives:[
      {title:"За вечер + вычитка утром", resources:0, time:-30, quality:-10, money:0, minutes:-450, quality_rub:-2000, note:"Полчаса утром снимают основные ошибки", verdict:"Почти тот же выигрыш по времени, а качество теряете намного меньше. Обычно лучший баланс для рабочего документа."},
      {title:"Отдать вычитку коллеге", resources:5, time:-40, quality:-5, money:0, minutes:-420, quality_rub:-1000, note:"Свежий взгляд ловит то, что пропустите вы", verdict:"Быстро и почти без потери качества, но тратите время коллеги. Уместно, если вы отвечаете ему тем же."}]},
@@ -464,6 +579,11 @@ function renderHead(a){
   $("title").textContent = a.title || "Решение";
   $("vs").textContent = current.baseline ? "по сравнению с: " + current.baseline : "";
   $("verdict").textContent = isMain ? (current.verdict||"") : (a.verdict || a.note || "");
+  const tip=isMain ? (current.tip||"") : "", as=isMain && Array.isArray(current.assumptions) ? current.assumptions.filter(Boolean) : [];
+  $("tip").hidden=!tip; $("tip").querySelector("span").textContent=tip;
+  const ul=$("assume").querySelector("ul"); ul.textContent="";
+  as.forEach(x=>{ const li=document.createElement("li"); li.textContent=x; ul.appendChild(li); });
+  $("assume").hidden=!as.length;
 }
 function render(res, src){
   current=res; selected=res; source=src;
@@ -472,6 +592,12 @@ function render(res, src){
   renderLedger(res);
   renderAlts();
   $("err").hidden=true;
+  // пересчёт — один раз и только для оценки ИИ
+  $("refine").hidden = !res.ai || !!res.refined;
+  $("refineIn").value="";
+  $("refined").hidden = !res.refined;
+  $("refined").textContent = res.refined ? "Пересчитано с учётом: «"+res.refined+"». Повторный пересчёт — новым расчётом." : "";
+  document.querySelectorAll(".ex").forEach(x=>x.classList.toggle("on", x._ex===res));
   springTo(res);
 }
 function renderRows(vals, notes){
@@ -631,18 +757,46 @@ function renderAltsKeepFocus(){
 }
 
 /* ---------- examples & history ---------- */
-EXAMPLES.forEach(ex=>{ const c=document.createElement("button"); c.type="button"; c.className="chip glass fade"; c.textContent=ex.title; c.onclick=()=>{ $("q").value=ex.ask; $("clarify").hidden=true; pending=null; $("hint").textContent="Пример в поле — поправьте под себя и нажмите «Рассчитать»"; render(ex,"пример · рассчитан заранее"); }; $("examples").appendChild(c); });
-const HKEY="tri-history-v1";
-const loadHist=()=>{ try{ return JSON.parse(localStorage.getItem(HKEY)||"[]"); }catch{ return []; } };
-const saveHist=h=>{ try{ localStorage.setItem(HKEY, JSON.stringify(h.slice(0,6))); }catch{} };
+EXAMPLES.forEach(ex=>{
+  const c=document.createElement("button"); c.type="button"; c.className="ex glass fade"; c._ex=ex;
+  const t=document.createElement("span"); t.textContent=ex.title;
+  const m=miniSVG(ex); m.setAttribute("aria-hidden","true");
+  c.append(m,t);
+  c.onclick=()=>{ $("q").value=ex.ask; $("clarify").hidden=true; pending=null; $("hint").textContent="Пример в поле — поправьте под себя и нажмите «Рассчитать»"; render(ex,"пример · рассчитан заранее"); buddy.react("example"); };
+  $("examples").appendChild(c);
+});
+const HKEY="tri-history-v1", HMAX=10;
+const loadHist=()=>{ try{ const h=JSON.parse(localStorage.getItem(HKEY)||"[]"); return Array.isArray(h)?h:[]; }catch{ return []; } };
+const saveHist=h=>{ try{ if (h.length) localStorage.setItem(HKEY, JSON.stringify(h.slice(0,HMAX))); else localStorage.removeItem(HKEY); }catch{} };
+const when=ts=>{ if (!ts) return ""; const d=new Date(ts), now=new Date();
+  const hm=d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+  return d.toDateString()===now.toDateString() ? "сегодня, "+hm : d.toLocaleDateString("ru-RU",{day:"numeric",month:"short"})+", "+hm; };
+const ICON_X='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 function drawHist(){
-  const h=loadHist(), box=$("history"); box.querySelectorAll(".chip").forEach(x=>x.remove()); box.hidden=!h.length;
-  h.forEach(r=>{ const c=document.createElement("button"); c.type="button"; c.className="chip glass fade"; c.textContent=r.title||"Решение"; c.onclick=()=>{ if (r.ask) $("q").value=r.ask; render(r,"из недавних · оценка ИИ"); }; box.appendChild(c); });
+  const h=loadHist(), list=$("histList"); list.textContent=""; $("history").hidden=!h.length;
+  h.forEach(r=>{
+    const row=document.createElement("div"); row.className="hist-row";
+    const open=document.createElement("button"); open.type="button"; open.className="hist-open";
+    const b=document.createElement("b"); b.textContent=r.title||"Решение";
+    const sm=document.createElement("small"); const sc=score(r);
+    sm.textContent=[when(r.at), sc.has ? srub(sc.net)+(r.period?" "+r.period:"") : ""].filter(Boolean).join(" · ");
+    open.append(b,sm);
+    open.onclick=()=>{ if (r.ask) $("q").value=r.ask; render(r,"из моих расчётов · оценка ИИ"); $("card").scrollIntoView({behavior: reduce?"auto":"smooth", block:"start"}); };
+    const del=document.createElement("button"); del.type="button"; del.className="hist-del"; del.innerHTML=ICON_X;
+    del.setAttribute("aria-label","Удалить расчёт «"+(r.title||"Решение")+"»");
+    del.onclick=()=>{ saveHist(loadHist().filter(x=>!(x.id ? x.id===r.id : x.title===r.title && x.at===r.at))); drawHist(); haptic("impact","light"); buddy.react("deleted"); };
+    row.append(open,del); list.appendChild(row);
+  });
 }
-drawHist();
+$("histClear").onclick=()=>{
+  const go=ok=>{ if (!ok) return; saveHist([]); drawHist(); haptic("notify","success"); buddy.react("cleared"); };
+  const msg="Удалить все сохранённые расчёты с этого устройства?";
+  if (tg?.showConfirm && tg.isVersionAtLeast?.("6.2")) tg.showConfirm(msg, go); else go(confirm(msg));
+};
 
 /* ---------- AI ---------- */
 const tg = window.Telegram?.WebApp || null;
+drawHist();
 const API = (document.querySelector('meta[name="triangle-api"]')?.content || "api/triangle").replace(/\/$/,"");
 const haptic = (kind, arg) => { try{ const h=tg?.HapticFeedback; if (!h) return;
   if (kind==="impact") h.impactOccurred(arg||"light"); else if (kind==="select") h.selectionChanged(); else h.notificationOccurred(arg||"success"); }catch{} };
@@ -681,15 +835,15 @@ async function run(){
   const text=$("q").value.trim();
   if (!text){ $("q").focus(); return; }
   $("clarify").hidden=true;
-  setBusy(true,"Думаю, что уточнить…"); startWobble();
+  setBusy(true,"Думаю, что уточнить…"); startWobble(); buddy.react(text.length<25 ? "short" : "thinking");
   let qs=[];
   try{
     const r=await api("ask",{text});
     qs=(Array.isArray(r?.questions)?r.questions:[]).filter(x=>x&&x.q).slice(0,3)
-      .map(x=>({q:String(x.q).slice(0,120), options:(Array.isArray(x.options)?x.options:[]).map(String).filter(Boolean).slice(0,4)}));
+      .map(x=>({q:String(x.q).slice(0,140), why:String(x.why||"").slice(0,140), options:(Array.isArray(x.options)?x.options:[]).map(String).filter(Boolean).slice(0,4)}));
   }catch(e){
     if (e?.code==="cancelled"){ stopWobble(true); setBusy(false); return; }
-    if (["bad_auth","rate_limited","network","bad_request"].includes(e?.code)){ stopWobble(true); setBusy(false); showErr(ERR[e.code]); return; }
+    if (["bad_auth","rate_limited","network","bad_request"].includes(e?.code)){ stopWobble(true); setBusy(false); showErr(ERR[e.code]); buddy.react("error"); return; }
     qs=[]; // questions are optional — go straight to the estimate
   }
   stopWobble(false); setBusy(false);
@@ -713,44 +867,66 @@ function drawQuestions(){
     });
     own.addEventListener("input",()=>{ pending.ans[i]=own.value.trim(); if (own.value) opts.querySelectorAll(".opt").forEach(z=>z.classList.remove("sel")); });
     own.addEventListener("keydown",e=>{ if (e.key==="Enter"){ e.preventDefault(); $("go2").click(); } });
-    b.append(t); if (x.options.length) b.append(opts); b.append(own);
+    b.append(t);
+    if (x.why){ const w=document.createElement("div"); w.className="qwhy"; w.textContent=x.why; b.append(w); }
+    if (x.options.length) b.append(opts); b.append(own);
     box.appendChild(b);
   });
   $("clarify").hidden=false;
   $("clarify").scrollIntoView({behavior: reduce?"auto":"smooth", block:"nearest"});
+  buddy.react("questions");
 }
 $("go2").onclick=()=>{ if (!pending) return; const qa=pending.qs.map((x,i)=>({q:x.q,a:pending.ans[i]})).filter(x=>x.a); $("clarify").hidden=true; evaluate(pending.text, qa); };
 $("skip").onclick=()=>{ if (!pending) return; $("clarify").hidden=true; evaluate(pending.text, []); };
 
-/* step 2: the estimate */
-async function evaluate(text, qa){
-  setBusy(true,"Считаю баланс…"); startWobble();
+/* step 2: the estimate (refine — один пересчёт с дописанным уточнением) */
+const str=(v,n)=>String(v||"").slice(0,n);
+async function evaluate(text, qa, refine){
+  setBusy(true, refine ? "Пересчитываю…" : "Считаю баланс…"); startWobble(); buddy.react("estimating");
   let ok=false;
   try{
-    const r=await api("estimate",{text, qa, rate});
+    const body={text, qa, rate};
+    if (refine) body.refine={note:refine.note, prev:{title:refine.prev.title, baseline:refine.prev.baseline, period:refine.prev.period,
+      resources:refine.prev.resources, time:refine.prev.time, quality:refine.prev.quality, money:refine.prev.money, minutes:refine.prev.minutes,
+      quality_rub:refine.prev.quality_rub, verdict:refine.prev.verdict}};
+    const r=await api("estimate",body);
     if (!r || typeof r!=="object") throw {code:"invalid_json"};
     const res={
-      title:String(r.title||text).slice(0,60), baseline:String(r.baseline||"").slice(0,80),
+      title:str(r.title||text,70), baseline:str(r.baseline,100),
       resources:clamp(r.resources), time:clamp(r.time), quality:clamp(r.quality),
-      money:num(r.money), minutes:num(r.minutes), quality_rub:num(r.quality_rub), period:String(r.period||"").slice(0,30),
-      notes:{resources:String(r.notes?.resources||""),time:String(r.notes?.time||""),quality:String(r.notes?.quality||"")},
-      verdict:String(r.verdict||""),
+      money:num(r.money), minutes:num(r.minutes), quality_rub:num(r.quality_rub), period:str(r.period,30),
+      notes:{resources:str(r.notes?.resources,200),time:str(r.notes?.time,200),quality:str(r.notes?.quality,200)},
+      verdict:str(r.verdict,700), tip:str(r.tip,220),
+      assumptions:(Array.isArray(r.assumptions)?r.assumptions:[]).map(x=>str(x,140)).filter(Boolean).slice(0,3),
       alternatives:(Array.isArray(r.alternatives)?r.alternatives:[]).slice(0,3).map(a=>({
-        title:String(a?.title||""),note:String(a?.note||""),verdict:String(a?.verdict||""),
-        notes:{resources:String(a?.notes?.resources||""),time:String(a?.notes?.time||""),quality:String(a?.notes?.quality||"")},resources:clamp(a?.resources),time:clamp(a?.time),quality:clamp(a?.quality),
+        title:str(a?.title,70),note:str(a?.note,120),verdict:str(a?.verdict,500),
+        notes:{resources:str(a?.notes?.resources,200),time:str(a?.notes?.time,200),quality:str(a?.notes?.quality,200)},resources:clamp(a?.resources),time:clamp(a?.time),quality:clamp(a?.quality),
         money:num(a?.money),minutes:num(a?.minutes),quality_rub:num(a?.quality_rub)}))
     };
-    res.ask=text; stopWobble(false); ok=true; pending=null;
-    render(res, qa.length ? `оценка ИИ · с учётом ${qa.length} уточн.` : "оценка ИИ"); haptic("notify","success");
+    res.ask=text; res.qa=qa; res.ai=true; res.at=Date.now();
+    res.id = refine?.prev?.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+    if (refine) res.refined=refine.note.slice(0,120);
+    stopWobble(false); ok=true; pending=null;
+    const src = refine ? "оценка ИИ · пересчёт" : (qa.length ? `оценка ИИ · с учётом ${qa.length} уточн.` : "оценка ИИ");
+    render(res, src); haptic("notify","success");
     $("card").scrollIntoView({behavior: reduce?"auto":"smooth", block:"start"});
-    const h=loadHist().filter(x=>x.title!==res.title); h.unshift(res); saveHist(h); drawHist();
+    const h=loadHist().filter(x=>x.id!==res.id); h.unshift(res); saveHist(h); drawHist();
+    buddy.react("result", score(res));
   }catch(e){
-    if (e?.code!=="cancelled"){ showErr(ERR[e?.code]||"Не удалось получить оценку. Попробуйте ещё раз."); haptic("notify","error"); }
+    if (e?.code!=="cancelled"){ const m=ERR[e?.code]||"Не удалось получить оценку. Попробуйте ещё раз."; showErr(m); haptic("notify","error"); buddy.react("error"); }
+    else buddy.react("idle");
   }finally{
     if (!ok) stopWobble(true);
     setBusy(false);
   }
 }
+$("refine").addEventListener("submit",e=>{
+  e.preventDefault();
+  const note=$("refineIn").value.trim();
+  if (!note){ $("refineIn").focus(); return; }
+  if (!current?.ai || current.refined) return;
+  evaluate(current.ask, current.qa||[], {note, prev:current});
+});
 $("ask").addEventListener("submit",e=>{ e.preventDefault(); run(); });
 $("q").addEventListener("keydown",e=>{ if (e.key==="Enter" && !e.shiftKey){ e.preventDefault(); run(); } });
 $("stop").onclick=()=>ctl?.abort();
@@ -787,6 +963,197 @@ if (SR){
   window.addEventListener("blur",off);
 })();
 
+/* ---------- buddy: живой треугольник, который объясняет, что тут происходит ---------- */
+const buddy = (() => {
+  const btn=$("buddy"), bub=$("bubble"), scrim=$("scrim");
+  const shape=$("bdShape"), aura=$("bdAura"), root=$("bdRoot"), face=$("bdFace"), eyes=$("bdEyes");
+  const pl=$("bdPL"), pr=$("bdPR"), mouth=$("bdMouth"), mouthO=$("bdMouthO"), dotsG=$("bdDots"), fx=$("bdFx"), shadow=$("bdShadow");
+  const ANG=[-90,150,30], COL=["var(--res)","var(--time)","var(--qual)"], R=38;
+  const dots=ANG.map((a,i)=>el("circle",{r:5.5,fill:COL[i],stroke:"var(--edge)","stroke-width":2},dotsG));
+
+  // текущее состояние и цели; всё плавно тянется к целям пружиной
+  const st={bulge:0,bv:0,scale:1,sv:0,rot:0,rv:0,squash:0,qv:0,gone:0,gv:0,smile:3,look:[0,0]};
+  const tg_={bulge:0,scale:1,rot:0,squash:0,gone:0,smile:3};
+  let mode="idle", talkUntil=0, blinkAt=performance.now()+2500, blinkT=0, pulse=[0,0,0], parts=[], t0=performance.now(), last=t0, raf=0, hideTimer=0;
+  const spring=(k,v,target,dt,stiff=90,damp=11)=>{ const f=-stiff*(st[k]-target)-damp*st[v]; st[v]+=f*dt; st[k]+=st[v]*dt; };
+
+  function pathFor(rs, bulge){
+    const P=ANG.map((a,i)=>{ const r=rs[i], t=a*Math.PI/180; return [r*Math.cos(t), r*Math.sin(t)]; });
+    let d=`M${P[0][0].toFixed(1)} ${P[0][1].toFixed(1)}`;
+    for (let i=0;i<3;i++){
+      const A=P[i], B=P[(i+1)%3], mx=(A[0]+B[0])/2, my=(A[1]+B[1])/2, len=Math.hypot(mx,my)||1;
+      const cx=mx+mx/len*bulge*R*.62, cy=my+my/len*bulge*R*.62;
+      d+=` Q${cx.toFixed(1)} ${cy.toFixed(1)} ${B[0].toFixed(1)} ${B[1].toFixed(1)}`;
+    }
+    return {d:d+"Z", P};
+  }
+  function burst(n, colors, spread=1){
+    for (let i=0;i<n;i++){
+      const a=Math.random()*Math.PI*2, sp=(40+Math.random()*70)*spread;
+      parts.push({x:0,y:0,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-20,life:0,max:.7+Math.random()*.5,c:colors[i%colors.length],r:1.6+Math.random()*2.2,
+        node:el("circle",{fill:colors[i%colors.length]},fx)});
+    }
+  }
+  function frame(now){
+    const dt=Math.min(.033,(now-last)/1000||.016); last=now; const t=(now-t0)/1000;
+    const think=mode==="think", talking=now<talkUntil;
+    // радиусы вершин: дыхание, болтовня, «думаю», пульс по очереди
+    const rs=ANG.map((_,i)=>{
+      let k=.035*Math.sin(t*1.7+i*2.1);
+      if (think) k=.2*Math.sin(t*6.5+i*2.4);
+      else if (talking) k+=.05*Math.sin(t*10+i*1.3);
+      pulse[i]=Math.max(0,pulse[i]-dt*1.6);
+      return R*(1+k+pulse[i]*.35);
+    });
+    spring("bulge","bv",tg_.bulge,dt,70,6.5);
+    spring("scale","sv",tg_.scale,dt,120,12);
+    spring("squash","qv",tg_.squash,dt,160,9);
+    spring("gone","gv",tg_.gone,dt,60,13);
+    const rotTarget = think ? st.rot+dt*220 : tg_.rot + 4*Math.sin(t*.9);
+    if (think) st.rot=rotTarget; else spring("rot","rv",rotTarget,dt,40,9);
+    st.smile+= (tg_.smile-st.smile)*Math.min(1,dt*8);
+
+    const g=Math.max(0,Math.min(1,st.gone));
+    const {d,P}=pathFor(rs, st.bulge);
+    shape.setAttribute("d",d); aura.setAttribute("d",d);
+    const bob = mode==="happy" ? -Math.abs(Math.sin(t*7))*7 : Math.sin(t*2)*1.6;
+    const sy=1-st.squash*.25, sx=1+st.squash*.2, sc=st.scale*(1-g*.75);
+    root.setAttribute("transform",`translate(0 ${(bob+st.squash*6).toFixed(2)}) rotate(${st.rot.toFixed(1)}) scale(${(sc*sx).toFixed(3)} ${(sc*sy).toFixed(3)})`);
+    root.setAttribute("opacity",(1-g).toFixed(3));
+    face.setAttribute("transform",`rotate(${(-st.rot).toFixed(1)})`);
+    shadow.setAttribute("rx",(30*(1-g*.8)*(1+bob/40)).toFixed(1)); shadow.setAttribute("opacity",(.18*(1-g)).toFixed(3));
+    // вершины-точки: при исчезновении разлетаются, при появлении собираются
+    dots.forEach((c,i)=>{
+      const rad=st.rot*Math.PI/180, [x,y]=P[i], fly=1+g*1.6;
+      const X=(x*Math.cos(rad)-y*Math.sin(rad))*sc*fly*(g?1/Math.max(.25,1-g*.75):1), Y=(x*Math.sin(rad)+y*Math.cos(rad))*sc*fly*(g?1/Math.max(.25,1-g*.75):1)+bob;
+      c.setAttribute("cx",X.toFixed(1)); c.setAttribute("cy",Y.toFixed(1));
+      c.setAttribute("r",(5.5*(1+pulse[i]*.8)*(1-g*.4)).toFixed(2));
+      c.setAttribute("opacity",(g>.75? Math.max(0,1-(g-.75)*4):1).toFixed(3));
+    });
+    // моргание и взгляд
+    if (now>blinkAt){ blinkT=now; blinkAt=now+2200+Math.random()*3200; }
+    const bk=now-blinkT<130 ? .12 : 1;
+    eyes.setAttribute("transform",`translate(0 2) scale(1 ${bk}) translate(0 -2)`);
+    const lx=st.look[0]+Math.sin(t*.7)*.6, ly=st.look[1];
+    pl.setAttribute("cx",(-10+lx).toFixed(2)); pl.setAttribute("cy",(3+ly).toFixed(2));
+    pr.setAttribute("cx",(10+lx).toFixed(2)); pr.setAttribute("cy",(3+ly).toFixed(2));
+    // рот: улыбка/грусть, при разговоре — открывается
+    const open = talking ? Math.abs(Math.sin(t*13))*3.6 : 0;
+    mouthO.setAttribute("ry",open.toFixed(2)); mouthO.setAttribute("opacity",open>.4?1:0);
+    mouth.setAttribute("d",`M-7 14 Q0 ${(14+st.smile).toFixed(1)} 7 14`); mouth.setAttribute("opacity",open>.4?0:1);
+    // искры
+    parts=parts.filter(p=>{ p.life+=dt; if (p.life>p.max){ p.node.remove(); return false; }
+      p.vy+=60*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=.97;
+      p.node.setAttribute("cx",p.x.toFixed(1)); p.node.setAttribute("cy",p.y.toFixed(1));
+      p.node.setAttribute("r",(p.r*(1-p.life/p.max)).toFixed(2)); return true; });
+    raf=requestAnimationFrame(frame);
+  }
+  const startLoop=()=>{ if (!raf && !reduce){ last=performance.now(); raf=requestAnimationFrame(frame); } };
+  document.addEventListener("visibilitychange",()=>{ if (document.hidden){ cancelAnimationFrame(raf); raf=0; } else startLoop(); });
+
+  /* ----- эффекты ----- */
+  const fxs={
+    happy(){ mode="happy"; tg_.smile=7; tg_.squash=0; burst(14,COL); setTimeout(()=>{ if (mode==="happy") mode="idle"; },1600); },
+    sad(){ mode="idle"; tg_.smile=-4; st.qv+=7; },
+    think(){ mode="think"; tg_.smile=1; },
+    idle(){ mode="idle"; tg_.smile=3; tg_.bulge=0; },
+    morph(){ st.bv+=9; setTimeout(()=>{ st.bv-=14; },380); },
+    jump(){ st.qv-=9; st.sv+=3; },
+    pulse(){ [0,1,2].forEach(i=>setTimeout(()=>{ pulse[i]=1; },i*320)); },
+    vanish(cb){ tg_.gone=1; burst(10,COL,.6); setTimeout(()=>cb&&cb(),520); },
+    appear(){ st.gone=1; st.gv=0; tg_.gone=0; st.sv=-4; burst(12,COL,.8); },
+  };
+
+  /* ----- реплики ----- */
+  function talk(ms){ talkUntil=performance.now()+Math.min(4200,ms); }
+  function say(html, opts={}){
+    clearTimeout(hideTimer);
+    bub.className="bubble glass"+(opts.intro?" intro":"");
+    bub.innerHTML="";
+    const who=document.createElement("span"); who.className="who"; who.textContent="Треугольник"; bub.appendChild(who);
+    const p=document.createElement("div"); p.innerHTML=html; bub.appendChild(p);   // html — только наши строки
+    if (opts.acts){ const a=document.createElement("div"); a.className="acts"; opts.acts.forEach(x=>a.appendChild(x)); bub.appendChild(a); }
+    bub.hidden=false; void bub.offsetWidth; bub.style.animation="none"; void bub.offsetWidth; bub.style.animation="";
+    talk(html.replace(/<[^>]+>/g,"").length*45);
+    if (opts.ttl) hideTimer=setTimeout(hide, opts.ttl);
+  }
+  function hide(){ clearTimeout(hideTimer); bub.hidden=true; }
+  const mkBtn=(label,cls,fn)=>{ const b=document.createElement("button"); b.type="button"; b.className=cls; b.textContent=label; b.onclick=fn; return b; };
+  const spacer=()=>{ const s=document.createElement("span"); s.className="spacer"; return s; };
+
+  const FORMULA=`<div class="formula"><i>Что хочу сделать</i> + <i>вместо чего</i> + детали: <i class="r">сколько стоит</i>, <i class="t">сколько времени</i>, <i class="q">что важнее</i>, как часто</div>`;
+  const STEPS=[
+    {html:"Привет! Я Треугольник. Помогаю взвесить решение: чем вы за него платите — <b>деньгами, временем или качеством</b>.", act:"appear"},
+    {html:"У меня три вершины. <b style=\"color:var(--res)\">Оранжевая</b> — ресурсы: деньги и силы. <b style=\"color:var(--time)\">Синяя</b> — время. <b style=\"color:var(--qual)\">Розовая</b> — качество и комфорт.", act:"pulse"},
+    {html:"Как спросить: опишите, что хотите сделать и с чем сравнить. Например: «такси до работы вместо метро».<br><br>"+FORMULA, act:"morph"},
+    {html:"Детали делают расчёт точнее. «Каждый день, на метро 50 минут с пересадкой, важно не опаздывать» — гораздо лучше, чем просто «такси».", act:"jump"},
+    {html:"Я задам <b>три уточняющих вопроса</b>, переведу всё в рубли по цене вашего часа (её можно поменять вверху) и предложу две альтернативы.", act:"think"},
+    {html:"После расчёта можно <b>один раз дописать уточнение</b> — пересчитаю. Расчёты хранятся только на вашем телефоне, любой можно удалить крестиком. Нажмите на меня, если понадобится подсказка.", act:"happy"},
+  ];
+  let step=-1, introOn=false;
+  function showStep(i){
+    step=i; const S=STEPS[i];
+    const dotsBox=document.createElement("span"); dotsBox.className="dots"; STEPS.forEach((_,j)=>{ const d=document.createElement("i"); if (j===i) d.className="on"; dotsBox.appendChild(d); });
+    const last=i===STEPS.length-1;
+    say(S.html,{intro:true, acts:[dotsBox, spacer(),
+      ...(last?[]:[mkBtn("Пропустить","link",endIntro)]),
+      mkBtn(last?"Понятно":"Дальше","btn",()=> last ? endIntro() : showStep(i+1))]});
+    if (S.act==="think"){ fxs.think(); setTimeout(()=>{ if (introOn && step===i) fxs.idle(); },1800); }
+    else if (fxs[S.act]) { if (S.act!=="appear") fxs.idle(); fxs[S.act](); }
+  }
+  function startIntro(){
+    introOn=true; hide(); scrim.hidden=false; btn.classList.add("center");
+    if (reduce){ showStep(0); return; }
+    fxs.vanish(()=>{ fxs.appear(); setTimeout(()=>showStep(0),250); });
+  }
+  function endIntro(){
+    if (!introOn) return; introOn=false; hide(); fxs.idle();
+    try{ localStorage.setItem("tri-intro-v1","1"); }catch{}
+    const dock=()=>{ scrim.hidden=true; btn.classList.remove("center"); if (!reduce) setTimeout(fxs.appear,350); };
+    if (reduce) dock(); else fxs.vanish(dock);
+    setTimeout(()=>say("Начните с поля вверху — или нажмите пример, чтобы посмотреть, как выглядит расчёт.",{ttl:6500}), reduce?100:1300);
+  }
+  scrim.addEventListener("click",endIntro);
+  document.addEventListener("keydown",e=>{ if (e.key==="Escape"){ if (introOn) endIntro(); else hide(); } });
+
+  function menu(){
+    fxs.morph(); haptic("impact","light");
+    say("Чем помочь? Совет, как спросить:<br><br>"+FORMULA,{acts:[
+      mkBtn("Инструктаж заново","link",startIntro), spacer(), mkBtn("Закрыть","btn",hide)]});
+  }
+  btn.addEventListener("click",()=>{ if (introOn) return; if (!bub.hidden) { hide(); fxs.jump(); } else menu(); });
+
+  // взгляд: на поле ввода, когда человек пишет
+  $("q").addEventListener("focus",()=>{ st.look=[1.6,-1.8];
+    if (!$("q").value.trim() && !sessionStorage.getItem?.("tri-hint-q")){ try{ sessionStorage.setItem("tri-hint-q","1"); }catch{} say("Напишите, что хотите сделать и вместо чего. Цифры и частота делают расчёт точнее.",{ttl:6000}); } });
+  $("q").addEventListener("blur",()=>{ st.look=[0,0]; });
+
+  /* ----- реакции на события страницы ----- */
+  function react(ev, sc){
+    if (introOn) return;
+    switch(ev){
+      case "short": fxs.think(); say("Коротковато — посчитаю, но с деталями было бы точнее: сколько, как часто, что важнее.",{ttl:5000}); break;
+      case "thinking": fxs.think(); hide(); break;
+      case "estimating": fxs.think(); hide(); break;
+      case "questions": fxs.idle(); fxs.jump(); say("Три вопроса — ответьте, как есть, или впишите своё. Можно и пропустить.",{ttl:5500}); break;
+      case "result": {
+        if (sc?.has && sc.idx>=15){ fxs.happy(); say(sc.idx>=45 ? "Похоже, однозначно выгодно! Загляните в альтернативы — вдруг есть ещё лучше." : "Скорее выгодно. Посмотрите, на чём держится расчёт, — и если что-то не так, допишите уточнение внизу.",{ttl:7000}); }
+        else if (sc?.has && sc.idx<=-15){ fxs.sad(); setTimeout(()=>fxs.idle(),1800); say("Хм, по расчёту скорее невыгодно. Сравните с альтернативами ниже.",{ttl:7000}); }
+        else { fxs.idle(); fxs.morph(); say("На грани: плюсы и минусы почти уравновешены. Решает то, что для вас важнее.",{ttl:7000}); }
+        break; }
+      case "error": fxs.sad(); setTimeout(()=>fxs.idle(),1800); say("Что-то пошло не так. Попробуйте ещё раз через минуту.",{ttl:5000}); break;
+      case "deleted": fxs.morph(); say("Удалил.",{ttl:1600}); break;
+      case "cleared": fxs.vanish(()=>fxs.appear()); say("Все расчёты удалены с этого устройства.",{ttl:2500}); break;
+      case "example": fxs.jump(); break;
+      default: fxs.idle();
+    }
+  }
+
+  startLoop();
+  if (reduce) frame(performance.now());
+  return { react, startIntro, say, hide, maybeIntro(){ let seen=false; try{ seen=!!localStorage.getItem("tri-intro-v1"); }catch{} if (!seen) setTimeout(startIntro, 600); else fxs.appear(); } };
+})();
+
 /* ---------- start: Telegram theme, prefill from the bot ---------- */
 render(EXAMPLES[0],"пример · рассчитан заранее");
 function decodeStart(p){
@@ -803,6 +1170,7 @@ if (tg){
 // ?q=текст in the button URL, or startapp=<base64url> in a t.me direct link
 const preset = new URLSearchParams(location.search).get("q") || (tg?.initDataUnsafe?.start_param ? decodeStart(tg.initDataUnsafe.start_param) : "");
 if (preset){ $("q").value = preset.slice(0,2000); $("hint").textContent = "Текст из бота — нажмите «Рассчитать»"; }
+buddy.maybeIntro();
 })();
 </script>
 
