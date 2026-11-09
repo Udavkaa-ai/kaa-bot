@@ -1,0 +1,35 @@
+name: Widget checks
+
+on:
+  push:
+    paths:
+      - 'src/widgets/**'
+      - 'src/db/repo/widgets.js'
+      - 'src/db/schema.sql'
+      - 'src/handlers/commands.js'
+      - 'src/config.js'
+      - 'src/index.js'
+      - 'test/widgets/**'
+      - 'package.json'
+      - '.github/workflows/widget.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run widget:test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: billy-dice-widget
+          path: src/widgets/dice.html
+          if-no-files-found: error

@@ -109,6 +109,11 @@ const config = {
   autoReviveHours: parseInt(process.env.AUTO_REVIVE_HOURS, 10) || 3,
   banEnabled: process.env.BAN_ENABLED !== 'false',
 
+  // Интерактивные HTML-виджеты (Bot API 10.4, beta/test environment)
+  widgetsEnabled: process.env.WIDGETS === 'true',
+  widgetBotToken: process.env.WIDGET_BOT_TOKEN || process.env.BOT_TOKEN,
+  widgetApiBase: (process.env.WIDGET_API_BASE || 'https://api.telegram.org/beta').replace(/\/+$/, ''),
+
   // Поведение
   historyLimit: parseInt(process.env.HISTORY_LIMIT, 10) || 30,
   promptCache: process.env.PROMPT_CACHE !== 'false',

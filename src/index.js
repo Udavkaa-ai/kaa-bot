@@ -46,6 +46,7 @@ async function main() {
 
   webapp.setBot(bot);
   webapp.start();
+  require('./widgets').start();
 
   console.log(`🐍 ${config.botName} запущен`);
 
@@ -167,7 +168,7 @@ async function main() {
             const result = await claude.callWithFallback(
               [
                 { role: 'system', content: `Ты — бот в неактивном чате. Напиши ОДНО короткое сообщение (1-2 предложения) чтобы оживить разговор. Это может быть вопрос по последней теме, наблюдение, провокационное мнение. НЕ упоминай тишину. Не начинай с "Кстати".` },
-                { role: 'user', content: `Последние сообщения:\n${transcript}` },
+                { role: 'user', content: transcript },
               ],
               { temperature: 0.9, maxTokens: 200 }
             );
@@ -208,6 +209,7 @@ async function main() {
   const shutdown = async (signal) => {
     console.log(`Получен ${signal}, завершаю...`);
     try {
+      require('./widgets').stop();
       await bot.stopPolling();
       await db.close();
     } catch (_) {}

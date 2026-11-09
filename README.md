@@ -19,6 +19,7 @@
 - **Ротация ключей** Gemini и OpenRouter — обход квот
 - **Splitting длинных ответов** по 4000 символов
 - **Юмористические ответы при ошибках API** в характере персоны
+- **Интерактивный HTML-виджет «Кубик Билли»:** приватный результат броска и живой общий счётчик без новых сообщений (Bot API 10.4 beta)
 
 ## Установка локально
 
@@ -73,6 +74,9 @@ PROMPT_CACHE=true                          # кэширование Claude (эк
 PRIVATE_CHAT_ADMIN_ONLY=false              # отвечать в ЛС только админу
 ADMIN_MUST_BE_IN_GROUP=false               # покидать чаты где нет админа
 SEMANTIC_RECALL_K=5                        # сколько релевантных воспоминаний подгружать
+WIDGETS=false                              # opt-in для HTML-виджетов в test environment
+WIDGET_BOT_TOKEN=                          # токен тестового бота, если отличается от BOT_TOKEN
+WIDGET_API_BASE=https://api.telegram.org/beta
 TRIANGLE_APP=ocenka                        # короткое имя Mini App «Треугольник решений» в BotFather (/newapp) — для кнопки в группах
 TRIANGLE_PER_HOUR=40                       # запросов к «Треугольнику» на человека в час (одно решение — два запроса)
 TRIANGLE_MODEL=                            # своя модель для «Треугольника» первой в цепочке; пусто — общая цепочка бота
@@ -92,6 +96,7 @@ TRIANGLE_MODEL=                            # своя модель для «Тр
 | `/giveaway <приз> [время|до N] [winners=K]` | Розыгрыш с inline-кнопкой |
 | `/quiz [тема]` | Викторина с 4 вариантами ответа |
 | `/leaderboard` | Топ-10 участников викторины в этом чате |
+| `/dice`, `/widget`, `/кубик` | Кубик; HTML-версия — в Telegram test environment |
 | `/trigger <слова>` (chat admin) | Установить собственные триггеры для этого чата |
 | `/triggers` | Показать текущие триггеры |
 | `/stats` (admin) | Статистика использования моделей |
@@ -115,6 +120,19 @@ TRIANGLE_MODEL=                            # своя модель для «Тр
 `/quiz` — Claude генерит вопрос с 4 вариантами, отправляет нативный Telegram quiz-poll. Если в чате уже определена тема (бот её знает) — вопрос будет в эту тему. Можно задать тему: `/quiz история СССР`.
 
 Каждый правильный ответ — +1 в счёт юзера. `/leaderboard` показывает топ.
+
+### HTML-виджет «Кубик Билли» (Bot API 10.4 beta)
+
+В Telegram **test environment** команды `/dice`, `/widget` и `/кубик` отправляют самодостаточный HTML-виджет. Нажатие вызывает `TelegramWidget.request('roll:v1')`; бот генерирует значение через `crypto.randomInt(1, 7)`, отвечает нажавшему через `answerWidgetQuery` и обновляет общий счётчик в том же сообщении через `editMessageWidgetData`.
+
+- Результат и комментарий не записываются в `public_data`: другие участники видят только новый счётчик.
+- Счётчик и ревизия атомарно увеличиваются в `widget_states` (Postgres), поэтому переживают перезапуск; нажатия на одно сообщение сериализуются.
+- Пересланная копия статического виджета — снимок без возможности бросить кубик.
+- Старые клиенты показывают caption как unsupported-media placeholder. Для интерактивности нужен клиент с layer 233 и включённым рендерингом виджетов.
+
+Test environment отделён от production: там другие чаты и сообщения. Поэтому `src/widgets` самостоятельно читает `message` и `widget_query` только через `https://api.telegram.org/beta/bot<token>/test`, не конкурируя с основным production polling. Для запуска задай `WIDGETS=true`; если тестовый бот создан отдельно, добавь его `WIDGET_BOT_TOKEN`. В обычном чате `/dice` отправляет нативный Telegram dice как fallback. Не переводи этот отдельный poller на production endpoint: два `getUpdates` для одного окружения конфликтуют.
+
+Формат и ограничения: [официальный widget-sandbox Telegram](https://github.com/TelegramMessenger/widget-sandbox), `docs/tgw-format.md` и `docs/sdk-v1.md`. Локальные проверки: `npm run widget:test`.
 
 ### Триггеры
 
@@ -141,7 +159,7 @@ src/
 │   ├── groq.js              # Whisper STT
 │   ├── pollinations.js      # генерация картинок
 │   ├── tavily.js            # поиск
-│   ├── perplexity.js        # альт. поиск
+│   ├── perplexity.js        # альтернатива
 │   └── search.js            # роутер
 ├── memory/
 │   ├── embed.js             # text -> 768-dim

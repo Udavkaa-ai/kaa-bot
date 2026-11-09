@@ -1,0 +1,61 @@
+<meta name="tw-bot" content="dice">
+<style>
+:root{--hint:var(--tg-theme-hint-color);--button:var(--tg-theme-button-color);--button-text:var(--tg-theme-button-text-color);--accent:#ff9500}
+*{box-sizing:border-box}
+body{margin:0;padding:12px 14px 13px;color:var(--tg-theme-text-color);background:transparent;font:14px/1.3 system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.title{font-size:14px;font-weight:700;letter-spacing:.04em}
+.count{margin-left:auto;color:var(--hint);font-size:12px;white-space:nowrap}
+.play{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:14px;margin-bottom:13px}
+.die{width:88px;height:88px;padding:15px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border-radius:22px;background:var(--accent);box-shadow:0 5px 0 #c76f00;transform-origin:50% 60%}
+.pip{width:13px;height:13px;place-self:center;border-radius:50%;background:#fff;opacity:0;transform:scale(.5)}
+.pip.on{opacity:1;transform:scale(1)}
+.result{min-width:0}
+.label{color:var(--hint);font-size:10px;font-weight:700;letter-spacing:.09em}
+.value{height:43px;font-size:38px;font-weight:750;line-height:1.1}
+.comment{min-height:36px;color:var(--hint);font-size:13px;line-height:1.35}
+.roll{width:100%;min-height:42px;border:0;border-radius:11px;background:var(--button);color:var(--button-text);font:600 15px system-ui,sans-serif;cursor:pointer;touch-action:none;transition:transform .12s,opacity .12s}
+.roll:active{transform:scale(.98)}
+.roll[disabled]{cursor:default;opacity:.62}
+.status{min-height:17px;margin-top:7px;color:var(--hint);font-size:12px;text-align:center}
+.status.error{color:var(--tg-theme-destructive-text-color)}
+.rolling{animation:tumble .48s ease-in-out}
+.landed{animation:land .28s ease-out}
+@keyframes tumble{25%{transform:rotate(-13deg) translateY(-5px)}55%{transform:rotate(14deg) translateY(-8px)}85%{transform:rotate(-4deg)}}
+@keyframes land{0%{transform:translateY(-8px) scale(1.04)}65%{transform:translateY(2px) scale(.98)}100%{transform:none}}
+@media(max-width:240px){body{padding-left:10px;padding-right:10px}.play{grid-template-columns:76px minmax(0,1fr);gap:10px}.die{width:76px;height:76px;padding:12px;border-radius:18px}.pip{width:11px;height:11px}.title{font-size:12px}.count{font-size:11px}.comment{font-size:12px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<div class="head"><span class="title">КУБИК БИЛЛИ</span><span class="count" id="count">Бросков: 0</span></div>
+<div class="play">
+  <div class="die" id="die" role="img" aria-label="Кубик ещё не брошен">
+    <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+    <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+    <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+  </div>
+  <div class="result"><div class="label">ТВОЙ РЕЗУЛЬТАТ</div><div class="value" id="value">—</div><div class="comment" id="comment">Нажми — я брошу. Результат увидишь только ты.</div></div>
+</div>
+<button class="roll" id="roll">Бросить кубик</button>
+<div class="status" id="status" aria-live="polite"></div>
+<script>
+const T=window.TelegramWidget,$=id=>document.getElementById(id),die=$('die'),button=$('roll');
+const faces={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+const errors={NOT_ALLOWED:'Здесь бросать нельзя',BUSY:'Предыдущий бросок ещё летит',RATE_LIMITED:'Слишком быстро. Секундочку',TIMEOUT:'Билли не ответил. Попробуй ещё раз',FAILED:'Связь с Билли пропала. Попробуй ещё раз',INVALID_ANSWER:'Билли ответил что-то странное'};
+let busy=false,revision=0,rolls=0,animation=0;
+const can=!!(T&&T.viewer&&!T.isPreview&&!T.isForward);
+function parse(text,fallback){try{return text?JSON.parse(text):fallback}catch(e){return fallback}}
+function haptic(kind,value){try{T.HapticFeedback[kind](value)}catch(e){}}
+function status(text,error){$('status').textContent=text||'';$('status').className=error?'status error':'status'}
+function face(value){const active=faces[value]||[];Array.from(die.children).forEach((pip,i)=>pip.classList.toggle('on',active.includes(i)));die.setAttribute('aria-label',value?'Выпало '+value:'Кубик ещё не брошен')}
+function state(data){if(!data)return;const r=data.r|0;if(r<revision)return;revision=r;rolls=Math.max(0,data.n|0);$('count').textContent='Бросков: '+rolls}
+function animate(name){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const token=++animation;die.classList.remove('rolling','landed');void die.offsetWidth;die.classList.add(name);setTimeout(()=>{if(token===animation)die.classList.remove(name)},name==='rolling'?480:280)}
+function setBusy(value){busy=value;button.disabled=value||!can;button.textContent=value?'Кубик летит…':can?'Бросить кубик':'Только просмотр'}
+button.onclick=()=>{if(busy||!can)return;setBusy(true);status('');animate('rolling');haptic('impactOccurred','light');
+  T.request('roll:v1').then(answer=>{const data=parse(answer.result,{});if(!(data.value>=1&&data.value<=6))throw{message:data.err||errors.INVALID_ANSWER};
+    face(data.value);$('value').textContent=data.value;$('comment').textContent=String(data.comment||'Бросок принят.').slice(0,100);state(data);animate('landed');status('Только для тебя');haptic('notificationOccurred','success')})
+  .catch(error=>{status(error.message||errors[error.code]||errors.FAILED,true);haptic('notificationOccurred','error')})
+  .finally(()=>setBusy(false))};
+if(T){state(parse(T.publicData,null));T.onEvent('publicDataChanged',()=>state(parse(T.publicData,null)));T.ready&&T.ready()}
+if(!can){setBusy(false);if(T&&T.isForward)status('В пересланной копии — снимок счётчика')}
+face(6);die.setAttribute('aria-label','Кубик ещё не брошен');
+</script>

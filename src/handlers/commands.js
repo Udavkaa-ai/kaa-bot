@@ -102,6 +102,23 @@ async function handleCommand(bot, msg) {
     case '/triangle':
       return require('../webapp/triangle').handleCommand(bot, msg, args);
 
+    case '/widget':
+    case '/dice':
+    case '/кубик':
+      if (!config.widgetsEnabled) {
+        await sendSafe(bot, chatId, 'HTML-виджеты сейчас выключены настройкой WIDGETS=false.');
+        return true;
+      }
+      try {
+        // HTML-виджеты живут в отдельном Telegram test environment; там их команды
+        // принимает src/widgets. В обычном чате оставляем рабочий нативный fallback.
+        await bot.sendDice(chatId, { reply_to_message_id: msg.message_id });
+      } catch (err) {
+        console.error('[DICE SEND]', err.message);
+        await sendSafe(bot, chatId, 'Не удалось бросить кубик. Попробуй ещё раз.');
+      }
+      return true;
+
     case '/games':
     case '/игры':
       return handleGames(bot, msg);
@@ -171,6 +188,7 @@ function buildHelp() {
     '/sec — Сечение, игра на глазомер. /sec top — топ чата. /sec remind 20:00 — ежедневный автопост топа',
     '/contour — Контур: угадай страну по очертанию или проведи границу между соседями',
     '/koleya — «История железных дорог России»: историческая стратегия от Царскосельской дороги до БАМа и скоростных магистралей',
+    config.widgetsEnabled ? '/dice — кубик; интерактивная HTML-версия доступна в Telegram test environment' : null,
     '/оценка [решение] — Треугольник решений: чем платите за выбор — деньгами, временем или качеством (можно ответом на сообщение)',
     '/games — одно сообщение обо всех играх: что за игра, как открыть, в чём смысл',
     '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',

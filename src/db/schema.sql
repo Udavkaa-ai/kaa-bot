@@ -308,3 +308,12 @@ CREATE TABLE IF NOT EXISTS contour_scores (
 );
 CREATE INDEX IF NOT EXISTS idx_contour_guess ON contour_scores (chat_id, best_guess DESC);
 CREATE INDEX IF NOT EXISTS idx_contour_border ON contour_scores (chat_id, best_border DESC);
+
+-- HTML-виджеты: состояние живёт отдельно, потому что widget_query не содержит текущий public_data
+CREATE TABLE IF NOT EXISTS widget_states (
+  widget_key TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  rolls BIGINT NOT NULL DEFAULT 0,
+  revision BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
