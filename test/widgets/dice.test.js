@@ -3,157 +3,159 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const zlib = require('zlib');
-const {
-  DICE_HTML,
-  secureRoll,
-  commentFor,
-  targetOf,
-  keyOf,
-  createDiceService,
-} = require('../../src/widgets/dice');
+const { REQUEST, DICE_HTML, createDiceService } = require('../../src/widgets/dice');
 
 const query = (id = 'q1') => ({
   id,
-  data: 'roll:v1',
+  data: REQUEST,
   chat: { id: -100123 },
   message_id: 42,
   from: { id: 7 },
 });
 
+const persona = {
+  id: 'masha',
+  name: 'Маша',
+  description: 'Тёплая и внимательная',
+  systemPrompt: 'must stay private',
+};
+
 function harness(overrides = {}) {
   const calls = [];
-  const states = new Map();
+  const resolutions = [];
   const api = {
-    async call(method, params) {
-      calls.push({ method, params });
-      if (method === 'editMessageWidgetData') {
-        await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 3)));
-      }
+    async sendWidget(chatId, html, options) {
+      calls.push({ method: 'sendWidget', params: { chat_id: chatId, html, ...options } });
       return { message_id: 42 };
     },
-  };
-  const repo = {
-    async nextRoll(key) {
-      const n = (states.get(key) || 0) + 1;
-      states.set(key, n);
-      return { rolls: n, revision: n };
+    async answerWidgetQuery(id, data) {
+      calls.push({ method: 'answerWidgetQuery', params: { widget_query_id: id, data: JSON.stringify(data) } });
+      return true;
     },
   };
-  let face = 0;
   const service = createDiceService({
     api,
-    repo,
-    randomInt(min, max) {
-      assert.equal(min, 1);
-      assert.equal(max, 7);
-      face = face % 6 + 1;
-      return face;
+    async resolve(userId, chatId, text) {
+      resolutions.push({ userId, chatId, text });
+      return { persona, justAssigned: resolutions.length === 1 };
     },
     logger: { error() {} },
     ...overrides,
   });
-  return { service, calls, states, api, repo };
+  return { service, calls, resolutions };
 }
 
-test('secureRoll uses the cryptographic range and comments cover every face', () => {
-  const seen = new Set();
-  for (let i = 0; i < 600; i++) {
-    const value = secureRoll();
-    assert.ok(Number.isInteger(value) && value >= 1 && value <= 6);
-    assert.ok(commentFor(value).length > 0);
-    seen.add(value);
-  }
-  assert.deepEqual([...seen].sort(), [1, 2, 3, 4, 5, 6]);
-});
-
-test('sendWidget contains a fixed static widget with an initial public revision', async () => {
+test('sendWidget contains the static D10 persona widget without shared state', async () => {
   const { service, calls } = harness();
   await service.sendDice(-100123);
   assert.equal(calls[0].method, 'sendWidget');
   assert.equal(calls[0].params.allow_queries, true);
   assert.equal(calls[0].params.is_shared, undefined);
+  assert.equal(calls[0].params.width, 320);
+  assert.equal(calls[0].params.height, 0);
   assert.equal(calls[0].params.html, DICE_HTML);
-  assert.deepEqual(JSON.parse(calls[0].params.public_data), { v: 1, n: 0, r: 0 });
+  assert.deepEqual(JSON.parse(calls[0].params.public_data), { v: 1 });
 });
 
-test('a chat query edits the same message and privately answers the tapper', async () => {
+test('a tap resolves the daily persona for the tapper and answers only privately', async () => {
+  const { service, calls, resolutions } = harness();
+  await service.handleQuery(query());
+  assert.deepEqual(resolutions, [{ userId: 7, chatId: -100123, text: '' }]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, 'answerWidgetQuery');
+  const data = JSON.parse(calls[0].params.data);
+  assert.deepEqual(data, {
+    v: 1,
+    id: 'masha',
+    name: 'Маша',
+    description: 'Тёплая и внимательная',
+    existing: false,
+  });
+  assert.doesNotMatch(calls[0].params.data, /systemPrompt|must stay private/);
+  assert.ok(Buffer.byteLength(calls[0].params.data, 'utf8') <= 1024);
+});
+
+test('repeated taps keep the same persona and mark it as already assigned', async () => {
   const { service, calls } = harness();
-  const answer = await service.handleQuery(query());
-  assert.equal(answer.value, 1);
-  assert.equal(answer.n, 1);
-  assert.equal(answer.r, 1);
-  const edit = calls.find(call => call.method === 'editMessageWidgetData');
-  assert.deepEqual(edit.params, {
-    chat_id: -100123,
-    message_id: 42,
-    public_data: JSON.stringify({ v: 1, n: 1, r: 1 }),
-  });
-  const privateAnswer = calls.find(call => call.method === 'answerWidgetQuery');
-  assert.equal(privateAnswer.params.widget_query_id, 'q1');
-  assert.deepEqual(JSON.parse(privateAnswer.params.data), answer);
-  assert.ok(Buffer.byteLength(privateAnswer.params.data, 'utf8') <= 1024);
-});
-
-test('inline coordinates use inline_message_id and a distinct state key', async () => {
-  const { service, calls, states } = harness();
-  await service.handleQuery({ id: 'inline', data: 'roll:v1', inline_message_id: 'abc123' });
-  const edit = calls.find(call => call.method === 'editMessageWidgetData');
-  assert.deepEqual(edit.params, {
-    inline_message_id: 'abc123',
-    public_data: JSON.stringify({ v: 1, n: 1, r: 1 }),
-  });
-  assert.ok(states.has('dice:i:abc123'));
+  await service.handleQuery(query('first'));
+  await service.handleQuery(query('second'));
+  const answers = calls.map(call => JSON.parse(call.params.data));
+  assert.equal(answers[0].id, answers[1].id);
+  assert.equal(answers[0].existing, false);
+  assert.equal(answers[1].existing, true);
+  assert.equal(calls.filter(call => call.method === 'editMessageWidgetData').length, 0);
 });
 
 test('malformed and unknown requests still receive a private error answer', async () => {
-  const { service, calls, states } = harness();
-  const answer = await service.handleQuery({ ...query('bad'), data: 'other' });
-  assert.match(answer.err, /Неизвестный запрос/);
-  assert.equal(states.size, 0);
-  assert.equal(calls.filter(call => call.method === 'editMessageWidgetData').length, 0);
-  const response = calls.find(call => call.method === 'answerWidgetQuery');
-  assert.equal(response.params.widget_query_id, 'bad');
-  assert.match(JSON.parse(response.params.data).err, /Неизвестный запрос/);
-  assert.throws(() => targetOf({ data: 'roll:v1' }), /coordinates/);
-  await assert.rejects(service.handleQuery({ data: 'roll:v1' }), /no id/);
+  const { service, calls, resolutions } = harness();
+  await service.handleQuery({ ...query('bad'), data: 'roll:v1' });
+  assert.equal(resolutions.length, 0);
+  assert.match(JSON.parse(calls[0].params.data).err, /Неизвестная команда/);
+  await assert.rejects(service.handleQuery({ data: REQUEST }), /invalid widget query/);
 });
 
-test('repository failures are answered instead of leaving the widget to time out', async () => {
+test('persona resolution failures are answered instead of timing out', async () => {
   const { service, calls } = harness({
-    repo: { async nextRoll() { throw new Error('database unavailable'); } },
+    async resolve() { throw new Error('database unavailable'); },
   });
-  const answer = await service.handleQuery(query());
-  assert.match(answer.err, /Попробуй ещё раз/);
-  const response = calls.find(call => call.method === 'answerWidgetQuery');
-  assert.deepEqual(JSON.parse(response.params.data), answer);
+  await service.handleQuery(query());
+  assert.match(JSON.parse(calls[0].params.data).err, /Попробуй ещё раз/);
 });
 
-test('concurrent taps on one message are serialized without lost increments', async () => {
-  const { service, calls } = harness();
-  const answers = await Promise.all(Array.from({ length: 24 }, (_, i) =>
-    service.handleQuery(query(`q${i}`))
-  ));
-  assert.equal(answers.length, 24);
-  assert.deepEqual(answers.map(answer => answer.n).sort((a, b) => a - b),
-    Array.from({ length: 24 }, (_, i) => i + 1));
-  const revisions = calls.filter(call => call.method === 'editMessageWidgetData')
-    .map(call => JSON.parse(call.params.public_data).r);
-  assert.deepEqual(revisions, Array.from({ length: 24 }, (_, i) => i + 1));
-  assert.equal(calls.filter(call => call.method === 'answerWidgetQuery').length, 24);
+test('real daily resolver assigns once and reuses the stored persona', async () => {
+  const usersPath = require.resolve('../../src/db/repo/users');
+  const handlerPath = require.resolve('../../src/handlers/persona');
+  const previousUsers = require.cache[usersPath];
+  const previousHandler = require.cache[handlerPath];
+  let stored = null;
+  let writes = 0;
+  require.cache[usersPath] = {
+    id: usersPath,
+    filename: usersPath,
+    loaded: true,
+    exports: {
+      async getUserPersona() { return stored; },
+      async setUserPersona(userId, chatId, personaId, dateAssigned) {
+        writes += 1;
+        stored = { persona_id: personaId, date_assigned: dateAssigned };
+      },
+    },
+  };
+  delete require.cache[handlerPath];
+  try {
+    const { resolvePersona } = require(handlerPath);
+    const first = await resolvePersona(7, -100123, '');
+    const second = await resolvePersona(7, -100123, '');
+    assert.equal(first.justAssigned, true);
+    assert.equal(second.justAssigned, false);
+    assert.equal(first.persona.id, second.persona.id);
+    assert.equal(writes, 1);
+  } finally {
+    delete require.cache[handlerPath];
+    if (previousHandler) require.cache[handlerPath] = previousHandler;
+    if (previousUsers) require.cache[usersPath] = previousUsers;
+    else delete require.cache[usersPath];
+  }
 });
 
-test('a new service instance continues the persisted counter after restart', async () => {
-  const { service, api, repo } = harness();
-  await service.handleQuery(query('before'));
-  const restarted = createDiceService({ api, repo, logger: { error() {} } });
-  const answer = await restarted.handleQuery(query('after'));
-  assert.equal(answer.n, 2);
-  assert.equal(answer.r, 2);
+test('service validates its dependencies', () => {
+  assert.throws(() => createDiceService({}), /sendWidget and answerWidgetQuery/);
+  assert.throws(() => createDiceService({
+    api: { sendWidget() {}, answerWidgetQuery() {} },
+    resolve: null,
+  }), /resolvePersona/);
 });
 
-test('message keys cannot collide across chats or inline messages', () => {
-  assert.notEqual(keyOf({ chat_id: 1, message_id: 2 }), keyOf({ chat_id: 2, message_id: 1 }));
-  assert.notEqual(keyOf({ chat_id: 1, message_id: 2 }), keyOf({ inline_message_id: '1:2' }));
+test('all ten portraits and the placeholder are valid 16 by 16 sprites', () => {
+  const entries = [...DICE_HTML.matchAll(/(\w+):'([.#/]+)'/g)];
+  assert.equal(entries.length, 11);
+  const ids = entries.map(entry => entry[1]);
+  assert.deepEqual(ids.sort(), ['artvednik', 'babushka', 'detective', 'filosof', 'kolyan', 'masha', 'polkovnik', 'professor', 'rapper', 'unknown', 'vitya'].sort());
+  for (const [, , sprite] of entries) {
+    const rows = sprite.split('/');
+    assert.equal(rows.length, 16);
+    assert.ok(rows.every(row => row.length === 16 && /^[.#]+$/.test(row)), sprite);
+  }
 });
 
 test('HTML fits Telegram limits and remains self-contained', () => {
@@ -165,6 +167,6 @@ test('HTML fits Telegram limits and remains self-contained', () => {
   assert.doesNotMatch(DICE_HTML, /<(?:iframe|video|audio|input|textarea|link)\b/i);
   assert.doesNotMatch(DICE_HTML, /\b(?:fetch|XMLHttpRequest|WebSocket)\s*\(/);
   assert.match(DICE_HTML, /TelegramWidget/);
-  assert.match(DICE_HTML, /request\('roll:v1'\)/);
+  assert.match(DICE_HTML, /request\('persona:v1'\)/);
   assert.match(DICE_HTML, /prefers-reduced-motion/);
 });

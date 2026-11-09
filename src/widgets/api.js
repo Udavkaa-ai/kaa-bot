@@ -51,10 +51,18 @@ function createWidgetApi({
     return body.result;
   }
 
-  return { call };
+  return {
+    call,
+    sendWidget(chatId, html, options = {}) {
+      return call('sendWidget', { chat_id: chatId, html, ...options });
+    },
+    answerWidgetQuery(id, data) {
+      return call('answerWidgetQuery', { widget_query_id: id, data: JSON.stringify(data) });
+    },
+  };
 }
 
-function createWidgetPoller({ api, onQuery, onMessage, logger = console, pollTimeout = 30 }) {
+function createWidgetPoller({ api, onQuery, onMessage, onCallback, logger = console, pollTimeout = 30 }) {
   let running = false;
   let loopPromise = null;
   let controller = null;
@@ -69,13 +77,14 @@ function createWidgetPoller({ api, onQuery, onMessage, logger = console, pollTim
         const updates = await api.call('getUpdates', {
           offset,
           timeout: pollTimeout,
-          allowed_updates: ['message', 'widget_query'],
+          allowed_updates: ['message', 'callback_query', 'widget_query'],
         }, { timeoutMs: (pollTimeout + 10) * 1000, signal: controller.signal });
 
         for (const update of updates || []) {
           offset = Math.max(offset, Number(update.update_id) + 1);
           try {
             if (update.widget_query) await onQuery(update.widget_query);
+            else if (update.callback_query && onCallback) await onCallback(update.callback_query);
             else if (update.message && onMessage) await onMessage(update.message);
           } catch (err) {
             logger.error('[WIDGET UPDATE]', err?.message || err);
