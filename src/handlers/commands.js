@@ -102,6 +102,16 @@ async function handleCommand(bot, msg) {
     case '/triangle':
       return require('../webapp/triangle').handleCommand(bot, msg, args);
 
+    case '/d10':
+      if (!config.widgetsEnabled) {
+        await sendSafe(bot, chatId, 'HTML-виджеты сейчас выключены настройкой WIDGETS=false.');
+        return true;
+      }
+      await sendSafe(bot, chatId,
+        'D10 «Личность дня» запускается командой /d10 в Telegram test environment. Здесь /persona — ручной выбор личности.',
+        { reply_to_message_id: msg.message_id });
+      return true;
+
     case '/widget':
     case '/dice':
     case '/кубик':
@@ -188,7 +198,7 @@ function buildHelp() {
     '/sec — Сечение, игра на глазомер. /sec top — топ чата. /sec remind 20:00 — ежедневный автопост топа',
     '/contour — Контур: угадай страну по очертанию или проведи границу между соседями',
     '/koleya — «История железных дорог России»: историческая стратегия от Царскосельской дороги до БАМа и скоростных магистралей',
-    config.widgetsEnabled ? '/dice — кубик; интерактивная HTML-версия доступна в Telegram test environment' : null,
+    config.widgetsEnabled ? '/d10 — D10 «Личность дня» в Telegram test environment; /dice — обычный кубик' : null,
     '/оценка [решение] — Треугольник решений: чем платите за выбор — деньгами, временем или качеством (можно ответом на сообщение)',
     '/games — одно сообщение обо всех играх: что за игра, как открыть, в чём смысл',
     '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',
@@ -496,7 +506,7 @@ async function handleContour(bot, msg) {
   }
   const url = `https://t.me/${config.botUsername}/${config.contourAppShortName}?startapp=${chatId}`;
   await bot.sendMessage(chatId,
-    'Контур — география на глаз.\n«Страна»: угадай страну по очертанию, 30 секунд на каждую. «Граница»: две соседние страны без общей линии — проведи её пальцем как можно ближе к настоящей. Лучшие результаты — в топ чата.',
+    'Контур — география на глаз.\n«Страна»: угадай страну по очертанию границ, 30 секунд на каждую. «Граница»: две соседние страны без общей линии — проведи её пальцем как можно ближе к настоящей. Лучшие результаты — в топ чата.',
     {
       reply_to_message_id: msg.message_id,
       reply_markup: { inline_keyboard: [[{ text: 'Открыть', url }]] },
