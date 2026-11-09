@@ -159,7 +159,7 @@ src/
 │   ├── groq.js              # Whisper STT
 │   ├── pollinations.js      # генерация картинок
 │   ├── tavily.js            # поиск
-│   ├── perplexity.js        # альтернатива
+│   ├── perplexity.js        # альт. поиск
 │   └── search.js            # роутер
 ├── memory/
 │   ├── embed.js             # text -> 768-dim
