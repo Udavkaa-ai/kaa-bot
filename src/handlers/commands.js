@@ -104,24 +104,21 @@ async function handleCommand(bot, msg) {
 
     case '/d10':
       if (!config.widgetsEnabled) {
-        await sendSafe(bot, chatId, 'HTML-виджеты сейчас выключены настройкой WIDGETS=false.');
+        await sendSafe(bot, chatId, 'HTML-виджеты выключены настройкой WIDGETS=false.');
         return true;
       }
-      await sendSafe(bot, chatId,
-        'D10 «Личность дня» запускается командой /d10 в Telegram test environment. Здесь /persona — ручной выбор личности.',
-        { reply_to_message_id: msg.message_id });
+      try {
+        await require('../widgets').sendDice(chatId);
+      } catch (err) {
+        console.error('[D10 SEND]', err.message);
+        await sendSafe(bot, chatId, 'Не удалось отправить D10. Попробуй ещё раз.');
+      }
       return true;
 
     case '/widget':
     case '/dice':
     case '/кубик':
-      if (!config.widgetsEnabled) {
-        await sendSafe(bot, chatId, 'HTML-виджеты сейчас выключены настройкой WIDGETS=false.');
-        return true;
-      }
       try {
-        // HTML-виджеты живут в отдельном Telegram test environment; там их команды
-        // принимает src/widgets. В обычном чате оставляем рабочий нативный fallback.
         await bot.sendDice(chatId, { reply_to_message_id: msg.message_id });
       } catch (err) {
         console.error('[DICE SEND]', err.message);
@@ -198,7 +195,7 @@ function buildHelp() {
     '/sec — Сечение, игра на глазомер. /sec top — топ чата. /sec remind 20:00 — ежедневный автопост топа',
     '/contour — Контур: угадай страну по очертанию или проведи границу между соседями',
     '/koleya — «История железных дорог России»: историческая стратегия от Царскосельской дороги до БАМа и скоростных магистралей',
-    config.widgetsEnabled ? '/d10 — D10 «Личность дня» в Telegram test environment; /dice — обычный кубик' : null,
+    config.widgetsEnabled ? '/d10 — интерактивный D10 «Личность дня»; /dice — обычный кубик' : '/dice — обычный кубик',
     '/оценка [решение] — Треугольник решений: чем платите за выбор — деньгами, временем или качеством (можно ответом на сообщение)',
     '/games — одно сообщение обо всех играх: что за игра, как открыть, в чём смысл',
     '/article <тема> — написать статью на заданную тему (можно "в стиле: научпоп")',
