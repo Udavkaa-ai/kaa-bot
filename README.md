@@ -43,8 +43,8 @@ npm start
    - `BOT_TOKEN` — токен от [@BotFather](https://t.me/BotFather)
    - `ADMIN_ID` — твой Telegram user id (узнать у [@userinfobot](https://t.me/userinfobot))
    - `OPENROUTER_KEY` — с [openrouter.ai/keys](https://openrouter.ai/keys), там же пополнить баланс ($5 хватит надолго)
-   - `ANTHROPIC_API_KEY` (необязательно) — ключ из [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys): тогда бот отвечает Claude напрямую, а OpenRouter остаётся запасным. Нужен хотя бы один из двух ключей
-   - `GEMINI_KEY` — с [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (бесплатно). Можно несколько: `GEMINI_KEY_2`, `GEMINI_KEY_3` для ротации квот
+   - `ANTHROPIC_API_KEY` (необязательно) — ключ из [platform.claude.com](https://platform.claude.com/settings/keys): тогда бот отвечает Claude напрямую, а OpenRouter остаётся запасным. Нужен хотя бы один из двух ключей
+   - `GEMINI_KEY` — с [aistudio.google.com](https://aistudio.google.com/app/apikey) (бесплатно). Можно несколько: `GEMINI_KEY_2`, `GEMINI_KEY_3` для ротации квот
    - `GROQ_KEY` — с [console.groq.com/keys](https://console.groq.com/keys) (бесплатно)
    - `TAVILY_KEY` — с [tavily.com](https://tavily.com) (1000 запросов бесплатно)
    - `DATABASE_URL` — нажми **Reference** → выбери `Postgres.DATABASE_URL`
@@ -64,13 +64,13 @@ CLAUDE_MODEL=anthropic/claude-sonnet-4.6  # основная модель OpenRo
 FALLBACK_MODELS=google/gemini-2.5-flash,meta-llama/llama-3.3-70b-instruct:free
 AUTO_REVIVE=true                          # оживлять мёртвые чаты
 AUTO_REVIVE_HOURS=3
-SEARCH=true                               # веб-поиск (нужен TAVILY_KEY)
-IMAGES=true                               # /draw команда
-VISION=true                               # распознавать картинки
-VOICE=true                                # распознавать голосовые
-AUDIO=true                                # понимать музыку
-HISTORY_LIMIT=30                          # глубина истории в контексте
-PROMPT_CACHE=true                         # кэширование Claude (экономия 60-90%)
+SEARCH=true                                # веб-поиск (нужен TAVILY_KEY)
+IMAGES=true                                # /draw команда
+VISION=true                                # распознавать картинки
+VOICE=true                                 # распознавать голосовые
+AUDIO=true                                 # понимать музыку
+HISTORY_LIMIT=30                           # глубина истории в контексте
+PROMPT_CACHE=true                          # кэширование Claude (экономия 60-90%)
 PRIVATE_CHAT_ADMIN_ONLY=false              # отвечать в ЛС только админу
 ADMIN_MUST_BE_IN_GROUP=false               # покидать чаты где нет админа
 SEMANTIC_RECALL_K=5                        # сколько релевантных воспоминаний подгружать
@@ -100,25 +100,25 @@ TRIANGLE_MODEL=                            # своя модель для «Тр
 | `/triggers` | Показать текущие триггеры |
 | `/stats` (admin) | Статистика использования моделей |
 | `/ban <id\|ник>` (admin) | Забанить юзера |
-| `/unban <id\|ник>` (admin) | Разбанить юзера |
-| `/banned` (admin) | Список забаненных |
+| `/unban <id>` (admin) | Разбанить |
+| `/banned` (admin) | Список банов |
 
 ### Розыгрыши
 
 ```
-/giveaway iPhone 15 60m              — 60 минут, потом итоги
+/giveaway iPhone 15 60m              — на 60 минут
 /giveaway пицца до 20                — пока 20 человек не наберётся
-/giveaway айфон 2h winners=3         — 2 часа или 50 участников, 3 победителя
-/giveaway приз 30m до 50 winners=2   — закроется первым из условий
+/giveaway виски 24h winners=3         — 24 часа, три победителя
+/giveaway подарок 30m до 50 winners=2 — закроется первым из условий
 ```
 
 Один юзер = одно нажатие. Победитель определяется через `crypto.randomInt`.
 
 ### Викторины
 
-`/quiz` — Claude генерит вопрос с 4 вариантами ответа, отправляет нативный Telegram quiz-poll. Если в чате уже определена тема (бот её знает) — вопрос будет в эту тему. Можно задать тему: `/quiz история СССР`.
+`/quiz` — Claude генерит вопрос с 4 вариантами, отправляет нативный Telegram quiz-poll. Если в чате уже определена тема (бот её знает) — вопрос будет в эту тему. Можно задать тему: `/quiz история СССР`.
 
-Каждый правильный ответ — +1 в счёт юзера. `/leaderboard` — топ викторины в этом чате.
+Каждый правильный ответ — +1 в счёт юзера. `/leaderboard` показывает топ.
 
 ### HTML-виджет D10 «Личность дня» (Bot API 10.4)
 
@@ -136,10 +136,10 @@ TRIANGLE_MODEL=                            # своя модель для «Тр
 
 ### Триггеры
 
-По умолчанию бот реагирует на слова из `BOT_TRIGGER` (env). В каждом чате админ может задать:
+По умолчанию бот реагирует на слова из `BOT_TRIGGER` (env). В каждом чате админ может задать свои:
 
 ```
-/trigger дух, шёпот, ой    — теперь отвечает и на эти слова
+/trigger дух, шёпот, ой    — теперь бот реагирует на эти слова в этом чате
 /trigger reset             — сбросить на стандартные
 ```
 
@@ -158,7 +158,7 @@ src/
 │   ├── gemini.js            # vision + audio + embeddings (ротация ключей)
 │   ├── groq.js              # Whisper STT
 │   ├── pollinations.js      # генерация картинок
-│   ├── tavily.js            # веб-поиск
+│   ├── tavily.js            # поиск
 │   ├── perplexity.js        # альт. поиск
 │   └── search.js            # роутер
 ├── memory/
@@ -174,9 +174,9 @@ src/
 │   ├── index.js             # диспетчер
 │   ├── context.js           # сбор контекста
 │   ├── text.js
-│   ├── photo.js             # vision
+│   ├── photo.js
 │   ├── voice.js             # голос → STT → Claude
-│   ├── audio.js             # музыка → Gemini
+│   ├── audio.js             # музыка → Gemini → Claude
 │   ├── commands.js
 │   ├── callback.js          # inline кнопки (выбор персоны)
 │   └── persona.js           # ротация в 0:00 МСК
@@ -184,7 +184,7 @@ src/
     ├── queue.js             # per-chat очередь (анти race)
     ├── triggers.js
     ├── typing.js            # typing indicator + min delay
-    ├── telegram.js          # split 4000+ символов
+    ├── telegram.js          # split 4000+ ответов
     └── time.js              # МСК helpers
 ```
 
@@ -193,10 +193,10 @@ src/
 Три уровня:
 
 1. **Short-term (`messages` table)** — последние `HISTORY_LIMIT` сообщений в контексте Claude
-2. **Mid-term (`profiles` table)** — досье юзера в каждом чате: имя, факты, репутация, тон
-3. **Long-term semantic (`memories` table)** — каждое значимое сообщение/факт превращается в embedding и хранится навсегда; при каждом сообщении подгружаются top-K релевантных через cosine similarity
+2. **Mid-term (`profiles` table)** — досье на каждого юзера в каждом чате: имя, факты, репутация, тон
+3. **Long-term semantic (`memories` table)** — каждое значимое сообщение/факт превращается в embedding и хранится навсегда. При новом запросе подбираются top-K релевантных через cosine similarity
 
-Плюс `daily_summaries` — ежедневные сводки чатов с embedding для долгой ретроспективы.
+Плюс `daily_summaries` — ежедневная сводка чата с embedding для долгого ретроспективного контекста.
 
 ## Личности
 
