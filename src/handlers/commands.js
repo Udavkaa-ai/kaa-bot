@@ -108,10 +108,20 @@ async function handleCommand(bot, msg) {
         return true;
       }
       try {
-        await require('../widgets').sendDice(chatId);
+        const result = await require('../widgets').sendDice(chatId, {
+          fallbackUserId: msg.from?.id,
+        });
+        if (result.privateFallback) {
+          await sendSafe(
+            bot, chatId,
+            'Telegram пока не пускает HTML-виджеты в группы. Отправил D10 тебе в личку.'
+          );
+        }
       } catch (err) {
         console.error('[D10 SEND]', err.message);
-        await sendSafe(bot, chatId, 'Не удалось отправить D10. Попробуй ещё раз.');
+        await sendSafe(bot, chatId, err.privateFallback
+          ? 'Сначала напиши мне /start в личку — туда я смогу отправить D10.'
+          : 'Не удалось отправить D10. Попробуй ещё раз.');
       }
       return true;
 
