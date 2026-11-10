@@ -13,14 +13,27 @@ function createDiceService({ api, resolve = defaultResolve, logger = console }) 
   }
   if (typeof resolve !== 'function') throw new TypeError('persona service requires resolvePersona');
 
-  async function sendDice(chatId) {
-    return api.sendWidget(chatId, DICE_HTML, {
+  async function sendDice(chatId, { fallbackUserId } = {}) {
+    const send = targetChatId => api.sendWidget(targetChatId, DICE_HTML, {
       width: 320,
       height: 0,
       caption: 'D10 «Личность дня»: нажми «Узнать личность»',
       allow_queries: true,
       public_data: JSON.stringify({ v: 1 }),
     });
+    try {
+      return await send(chatId);
+    } catch (error) {
+      const groupWidgetsBlocked = String(error.message).includes('INPUT_MEDIA_WIDGET_NOT_ALLOWED');
+      if (!groupWidgetsBlocked || !fallbackUserId || fallbackUserId === chatId) throw error;
+      try {
+        const result = await send(fallbackUserId);
+        return { ...result, privateFallback: true };
+      } catch (privateError) {
+        privateError.privateFallback = true;
+        throw privateError;
+      }
+    }
   }
 
   async function handleQuery(query) {

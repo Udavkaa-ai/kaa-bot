@@ -57,6 +57,40 @@ test('sendWidget contains the static D10 persona widget without shared state', a
   assert.deepEqual(JSON.parse(calls[0].params.public_data), { v: 1 });
 });
 
+test('a group send rejected by Telegram falls back to the tapper private chat', async () => {
+  const { service, calls } = harness({
+    api: {
+      async sendWidget(chatId, html, options) {
+        calls.push({ method: 'sendWidget', params: { chat_id: chatId, html, ...options } });
+        if (chatId < 0) throw new Error('sendWidget: Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED');
+        return { message_id: 43 };
+      },
+      async answerWidgetQuery() { return true; },
+    },
+  });
+  const result = await service.sendDice(-100123, { fallbackUserId: 7 });
+  assert.equal(result.message_id, 43);
+  assert.equal(result.privateFallback, true);
+  assert.deepEqual(calls.map(call => call.params.chat_id), [-100123, 7]);
+});
+
+test('other send failures and private chat failures are not retried', async () => {
+  const error = new Error('sendWidget: Bad Request: INPUT_MEDIA_WIDGET_TOO_LARGE');
+  const { service, calls } = harness({
+    api: {
+      async sendWidget(chatId, html, options) {
+        calls.push({ method: 'sendWidget', params: { chat_id: chatId, html, ...options } });
+        throw error;
+      },
+      async answerWidgetQuery() { return true; },
+    },
+  });
+  await assert.rejects(service.sendDice(-100123, { fallbackUserId: 7 }), /TOO_LARGE/);
+  assert.equal(calls.length, 1);
+  await assert.rejects(service.sendDice(7, { fallbackUserId: 7 }), /TOO_LARGE/);
+  assert.equal(calls.length, 2);
+});
+
 test('a tap resolves the daily persona for the tapper and answers only privately', async () => {
   const { service, calls, resolutions } = harness();
   await service.handleQuery(query());

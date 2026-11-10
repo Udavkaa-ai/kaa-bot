@@ -22,7 +22,22 @@ async function handleCallback(bot, query) {
   let persona = null;
   if (personaId === 'random' && config.widgetsEnabled) {
     await bot.answerCallbackQuery(query.id, { text: 'Запускаем D10…' });
-    await require('../widgets').sendDice(chatId);
+    try {
+      const result = await require('../widgets').sendDice(chatId, {
+        fallbackUserId: userId,
+      });
+      if (result.privateFallback) {
+        await bot.sendMessage(
+          chatId,
+          'Telegram пока не пускает HTML-виджеты в группы. Отправил D10 тебе в личку.'
+        );
+      }
+    } catch (err) {
+      console.error('[D10 CALLBACK SEND]', err.message);
+      await bot.sendMessage(chatId, err.privateFallback
+        ? 'Сначала напиши мне /start в личку — туда я смогу отправить D10.'
+        : 'Не удалось отправить D10. Попробуй ещё раз.');
+    }
     return true;
   }
   if (personaId === 'random') {
