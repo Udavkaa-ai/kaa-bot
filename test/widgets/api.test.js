@@ -80,20 +80,20 @@ test('widget_query joins the existing production polling without a second getUpd
   const handled = [];
   const errors = [];
   const bot = {
-    _processUpdate(update) { delegated.push(update); },
+    processUpdate(update) { delegated.push(update); },
   };
   const unregister = registerWidgetQueryHandler(bot, async query => {
     handled.push(query.id);
   }, { error: (...args) => errors.push(args) });
 
-  bot._processUpdate({ update_id: 1, message: { text: '/d10' } });
-  bot._processUpdate({ update_id: 2, widget_query: { id: 'q-production' } });
+  bot.processUpdate({ update_id: 1, message: { text: '/d10' } });
+  bot.processUpdate({ update_id: 2, widget_query: { id: 'q-production' } });
   await new Promise(resolve => setImmediate(resolve));
 
   assert.deepEqual(delegated, [{ update_id: 1, message: { text: '/d10' } }]);
   assert.deepEqual(handled, ['q-production']);
   assert.deepEqual(errors, []);
   unregister();
-  bot._processUpdate({ update_id: 3, widget_query: { id: 'after-stop' } });
+  bot.processUpdate({ update_id: 3, widget_query: { id: 'after-stop' } });
   assert.equal(delegated.length, 2);
 });

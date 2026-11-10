@@ -117,13 +117,14 @@ function createWidgetPoller({ api, onQuery, onMessage, onCallback, logger = cons
 
 // node-telegram-bot-api 0.66 does not emit widget_query yet. Intercept only
 // this new update kind and leave every existing update on the library's path.
+// The library method is processUpdate (without an underscore).
 function registerWidgetQueryHandler(bot, onQuery, logger = console) {
-  if (!bot || typeof bot._processUpdate !== 'function') {
+  if (!bot || typeof bot.processUpdate !== 'function') {
     throw new TypeError('a TelegramBot polling instance is required');
   }
-  const original = bot._processUpdate;
+  const original = bot.processUpdate;
   let active = true;
-  bot._processUpdate = function routeWidgetUpdate(update) {
+  bot.processUpdate = function routeWidgetUpdate(update) {
     if (active && update && update.widget_query) {
       Promise.resolve(onQuery(update.widget_query)).catch(err => {
         logger.error('[WIDGET QUERY]', err?.message || err);
@@ -134,7 +135,7 @@ function registerWidgetQueryHandler(bot, onQuery, logger = console) {
   };
   return () => {
     active = false;
-    bot._processUpdate = original;
+    bot.processUpdate = original;
   };
 }
 
