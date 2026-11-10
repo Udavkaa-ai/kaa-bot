@@ -19,7 +19,7 @@
 - **Ротация ключей** Gemini и OpenRouter — обход квот
 - **Splitting длинных ответов** по 4000 символов
 - **Юмористические ответы при ошибках API** в характере персоны
-- **Интерактивный HTML-виджет D10 «Личность дня»:** десять пиксельных портретов и приватное раскрытие уже назначенной на день личности (Bot API 10.4 beta)
+- **Интерактивный HTML-виджет D10 «Личность дня»:** десять векторных портретов и приватное раскрытие уже назначенной на день личности (Bot API 10.4)
 
 ## Установка локально
 
@@ -43,8 +43,8 @@ npm start
    - `BOT_TOKEN` — токен от [@BotFather](https://t.me/BotFather)
    - `ADMIN_ID` — твой Telegram user id (узнать у [@userinfobot](https://t.me/userinfobot))
    - `OPENROUTER_KEY` — с [openrouter.ai/keys](https://openrouter.ai/keys), там же пополнить баланс ($5 хватит надолго)
-   - `ANTHROPIC_API_KEY` (необязательно) — ключ из [platform.claude.com](https://platform.claude.com/settings/keys): тогда бот отвечает Claude напрямую, а OpenRouter остаётся запасным. Нужен хотя бы один из двух ключей
-   - `GEMINI_KEY` — с [aistudio.google.com](https://aistudio.google.com/app/apikey) (бесплатно). Можно несколько: `GEMINI_KEY_2`, `GEMINI_KEY_3` для ротации квот
+   - `ANTHROPIC_API_KEY` (необязательно) — ключ из [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys): тогда бот отвечает Claude напрямую, а OpenRouter остаётся запасным. Нужен хотя бы один из двух ключей
+   - `GEMINI_KEY` — с [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (бесплатно). Можно несколько: `GEMINI_KEY_2`, `GEMINI_KEY_3` для ротации квот
    - `GROQ_KEY` — с [console.groq.com/keys](https://console.groq.com/keys) (бесплатно)
    - `TAVILY_KEY` — с [tavily.com](https://tavily.com) (1000 запросов бесплатно)
    - `DATABASE_URL` — нажми **Reference** → выбери `Postgres.DATABASE_URL`
@@ -64,19 +64,17 @@ CLAUDE_MODEL=anthropic/claude-sonnet-4.6  # основная модель OpenRo
 FALLBACK_MODELS=google/gemini-2.5-flash,meta-llama/llama-3.3-70b-instruct:free
 AUTO_REVIVE=true                          # оживлять мёртвые чаты
 AUTO_REVIVE_HOURS=3
-SEARCH=true                                # веб-поиск (нужен TAVILY_KEY)
-IMAGES=true                                # /draw команда
-VISION=true                                # распознавать картинки
-VOICE=true                                 # распознавать голосовые
-AUDIO=true                                 # понимать музыку
-HISTORY_LIMIT=30                           # глубина истории в контексте
-PROMPT_CACHE=true                          # кэширование Claude (экономия 60-90%)
+SEARCH=true                               # веб-поиск (нужен TAVILY_KEY)
+IMAGES=true                               # /draw команда
+VISION=true                               # распознавать картинки
+VOICE=true                                # распознавать голосовые
+AUDIO=true                                # понимать музыку
+HISTORY_LIMIT=30                          # глубина истории в контексте
+PROMPT_CACHE=true                         # кэширование Claude (экономия 60-90%)
 PRIVATE_CHAT_ADMIN_ONLY=false              # отвечать в ЛС только админу
 ADMIN_MUST_BE_IN_GROUP=false               # покидать чаты где нет админа
 SEMANTIC_RECALL_K=5                        # сколько релевантных воспоминаний подгружать
-WIDGETS=false                              # opt-in для HTML-виджетов в test environment
-WIDGET_BOT_TOKEN=                          # токен тестового бота, если отличается от BOT_TOKEN
-WIDGET_API_BASE=https://api.telegram.org/beta
+WIDGETS=true                               # HTML-виджеты через основного бота и основной polling
 TRIANGLE_APP=ocenka                        # короткое имя Mini App «Треугольник решений» в BotFather (/newapp) — для кнопки в группах
 TRIANGLE_PER_HOUR=40                       # запросов к «Треугольнику» на человека в час (одно решение — два запроса)
 TRIANGLE_MODEL=                            # своя модель для «Треугольника» первой в цепочке; пусто — общая цепочка бота
@@ -96,52 +94,52 @@ TRIANGLE_MODEL=                            # своя модель для «Тр
 | `/giveaway <приз> [время|до N] [winners=K]` | Розыгрыш с inline-кнопкой |
 | `/quiz [тема]` | Викторина с 4 вариантами ответа |
 | `/leaderboard` | Топ-10 участников викторины в этом чате |
-| `/d10` | D10 «Личность дня» — HTML-виджет в Telegram test environment |
+| `/d10` | D10 «Личность дня» — интерактивный HTML-виджет |
 | `/dice`, `/widget`, `/кубик` | Обычный нативный кубик Telegram |
 | `/trigger <слова>` (chat admin) | Установить собственные триггеры для этого чата |
 | `/triggers` | Показать текущие триггеры |
 | `/stats` (admin) | Статистика использования моделей |
 | `/ban <id\|ник>` (admin) | Забанить юзера |
-| `/unban <id>` (admin) | Разбанить |
-| `/banned` (admin) | Список банов |
+| `/unban <id\|ник>` (admin) | Разбанить юзера |
+| `/banned` (admin) | Список забаненных |
 
 ### Розыгрыши
 
 ```
-/giveaway iPhone 15 60m              — на 60 минут
+/giveaway iPhone 15 60m              — 60 минут, потом итоги
 /giveaway пицца до 20                — пока 20 человек не наберётся
-/giveaway виски 24h winners=3         — 24 часа, три победителя
-/giveaway подарок 30m до 50 winners=2 — закроется первым из условий
+/giveaway айфон 2h winners=3         — 2 часа или 50 участников, 3 победителя
+/giveaway приз 30m до 50 winners=2   — закроется первым из условий
 ```
 
 Один юзер = одно нажатие. Победитель определяется через `crypto.randomInt`.
 
 ### Викторины
 
-`/quiz` — Claude генерит вопрос с 4 вариантами, отправляет нативный Telegram quiz-poll. Если в чате уже определена тема (бот её знает) — вопрос будет в эту тему. Можно задать тему: `/quiz история СССР`.
+`/quiz` — Claude генерит вопрос с 4 вариантами ответа, отправляет нативный Telegram quiz-poll. Если в чате уже определена тема (бот её знает) — вопрос будет в эту тему. Можно задать тему: `/quiz история СССР`.
 
-Каждый правильный ответ — +1 в счёт юзера. `/leaderboard` показывает топ.
+Каждый правильный ответ — +1 в счёт юзера. `/leaderboard` — топ викторины в этом чате.
 
-### HTML-виджет D10 «Личность дня» (Bot API 10.4 beta)
+### HTML-виджет D10 «Личность дня» (Bot API 10.4)
 
-В Telegram **test environment** команда `/d10` отправляет самодостаточный HTML-виджет. Его также запускает кнопка «🎲 Случайный» в меню `/persona` того же test environment. Нажатие «Узнать личность» вызывает `TelegramWidget.request('persona:v1')`; бот использует существующий `resolvePersona` и отвечает нажавшему через `answerWidgetQuery`.
+Команда `/d10` отправляет самодостаточный HTML-виджет через обычный production Bot API. Его также запускает кнопка «🎲 Случайный» в меню `/persona`. Нажатие «Узнать личность» вызывает `TelegramWidget.request('persona:v1')`; бот использует существующий `resolvePersona` и отвечает нажавшему через `answerWidgetQuery`.
 
-- Десять портретов 16×16 рисуются на Canvas без внешних картинок и сетевых запросов; сжатый HTML остаётся в пределах 4 КБ.
+- Десять упрощённых образов рисуются векторными фигурами на Canvas: у всех один овал лица с двумя линиями глаз, а личности различаются причёсками, одеждой и аксессуарами. Внешние картинки и сетевые запросы не нужны. HTML занимает около 10 КБ raw и менее 3,9 КБ zlib при лимитах 32 КБ и 4 КБ; совместимость проверена официальным `sandbox-node` из widget-sandbox.
 - Виджет раскрывает уже назначенную личность либо один раз назначает случайную на текущий день по МСК. Повторные нажатия не меняют собеседника; ручной выбор остаётся в `/persona`.
 - Имя, описание и `id` не записываются в `public_data`: результат виден только нажавшему, а системные промпты личностей в HTML не передаются.
 - Пересланная копия статического виджета — снимок без возможности выбора. Есть компактная раскладка и режим без анимации при `prefers-reduced-motion`.
-- Старые клиенты показывают caption как unsupported-media placeholder. Для интерактивности нужен клиент с layer 233 и включённым рендерингом виджетов.
+- Старые клиенты показывают caption как unsupported-media placeholder. Для интерактивности нужен клиент с layer 233 и включённым рендерингом виджетов; сам бот больше не использует beta/test endpoint.
 
-Test environment отделён от production: там другие чаты и сообщения. Поэтому `src/widgets` самостоятельно читает `message`, `callback_query` и `widget_query` только через `https://api.telegram.org/beta/bot<token>/test`, не конкурируя с основным production polling. Для запуска задай `WIDGETS=true`; если тестовый бот создан отдельно, добавь его `WIDGET_BOT_TOKEN`. В обычном чате `/d10` лишь подсказывает, где доступен виджет, а `/dice` и `/кубик` сохраняют нативный Telegram dice. Не переводи этот отдельный poller на production endpoint: два `getUpdates` для одного окружения конфликтуют.
+Виджеты работают через основного бота и обычный `https://api.telegram.org/bot<token>`. Метод `sendWidget` вызывается напрямую, а `widget_query` подключается к существующему production polling: второй `getUpdates` не запускается и с основным ботом не конфликтует. Отдельный `WIDGET_BOT_TOKEN` не нужен. Для отключения задай `WIDGETS=false`; `/dice`, `/widget` и `/кубик` в любом случае сохраняют нативный Telegram dice.
 
 Формат и ограничения: [официальный widget-sandbox Telegram](https://github.com/TelegramMessenger/widget-sandbox), `docs/tgw-format.md` и `docs/sdk-v1.md`. Локальные проверки: `npm run widget:test`.
 
 ### Триггеры
 
-По умолчанию бот реагирует на слова из `BOT_TRIGGER` (env). В каждом чате админ может задать свои:
+По умолчанию бот реагирует на слова из `BOT_TRIGGER` (env). В каждом чате админ может задать:
 
 ```
-/trigger дух, шёпот, ой    — теперь бот реагирует на эти слова в этом чате
+/trigger дух, шёпот, ой    — теперь отвечает и на эти слова
 /trigger reset             — сбросить на стандартные
 ```
 
@@ -160,7 +158,7 @@ src/
 │   ├── gemini.js            # vision + audio + embeddings (ротация ключей)
 │   ├── groq.js              # Whisper STT
 │   ├── pollinations.js      # генерация картинок
-│   ├── tavily.js            # поиск
+│   ├── tavily.js            # веб-поиск
 │   ├── perplexity.js        # альт. поиск
 │   └── search.js            # роутер
 ├── memory/
@@ -176,9 +174,9 @@ src/
 │   ├── index.js             # диспетчер
 │   ├── context.js           # сбор контекста
 │   ├── text.js
-│   ├── photo.js
+│   ├── photo.js             # vision
 │   ├── voice.js             # голос → STT → Claude
-│   ├── audio.js             # музыка → Gemini → Claude
+│   ├── audio.js             # музыка → Gemini
 │   ├── commands.js
 │   ├── callback.js          # inline кнопки (выбор персоны)
 │   └── persona.js           # ротация в 0:00 МСК
@@ -186,7 +184,7 @@ src/
     ├── queue.js             # per-chat очередь (анти race)
     ├── triggers.js
     ├── typing.js            # typing indicator + min delay
-    ├── telegram.js          # split 4000+ ответов
+    ├── telegram.js          # split 4000+ символов
     └── time.js              # МСК helpers
 ```
 
@@ -195,10 +193,10 @@ src/
 Три уровня:
 
 1. **Short-term (`messages` table)** — последние `HISTORY_LIMIT` сообщений в контексте Claude
-2. **Mid-term (`profiles` table)** — досье на каждого юзера в каждом чате: имя, факты, репутация, тон
-3. **Long-term semantic (`memories` table)** — каждое значимое сообщение/факт превращается в embedding и хранится навсегда. При новом запросе подбираются top-K релевантных через cosine similarity
+2. **Mid-term (`profiles` table)** — досье юзера в каждом чате: имя, факты, репутация, тон
+3. **Long-term semantic (`memories` table)** — каждое значимое сообщение/факт превращается в embedding и хранится навсегда; при каждом сообщении подгружаются top-K релевантных через cosine similarity
 
-Плюс `daily_summaries` — ежедневная сводка чата с embedding для долгого ретроспективного контекста.
+Плюс `daily_summaries` — ежедневные сводки чатов с embedding для долгой ретроспективы.
 
 ## Личности
 
