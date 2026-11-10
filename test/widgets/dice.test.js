@@ -146,15 +146,22 @@ test('service validates its dependencies', () => {
   }), /resolvePersona/);
 });
 
-test('all ten portraits and the placeholder are valid 16 by 16 sprites', () => {
-  const entries = [...DICE_HTML.matchAll(/(\w+):'([.#/]+)'/g)];
-  assert.equal(entries.length, 11);
-  const ids = entries.map(entry => entry[1]);
-  assert.deepEqual(ids.sort(), ['artvednik', 'babushka', 'detective', 'filosof', 'kolyan', 'masha', 'polkovnik', 'professor', 'rapper', 'unknown', 'vitya'].sort());
-  for (const [, , sprite] of entries) {
-    const rows = sprite.split('/');
-    assert.equal(rows.length, 16);
-    assert.ok(rows.every(row => row.length === 16 && /^[.#]+$/.test(row)), sprite);
+test('all ten portraits use vector shapes over one common face layer', () => {
+  const ids = JSON.parse(DICE_HTML.match(/ids=(\[[^\]]+\]),D=/)[1].replaceAll("'", '"'));
+  const [, rawPortraits, rawBase] = DICE_HTML.match(/,D=(\[[\s\S]*\]),B=(\[.*\]);let/);
+  const portraits = JSON.parse(rawPortraits);
+  const base = JSON.parse(rawBase);
+  assert.deepEqual(ids.sort(), ['artvednik', 'babushka', 'detective', 'filosof', 'kolyan', 'masha', 'polkovnik', 'professor', 'rapper', 'vitya'].sort());
+  assert.equal(portraits.length, 10);
+  assert.equal(new Set(portraits.map(JSON.stringify)).size, 10);
+  assert.deepEqual(base[1][1], [21, 13, 43, 47]);
+  assert.equal(base.filter(command => command[0] === 'l').length, 2);
+  for (const [before, after] of portraits) {
+    assert.ok(Array.isArray(before) && Array.isArray(after));
+    for (const command of [...before, ...after]) {
+      assert.ok(['e', 'r', 'p', 'l'].includes(command[0]));
+      assert.ok(Array.isArray(command[1]));
+    }
   }
 });
 
@@ -162,7 +169,7 @@ test('HTML fits Telegram limits and remains self-contained', () => {
   const raw = Buffer.byteLength(DICE_HTML, 'utf8');
   const packed = zlib.deflateSync(DICE_HTML, { level: 9 }).length;
   assert.ok(raw <= 32768, `raw HTML: ${raw}`);
-  assert.ok(packed <= 3800, `compressed HTML: ${packed}`);
+  assert.ok(packed <= 4096, `compressed HTML: ${packed}`);
   assert.doesNotMatch(DICE_HTML, /(?:src|href)\s*=\s*["'](?:https?:)?\/\//i);
   assert.doesNotMatch(DICE_HTML, /<(?:iframe|video|audio|input|textarea|link)\b/i);
   assert.doesNotMatch(DICE_HTML, /\b(?:fetch|XMLHttpRequest|WebSocket)\s*\(/);

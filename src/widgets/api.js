@@ -1,11 +1,11 @@
 'use strict';
 
-const DEFAULT_BASE = 'https://api.telegram.org/beta';
+const DEFAULT_BASE = 'https://api.telegram.org';
 
 function createWidgetApi({
   token,
   baseUrl = DEFAULT_BASE,
-  testEnv = true,
+  testEnv = false,
   fetchImpl = globalThis.fetch,
 }) {
   if (!token) throw new Error('BOT_TOKEN is required for widgets');
@@ -115,4 +115,27 @@ function createWidgetPoller({ api, onQuery, onMessage, onCallback, logger = cons
   return { start, stop, get running() { return running; } };
 }
 
-module.exports = { DEFAULT_BASE, createWidgetApi, createWidgetPoller };
+// node-telegram-bot-api 0.66 does not emit widget_query yet. Intercept only
+// this new update kind and leave every existing update on the library's path.
+function registerWidgetQueryHandler(bot, onQuery, logger = console) {
+  if (!bot || typeof bot._processUpdate !== 'function') {
+    throw new TypeError('a TelegramBot polling instance is required');
+  }
+  const original = bot._processUpdate;
+  let active = true;
+  bot._processUpdate = function routeWidgetUpdate(update) {
+    if (active && update && update.widget_query) {
+      Promise.resolve(onQuery(update.widget_query)).catch(err => {
+        logger.error('[WIDGET QUERY]', err?.message || err);
+      });
+      return;
+    }
+    return original.call(this, update);
+  };
+  return () => {
+    active = false;
+    bot._processUpdate = original;
+  };
+}
+
+module.exports = { DEFAULT_BASE, createWidgetApi, createWidgetPoller, registerWidgetQueryHandler };

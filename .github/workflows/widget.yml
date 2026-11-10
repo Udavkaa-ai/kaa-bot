@@ -7,6 +7,7 @@ on:
       - 'src/db/repo/widgets.js'
       - 'src/db/schema.sql'
       - 'src/handlers/commands.js'
+      - 'src/handlers/callback.js'
       - 'src/config.js'
       - 'src/index.js'
       - 'test/widgets/**'

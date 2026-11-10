@@ -1,3 +1,4 @@
+const config = require('../config');
 const usersRepo = require('../db/repo/users');
 const { getPersonaById, getRandomPersona } = require('../ai/personas');
 const { buildPersonaKeyboard, getPersonaIconMap } = require('./persona');
@@ -19,6 +20,11 @@ async function handleCallback(bot, query) {
   let personaId = data.replace('persona:', '');
 
   let persona = null;
+  if (personaId === 'random' && config.widgetsEnabled) {
+    await bot.answerCallbackQuery(query.id, { text: 'Запускаем D10…' });
+    await require('../widgets').sendDice(chatId);
+    return true;
+  }
   if (personaId === 'random') {
     persona = getRandomPersona();
     personaId = persona.id;

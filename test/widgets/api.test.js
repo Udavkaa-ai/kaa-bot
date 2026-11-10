@@ -2,14 +2,12 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createWidgetApi, createWidgetPoller } = require('../../src/widgets/api');
+const { createWidgetApi, createWidgetPoller, registerWidgetQueryHandler } = require('../../src/widgets/api');
 
-test('widget API uses the documented beta/test method URL', async () => {
+test('widget API uses the production method URL by default', async () => {
   const requests = [];
   const api = createWidgetApi({
     token: 'secret-token',
-    baseUrl: 'https://api.telegram.org/beta/',
-    testEnv: true,
     async fetchImpl(url, options) {
       requests.push({ url, options });
       return { status: 200, async json() { return { ok: true, result: { message_id: 9 } }; } };
@@ -17,10 +15,10 @@ test('widget API uses the documented beta/test method URL', async () => {
   });
   const result = await api.sendWidget(1, '<b>D10</b>', { height: 0 });
   assert.equal(result.message_id, 9);
-  assert.equal(requests[0].url, 'https://api.telegram.org/beta/botsecret-token/test/sendWidget');
+  assert.equal(requests[0].url, 'https://api.telegram.org/botsecret-token/sendWidget');
   assert.deepEqual(JSON.parse(requests[0].options.body), { chat_id: 1, html: '<b>D10</b>', height: 0 });
   await api.answerWidgetQuery('q1', { id: 'masha' });
-  assert.equal(requests[1].url, 'https://api.telegram.org/beta/botsecret-token/test/answerWidgetQuery');
+  assert.equal(requests[1].url, 'https://api.telegram.org/botsecret-token/answerWidgetQuery');
   assert.deepEqual(JSON.parse(requests[1].options.body), {
     widget_query_id: 'q1',
     data: '{"id":"masha"}',
@@ -41,7 +39,7 @@ test('API errors never leak the bot token', async () => {
   });
 });
 
-test('poller handles test-environment commands and widget_query with one offset', async () => {
+test('standalone poller handles commands and widget_query with one offset', async () => {
   const calls = [];
   const handled = [];
   const messages = [];
@@ -74,4 +72,28 @@ test('poller handles test-environment commands and widget_query with one offset'
   assert.deepEqual(calls[0].params.allowed_updates, ['message', 'callback_query', 'widget_query']);
   assert.equal(calls[0].params.offset, 0);
   assert.equal(poller.running, false);
+});
+
+
+test('widget_query joins the existing production polling without a second getUpdates', async () => {
+  const delegated = [];
+  const handled = [];
+  const errors = [];
+  const bot = {
+    _processUpdate(update) { delegated.push(update); },
+  };
+  const unregister = registerWidgetQueryHandler(bot, async query => {
+    handled.push(query.id);
+  }, { error: (...args) => errors.push(args) });
+
+  bot._processUpdate({ update_id: 1, message: { text: '/d10' } });
+  bot._processUpdate({ update_id: 2, widget_query: { id: 'q-production' } });
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.deepEqual(delegated, [{ update_id: 1, message: { text: '/d10' } }]);
+  assert.deepEqual(handled, ['q-production']);
+  assert.deepEqual(errors, []);
+  unregister();
+  bot._processUpdate({ update_id: 3, widget_query: { id: 'after-stop' } });
+  assert.equal(delegated.length, 2);
 });
