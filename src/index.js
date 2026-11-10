@@ -46,7 +46,7 @@ async function main() {
 
   webapp.setBot(bot);
   webapp.start();
-  require('./widgets').start();
+  require('./widgets').start(bot);
 
   console.log(`🐍 ${config.botName} запущен`);
 
@@ -83,7 +83,7 @@ async function main() {
   }, 30 * 1000);
 
   // Cron: напоминания каждую минуту.
-  // Поддерживает два типа: 'text' (обычное) и 'eyeball_top' (пост топа Сечения).
+  // Поддерживает два типа: 'text' (обычное) и 'eyeball_top' (топ по дням Сечения).
   // Если recurring='daily' — сдвигаем fire_at на +24ч, иначе удаляем.
   setInterval(async () => {
     try {
