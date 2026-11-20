@@ -8,6 +8,8 @@ on:
       - 'src/db/schema.sql'
       - 'src/handlers/commands.js'
       - 'src/handlers/callback.js'
+      - 'src/handlers/index.js'
+      - 'src/utils/incomingBots.js'
       - 'src/config.js'
       - 'src/index.js'
       - 'test/widgets/**'

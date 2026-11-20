@@ -2,6 +2,7 @@ const config = require('../config');
 const usersRepo = require('../db/repo/users');
 const chatsRepo = require('../db/repo/chats');
 const { isMentioned } = require('../utils/triggers');
+const { shouldIgnoreIncomingBot } = require('../utils/incomingBots');
 const { enqueue } = require('../utils/queue');
 const { handleText } = require('./text');
 const { handlePhoto } = require('./photo');
@@ -51,8 +52,8 @@ async function _process(bot, msg) {
     return;
   }
 
-  // Сообщения от других ботов — не отвечаем, но логируем
-  if (msg.from?.is_bot && msg.from.id !== botMeta.id) {
+  // Принимаем только разрешённого бота; ответы ботов друг другу игнорируем.
+  if (shouldIgnoreIncomingBot(msg, botMeta.id)) {
     return;
   }
 
